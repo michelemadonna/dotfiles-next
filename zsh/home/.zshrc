@@ -157,20 +157,25 @@ function load-our-ssh-keys() {
 	setopt local_options no_unset
 
 	local agent_file=$HOME/.ssh/ssh-agent
-	local agent_status key fingerprint fingerprint_line
+	local agent_status agent_keys key fingerprint fingerprint_line
 	local -a keys
+	typeset -g _ZQS_SSH_KEYS=
+	typeset -gi _ZQS_SSH_KEYS_STATUS=2
+	typeset -gi _ZQS_SSH_KEYS_VALID=0
 
 	if (( $+commands[keychain] )); then
 		eval "$(keychain -q --eval)" || return
+		agent_keys=$(ssh-add -l 2>/dev/null)
+		agent_status=$?
 	else
 		mkdir -p -- "$HOME/.ssh" || return
 		chmod 700 -- "$HOME/.ssh" 2>/dev/null
 
-		ssh-add -l >/dev/null 2>&1
+		agent_keys=$(ssh-add -l 2>/dev/null)
 		agent_status=$?
 		if (( agent_status == 2 )) && [[ -r $agent_file ]]; then
 			source "$agent_file"
-			ssh-add -l >/dev/null 2>&1
+			agent_keys=$(ssh-add -l 2>/dev/null)
 			agent_status=$?
 		fi
 
@@ -181,12 +186,15 @@ function load-our-ssh-keys() {
 				print -r -- "export SSH_AGENT_PID=${(q)SSH_AGENT_PID}"
 			} >| "$agent_file"
 			chmod 600 -- "$agent_file" 2>/dev/null
+			agent_keys=
+			agent_status=1
 		fi
 	fi
 
-	ssh-add -l >/dev/null 2>&1
-	agent_status=$?
 	(( agent_status == 2 )) && return 1
+	_ZQS_SSH_KEYS=$agent_keys
+	_ZQS_SSH_KEYS_STATUS=$agent_status
+	(( agent_status == 0 )) && _ZQS_SSH_KEYS_VALID=1
 
 	if (( agent_status == 1 )); then
 		if [[ $OSTYPE == darwin* ]]; then
@@ -195,6 +203,11 @@ function load-our-ssh-keys() {
 			else
 				ssh-add -qA >/dev/null 2>&1
 			fi
+			agent_keys=$(ssh-add -l 2>/dev/null)
+			agent_status=$?
+			_ZQS_SSH_KEYS=$agent_keys
+			_ZQS_SSH_KEYS_STATUS=$agent_status
+			(( agent_status == 0 )) && _ZQS_SSH_KEYS_VALID=1
 		fi
 
 		keys=(~/.ssh/**/*id_(rsa|dsa|ecdsa|ed25519)(N.))
@@ -202,8 +215,10 @@ function load-our-ssh-keys() {
 			fingerprint_line=$(ssh-keygen -l -f "$key" 2>/dev/null) || continue
 			fingerprint=${${(z)fingerprint_line}[2]}
 			[[ -n $fingerprint ]] || continue
-			ssh-add -l 2>/dev/null | command grep -Fq -- "$fingerprint" ||
-				ssh-add -q -- "$key"
+			if [[ $agent_keys != *"$fingerprint"* ]] && ssh-add -q -- "$key"; then
+				agent_keys+=$'\n'$fingerprint
+				_ZQS_SSH_KEYS_VALID=0
+			fi
 		done
 	fi
 }
@@ -219,9 +234,14 @@ fi
 if [[ ${Z4H_SSH_SHOW_KEY:-false} == true ]]; then
 	print
 	print 'Current SSH Keys:'
-	ssh-add -l
+	if (( ${_ZQS_SSH_KEYS_VALID:-0} )) && (( ${_ZQS_SSH_KEYS_STATUS:-2} == 0 )); then
+		print -r -- "$_ZQS_SSH_KEYS"
+	else
+		ssh-add -l
+	fi
 	print
 fi
+unset _ZQS_SSH_KEYS _ZQS_SSH_KEYS_STATUS _ZQS_SSH_KEYS_VALID
 
 # Source additional local files if they exist.
 z4h source ~/.env.zsh

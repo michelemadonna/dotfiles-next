@@ -9,8 +9,25 @@ DOTFILES_DIR=${DOTFILES_DIR:-"$HOME/.dotfiles"}
 MODE=interactive
 BASE_PACKAGES_MARKER_VERSION=1
 
+COLOR_YELLOW=
+COLOR_GREEN=
+COLOR_RED=
+COLOR_BOLD=
+COLOR_DIM=
+COLOR_RESET=
+
+if [ -z "${NO_COLOR:-}" ] && [ "${TERM:-dumb}" != dumb ] && [ -t 1 ]; then
+  COLOR_YELLOW=$(printf '\033[33m')
+  COLOR_GREEN=$(printf '\033[32m')
+  COLOR_RED=$(printf '\033[31m')
+  COLOR_BOLD=$(printf '\033[1m')
+  COLOR_DIM=$(printf '\033[2m')
+  COLOR_RESET=$(printf '\033[0m')
+fi
+
 usage() {
-  printf 'Usage: %s [non-interactive|--non-interactive]\n' "$0"
+  printf '%sUsage:%s %s%s%s [non-interactive|--non-interactive]\n' \
+    "$COLOR_BOLD" "$COLOR_RESET" "$COLOR_BOLD" "$0" "$COLOR_RESET"
 }
 
 parse_arguments() {
@@ -31,11 +48,17 @@ is_non_interactive() {
 }
 
 info() {
-  printf '\n==> %s\n' "$*"
+  printf '\n%s==>%s %s\n' "$COLOR_YELLOW" "$COLOR_RESET" "$*"
+}
+
+success() {
+  printf '\n%s==>%s %s%s%s\n' \
+    "$COLOR_GREEN" "$COLOR_RESET" "$COLOR_BOLD" "$*" "$COLOR_RESET"
 }
 
 die() {
-  printf '\nError: %s\n' "$*" >&2
+  printf '\n%s%sError:%s %s\n' \
+    "$COLOR_RED" "$COLOR_BOLD" "$COLOR_RESET" "$*" >&2
   exit 1
 }
 
@@ -70,12 +93,15 @@ confirm() {
   fi
 
   while :; do
-    printf 'Install %s? [y/N] ' "$prompt" >/dev/tty
+    printf '%s?%s Install %s%s%s? %s[y/N]%s ' \
+      "$COLOR_YELLOW" "$COLOR_RESET" "$COLOR_BOLD" "$prompt" \
+      "$COLOR_RESET" "$COLOR_GREEN" "$COLOR_RESET" >/dev/tty
     IFS= read -r answer </dev/tty || return 1
     case $answer in
       y | Y | yes | YES | Yes) return 0 ;;
       '' | n | N | no | NO | No) return 1 ;;
-      *) printf 'Please answer y or n.\n' >/dev/tty ;;
+      *) printf '%sPlease answer y or n.%s\n' \
+        "$COLOR_RED" "$COLOR_RESET" >/dev/tty ;;
     esac
   done
 }
@@ -90,12 +116,17 @@ ask_choice() {
   fi
 
   while :; do
-    printf '%s [%s] (%s) ' "$prompt" "$default" "$choices" >/dev/tty
+    printf '%s?%s %s%s%s [%s%s%s] %s(%s)%s ' \
+      "$COLOR_YELLOW" "$COLOR_RESET" "$COLOR_BOLD" "$prompt" \
+      "$COLOR_RESET" "$COLOR_GREEN" "$default" "$COLOR_RESET" \
+      "$COLOR_DIM" "$choices" "$COLOR_RESET" >/dev/tty
     IFS= read -r answer </dev/tty || die "Could not read the value for $prompt."
     answer=${answer:-$default}
     case " $choices " in
       *" $answer "*) printf '%s\n' "$answer"; return 0 ;;
-      *) printf 'Please choose one of: %s.\n' "$choices" >/dev/tty ;;
+      *) printf '%sPlease choose one of:%s %s%s%s.\n' \
+        "$COLOR_RED" "$COLOR_RESET" "$COLOR_BOLD" "$choices" \
+        "$COLOR_RESET" >/dev/tty ;;
     esac
   done
 }
@@ -384,6 +415,8 @@ install_mise() {
     curl -fsSL https://mise.run | sh
   fi
   link_path "$DOTFILES_DIR/mise" "$HOME/.config/mise"
+  info 'Preparing Mise shell caches'
+  sh "$DOTFILES_DIR/zsh/prepare-mise-cache.sh"
 }
 
 install_fastfetch() {
@@ -430,7 +463,7 @@ main() {
   [ "$show_fastfetch" = true ] && install_fastfetch
   [ "$prompt" = ohmyposh ] && install_oh_my_posh
 
-  info 'Installation complete. Start a new Zsh login session to load the configuration.'
+  success 'Installation complete. Start a new Zsh login session to load the configuration.'
 }
 
 main "$@"

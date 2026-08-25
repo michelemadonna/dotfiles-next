@@ -13,6 +13,7 @@ if [ -n "${ZSH_VERSION-}" ]; then
   export Z4H_SSH_LOAD_KEY=${Z4H_SSH_LOAD_KEY:=true} #false/true
   export Z4H_SSH_SHOW_KEY=${Z4H_SSH_SHOW_KEY:=true} #false/true
   export Z4H_SSH_ASKPASS_REQUIRE=${Z4H_SSH_ASKPASS_REQUIRE:=false} #false/true
+  export Z4H_MISE_REFRESH_SECONDS=${Z4H_MISE_REFRESH_SECONDS:=5} #0 checks every prompt
 
   export DOTFILES_DIR="$HOME/.dotfiles" #${DOTFILES_DIR:="$HOME/.dotfiles"} 
   export ZDOTDIR="$DOTFILES_DIR/zsh/home"

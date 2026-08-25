@@ -82,7 +82,7 @@ The project-specific plugins live in [`zsh/z4h.custom.plugins`](zsh/z4h.custom.p
 | `z4h-containers` | Adds Docker and kubectl aliases, caches CLI-generated completion, improves Docker completion contexts, and supplies JSON/YAML kubectl helpers when the required tools are available. |
 | `z4h-eza` | Replaces common `ls` forms with an icon-aware `eza` configuration and falls back to `exa` when necessary. Provides `ll` and `lls`. |
 | `z4h-gencomp-lazy` | Generates completion from a command's help output on explicit `Shift-Tab`, caches it, loads it immediately, and remembers failed attempts for the current session. It also provides the manual `gencomp` command. |
-| `z4h-mise` | Caches Mise activation and completion, avoids duplicate directory hooks, provides `asdf` compatibility, enhances `mise use`, and synchronizes selections to `.tool-versions`. |
+| `z4h-mise` | Caches Mise activation and completion, avoids duplicate hooks, refreshes immediately after directory changes and successful `mise` commands, throttles unchanged prompts, provides `asdf` compatibility, and synchronizes `mise use` selections to `.tool-versions`. |
 | `z4h-oh-my-posh` | Loads Oh My Posh only when selected and caches the generated Zsh initialization until the binary, theme, or plugin changes. |
 | `z4h-misc` | Provides compatibility aliases, the optional allafine behavior, and a searchable `Ctrl-K` keybinding reference for Zsh, fzf, tmux, and Micro. |
 
@@ -114,8 +114,13 @@ With no arguments, the installer asks for:
 - Fastfetch, fzf-tab, generated completion, and selected Oh My Zsh helpers.
 - SSH key loading, key display, and forced askpass behavior.
 - Mise installation.
+- Mise activation/completion cache generation and ASDF compatibility-data
+  preparation when Mise is selected, keeping this work out of the first Zsh
+  startup.
 
 The answers are written to `zsh/.zshenv`, and `~/.zshenv` points to that generated file. Only the selected editor is installed. Fastfetch and Oh My Posh are installed only when enabled.
+Interactive output uses the same yellow, green, bold, and error-color style as
+z4h when stdout is a terminal. Set `NO_COLOR=1` to disable ANSI colors.
 
 ### Non-interactive mode
 
@@ -222,6 +227,8 @@ docker build \
 The container runs as the unprivileged `demo` user with Zsh as its login shell. The image prepares the base-package marker because all required packages are already installed in the cacheable base stage. It also:
 
 - Runs the remote checkout's interactive installer at container startup, or the local checkout's non-interactive installer during the build.
+- Prepares Mise activation/completion caches during a local build; a remote
+  container prepares them when Mise is selected in the interactive installer.
 - Installs Fresh, Micro, Mise, Fastfetch, and Oh My Posh.
 - Links the Zsh, Git, SSH, tmux, ripgrep, editor, prompt, and runtime configurations.
 - Clones Java/Maven, Node.js, Python, and image repositories under `/home/demo/Developer` for testing completions and previews.
@@ -262,6 +269,8 @@ The default prompt inside the image remains Powerlevel10k because the Docker set
 The main defaults live in [`zsh/.zshenv.init`](zsh/.zshenv.init), while interactive installations generate `zsh/.zshenv`. The primary shell configuration is [`zsh/home/.zshrc`](zsh/home/.zshrc).
 
 Store machine-specific shell values in `~/.env.zsh`; it is sourced automatically when present. Git include templates are available in [`git/examples`](git/examples), and tmux loads `~/.tmux.conf.local` when that file exists.
+
+`Z4H_MISE_REFRESH_SECONDS` controls Mise's periodic safety refresh (default: `5`). Directory changes, `PATH` changes, and successful `mise` commands still refresh immediately. Set it to `0` to run Mise's refresh hook before every prompt.
 
 ## 📜 License
 
