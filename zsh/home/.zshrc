@@ -140,7 +140,10 @@ fi
 #z4h install peterhurford/git-it-on.zsh || return
 #z4h install StackExchange/blackbox || return
 #z4h install sharat87/pip-app || return
-z4h install RobSis/zsh-completion-generator || return #only install
+if [[ ${Z4H_ENABLE_AUTO_GENCOMP} = true ]]; then
+	z4h install RobSis/zsh-completion-generator || return #only install
+fi
+
 
 if [[ ${Z4H_USE_FZF_TAB} = true ]]; then
 	z4h install zdharma-continuum/fast-syntax-highlighting || return
@@ -311,7 +314,11 @@ z4h source "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-eza.plugin.zsh"
 z4h source "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-misc.plugin.zsh"
 z4h source "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-containers.plugin.zsh"
 z4h source "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-mise.plugin.zsh"
-z4h source "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-gencomp-lazy.plugin.zsh"
+
+if [[ ${Z4H_ENABLE_AUTO_GENCOMP} = true ]]; then
+	z4h source "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-gencomp-lazy.plugin.zsh"
+fi
+
 if [[ "${Z4H_PROMPT}" == "ohmyposh" ]]; then
 	export Z4H_OH_MY_POSH_CONFIG=${Z4H_OH_MY_POSH_CONFIG:="$HOME/.config/oh-my-posh/custom.omp.json"}
 	z4h source "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-oh-my-posh.plugin.zsh"
@@ -357,7 +364,7 @@ autoload -Uz zmv
 
 # Define functions and completions.
 function md() {
-	 [[ $# == 1 ]] && mkdir -p -- "$1" && cd -- "$1" 
+	[[ $# == 1 ]] && mkdir -p -- "$1" && cd -- "$1" 
 }
 compdef _directories md
 
@@ -389,7 +396,17 @@ REPORTTIME=${REPORTTIME:-2}
 
 TIMEFMT="%U user %S system %P cpu %*Es total"
 
-
+# deal with screen, if we're using it - courtesy MacOSXHints.com
+# Login greeting ------------------
+if [ "$TERM" = "screen" -a ! "$SHOWED_SCREEN_MESSAGE" = "true" ]; then
+	detached_screens=$(screen -list | grep Detached)
+	if [ ! -z "$detached_screens" ]; then
+		echo "+---------------------------------------+"
+		echo "| Detached screens are available:       |"
+		echo "$detached_screens"
+		echo "+---------------------------------------+"
+	fi
+fi
 
 
 print -n $'\e[9999;1H'
@@ -409,18 +426,6 @@ if [[ -o interactive && ${Z4H_SHOW_FASTFETCH:-false} == true && -z ${Z4H_FASTFET
 		print -u2 "fastfetch not found. See $DOTFILES_DIR/Readme.md"
 	fi
 fi
-
-#if [[ "${Z4H_PROMPT}" == "ohmyposh" ]]; then
-#	if (( ! $+commands[oh-my-posh] )); then
-#		echo "oh-my-posh not found. Please refer to $DOTFILES_DIR/Readme.md for installation instructions."
-#	else
-#		# this file is responsible for setting up oh-my-posh
-#		
-#		export Z4H_OH_MY_POSH_CONFIG=${Z4H_OH_MY_POSH_CONFIG:="$HOME/.config/oh-my-posh/custom.omp.json"}
-#	
-#		eval "$(oh-my-posh init zsh --config "$Z4H_OH_MY_POSH_CONFIG")"
-#	fi
-#fi
 
 if [[ -f ${ZDOTDIR:-$HOME}/.z4h-zprof-enabled ]]; then
   zprof
