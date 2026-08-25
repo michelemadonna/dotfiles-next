@@ -25,6 +25,7 @@ RUN apt-get update \
       htop \
       mediainfo \
       micro \
+      nano \
       openssh-client \
       poppler-utils \
       python3-pip \
@@ -34,6 +35,7 @@ RUN apt-get update \
       tmux \
       tree \
       unzip \
+      vim \
       wget \
       zsh \
       default-jdk-headless nodejs python3 \
@@ -91,6 +93,8 @@ RUN mise install java@17.0.2 python@3.13.6 node@22.14.0
 # DOTFILES_REF to test another remote checkout without changing this file.
 FROM base AS dotfiles-remote
 
+ENV DOTFILES_SOURCE_MODE=remote
+
 ARG DOTFILES_REPO_URL=https://github.com/michelemadonna/dotfiles-next.git
 ARG DOTFILES_REF=main
 
@@ -99,6 +103,8 @@ RUN git clone --depth 1 --branch "$DOTFILES_REF" \
 
 # Local development is opt-in with --build-arg DOTFILES_SOURCE=local.
 FROM base AS dotfiles-local
+
+ENV DOTFILES_SOURCE_MODE=local
 
 COPY --chown=demo:demo . /home/demo/.dotfiles
 
@@ -110,15 +116,17 @@ RUN git -C /home/demo/.dotfiles init -q
 FROM dotfiles-${DOTFILES_SOURCE} AS final
 
 # System packages are already installed in the cacheable base stage. Seed the
-# installer's versioned marker, then let the repository configure its own
-# non-interactive links and defaults.
+# installer's versioned marker. Local builds configure the checkout now;
+# remote builds defer the required interactive installer to docker run -it.
 RUN mkdir -p /home/demo/.local/state/dotfiles-next \
     && touch /home/demo/.local/state/dotfiles-next/base-packages-v1-linux.done \
-    && cd /home/demo/.dotfiles \
-    && EDITOR=micro \
-      Z4H_PROMPT=powerlevel10k \
-      Z4H_SHOW_FASTFETCH=false \
-      sh ./install.sh non-interactive
+    && if [ "$DOTFILES_SOURCE_MODE" = local ]; then \
+      cd /home/demo/.dotfiles \
+      && EDITOR=micro \
+        Z4H_PROMPT=powerlevel10k \
+        Z4H_SHOW_FASTFETCH=false \
+        sh ./install.sh non-interactive; \
+    fi
 
 RUN mkdir -p \
       /home/demo/.config \
@@ -152,4 +160,4 @@ RUN cd /home/demo \
     && cd /home/demo/Developer/personal@github/python-helloworld \
     && mise use python@3.13.6
 
-CMD ["zsh", "-l"]
+CMD ["sh", "-c", "if [ \"$DOTFILES_SOURCE_MODE\" = remote ]; then cd /home/demo/.dotfiles && sh ./install.sh; fi; exec zsh -l"]

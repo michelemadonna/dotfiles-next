@@ -191,7 +191,14 @@ docker build -t dotfiles-next-demo .
 docker run --rm -it dotfiles-next-demo
 ```
 
-To test the files from the current directory instead, select the local source explicitly:
+For the default remote source, `docker run -it` starts the repository's
+**interactive** installer before entering Zsh. The container therefore requires
+a TTY and asks for the prompt, editor, Fastfetch, fzf-tab, completion, Oh My Zsh,
+SSH, and Mise preferences on every new container.
+
+To test the files from the current directory instead, select the local source
+explicitly. This mode runs `install.sh non-interactive` during the build and
+starts Zsh directly when the container runs:
 
 ```sh
 docker build \
@@ -208,9 +215,9 @@ docker build \
   -t dotfiles-next-demo .
 ```
 
-The container runs as the unprivileged `demo` user with Zsh as its login shell. During the build it also:
+The container runs as the unprivileged `demo` user with Zsh as its login shell. The image prepares the base-package marker because all required packages are already installed in the cacheable base stage. It also:
 
-- Runs the selected checkout's `install.sh non-interactive` with the default Powerlevel10k and Micro choices. The base-package marker is prepared because those packages are already installed in the cacheable base stage.
+- Runs the remote checkout's interactive installer at container startup, or the local checkout's non-interactive installer during the build.
 - Installs Fresh, Micro, Mise, Fastfetch, and Oh My Posh.
 - Links the Zsh, Git, SSH, tmux, ripgrep, editor, prompt, and runtime configurations.
 - Clones Java/Maven, Node.js, Python, and image repositories under `/home/demo/Developer` for testing completions and previews.

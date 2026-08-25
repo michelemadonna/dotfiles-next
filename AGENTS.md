@@ -38,10 +38,11 @@ behavior. Treat the repository contents as the source of truth.
   marker.
 - Docker builds clone the GitHub repository by default. The current directory
   is used only with `--build-arg DOTFILES_SOURCE=local`.
-- After selecting either source, the Docker build must run the checkout's
-  `install.sh non-interactive`; do not replace the installer with hand-written
-  setup logic. Seed the base-package marker only because the base stage has
-  already installed those packages.
+- For the default remote source, `docker run -it` must execute the checkout's
+  interactive `install.sh` before starting Zsh. Local-source builds execute
+  `install.sh non-interactive` during the build. Do not replace either path
+  with hand-written setup logic. Seed the base-package marker only because the
+  base stage has already installed those packages.
 - Keep expensive Docker downloads, demo repositories, and Mise runtimes before
   the dotfiles source-selection stages so local edits do not invalidate them.
 - z4h supplies `fzf`; native fzf bindings provide `Ctrl-T`, `Ctrl-R`, and
