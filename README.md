@@ -187,8 +187,7 @@ By default, the build clones the `main` branch from this GitHub repository, so
 the resulting image does not depend on uncommitted files in the current directory:
 
 ```sh
-docker build -t dotfiles-next-demo .
-docker run --rm -it dotfiles-next-demo
+./docker-demo.sh
 ```
 
 For the default remote source, `docker run -it` starts the repository's
@@ -201,10 +200,15 @@ explicitly. This mode runs `install.sh non-interactive` during the build and
 starts Zsh directly when the container runs:
 
 ```sh
-docker build \
-  --build-arg DOTFILES_SOURCE=local \
-  -t dotfiles-next-demo .
+./docker-demo.sh local
 ```
+
+The script accepts `remote` (the default) or `local`, builds
+`dotfiles-next-demo`, and launches it with an interactive TTY. Set
+`DOCKER_IMAGE` to use another image name. The equivalent manual commands are
+`docker build -t dotfiles-next-demo .` and
+`docker run --rm -it dotfiles-next-demo`; add
+`--build-arg DOTFILES_SOURCE=local` to the build command for local sources.
 
 Remote builds can target another repository or branch without editing the Dockerfile:
 

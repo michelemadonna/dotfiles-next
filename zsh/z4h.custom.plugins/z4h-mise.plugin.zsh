@@ -22,7 +22,7 @@ export ASDF_DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/asdf"
 mise-bootstrap-asdf-data() {
   [[ -d "$ASDF_DATA_DIR" ]] && return 0
   mkdir -p "$ASDF_DATA_DIR"
-  command git clone https://github.com/asdf-vm/asdf-plugins.git "$ASDF_DATA_DIR" || return
+  command git clone https://github.com/asdf-vm/asdf-plugins.git "$ASDF_DATA_DIR" > /dev/null 2>&1 || return
 
   local file dir_name
   for file in "$ASDF_DATA_DIR/plugins"/*(N); do

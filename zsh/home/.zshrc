@@ -82,7 +82,7 @@ fi
 if [[ ${Z4H_PROMPT} == "ohmyposh" ]]; then
 	zstyle ':z4h:powerlevel10k' channel none
 else
-	typeset -g POWERLEVEL9K_CONFIG_FILE="$POWERSHELL_CONFIG_FILE"  
+	typeset -g POWERLEVEL9K_CONFIG_FILE="$POWERLEVEL9K_CONFIG_FILE"  
 fi
 #################################################################
 
