@@ -1,2 +1,237 @@
 # dotfiles-next
-My new dotfiles repo
+
+> A batteries-included Zsh environment for macOS and APT-based Linux systems, built around Zsh for Humans.
+
+## ✨ Introduction
+
+`dotfiles-next` is an opinionated collection of shell settings, terminal tools, editor configurations, themes, fonts, and custom Zsh plugins. It provides an interactive installer for personal workstations, an environment-driven non-interactive mode for automation, and a complete Docker image for exploring the setup without changing the host.
+
+The default prompt is **Powerlevel10k**. **Oh My Posh** is available as an explicit alternative and uses [`oh-my-posh/custom.omp.json`](oh-my-posh/custom.omp.json). Zsh for Humans (z4h) bootstraps the shell framework and manages the external Zsh plugins on first startup.
+
+## ✅ Prerequisites
+
+The host installer supports:
+
+- macOS with Homebrew, or an APT-based Linux distribution.
+- Zsh already installed and configured as the current user's login shell.
+- `curl` and an internet connection.
+- `sudo` access on Linux when installation is not run as root.
+- `bash` on macOS if Homebrew must be installed automatically.
+
+Check the active login shell before running the installer:
+
+```sh
+printf '%s\n' "$SHELL"
+```
+
+If necessary, set Zsh as the login shell and start a new login session:
+
+```sh
+chsh -s "$(command -v zsh)"
+```
+
+A terminal with Nerd Font support is strongly recommended because the prompts, tmux status line, and file icons use additional glyphs. The installer installs Fira Code Nerd Font on macOS and the bundled fonts on Linux.
+
+To use the demo image, install Docker Desktop or Docker Engine with BuildKit. Building the image requires internet access and considerably more time and disk space than the host installation.
+
+## 🧰 Components
+
+### Core command-line tools
+
+The base package set is installed once per platform. It supplies the commands used by the shell, previews, aliases, and bundled configurations.
+
+| Component | Purpose |
+| --- | --- |
+| `bat` | Syntax-highlighted file viewing. On some Debian/Ubuntu releases the packaged command is named `batcat`; the preview helper supports both names. |
+| `eza` | Modern, icon-aware replacement for `ls`. |
+| `fd` | Fast file discovery. The Linux package is named `fd-find` and may expose the command as `fdfind`; the Docker demo adds an `fd` compatibility link. |
+| `ripgrep` | Fast recursive text search. |
+| `git` and `git-delta` | Version control plus readable, side-by-side diffs. |
+| `fzf` and `fzf-tab` | Fuzzy file selection and interactive Zsh completion. `fzf` is provided through the z4h-managed plugin stack. |
+| `chafa`, `mediainfo`, `poppler`, and `file` | Image, media, PDF, and generic file previews inside fzf. |
+| `tmux` | Persistent terminal sessions with the included mouse and keyboard configuration. |
+| `htop`, `tree`, `wget`, and DNS tools | Process inspection, directory views, downloads, and host/DNS inspection. |
+| `stow` | Available for manual dotfile workflows; the installer itself creates explicit symbolic links. |
+| Nerd Fonts | Prompt, file, Git, and tmux glyphs. |
+
+Package names differ slightly by platform. For example, Linux uses `poppler-utils`, `dnsutils`, `fd-find`, and `command-not-found`, while macOS uses the corresponding Homebrew formulae such as `poppler`, `bind`, and `fd`. Linux additionally installs `grc` and `python3-pip`; macOS installs GNU core utilities.
+
+### Shell and optional components
+
+| Component | Status | Purpose |
+| --- | --- | --- |
+| Zsh for Humans | Core | Bootstraps the Zsh environment, manages external plugins, and supplies shell utilities and key bindings. |
+| Powerlevel10k | Default | Fast, Git-aware two-line prompt configured by [`powerlevel10k/.p10k.zsh`](powerlevel10k/.p10k.zsh). |
+| Oh My Posh | Optional | Alternative prompt using the repository's custom JSON theme. Installed only when `ohmyposh` is selected. |
+| Oh My Zsh helpers | Optional, enabled by default | Loads selected libraries and plugins such as `sudo`, `command-not-found`, and the macOS/Homebrew helpers without sourcing the complete `oh-my-zsh.sh`. |
+| fzf-tab stack | Optional, enabled by default | Adds fuzzy completion, previews, syntax highlighting, history search, and suggestions. |
+| Completion generator | Optional, enabled by default | Generates and caches getopt-style completion for the current command when explicitly requested with `Shift-Tab`. |
+| Fastfetch | Optional | Displays the configured system summary once per interactive shell session. |
+| Mise | Host interactive option | Installs and activates language/tool runtimes and maintains compatibility with `.tool-versions`. It is also preinstalled in the Docker demo. |
+| Micro, Fresh, Vim, or Nano | Select one | Configures the requested default editor; Micro is the default. Repository configurations are linked for Micro and Fresh. |
+
+The repository also contains configurations for Git, Ghostty, iTerm2, Fastfetch, Mise, SSH, ripgrep, tmux, Micro, and Fresh. Some are reference configurations and are not all linked by the host installer.
+
+## 🧩 Custom Zsh plugins
+
+The project-specific plugins live in [`zsh/z4h.custom.plugins`](zsh/z4h.custom.plugins) and are loaded from the main Zsh configuration.
+
+| Plugin | What it does |
+| --- | --- |
+| `z4h-fzf` | Extends fzf-tab, `Ctrl-T`, and `Alt-C` with shared hidden-file state, persistent preview layout, contextual previews, and command-specific views for Git, Docker, package managers, SSH, processes, manuals, and systemd. |
+| `z4h-containers` | Adds Docker and kubectl aliases, caches CLI-generated completion, improves Docker completion contexts, and supplies JSON/YAML kubectl helpers when the required tools are available. |
+| `z4h-eza` | Replaces common `ls` forms with an icon-aware `eza` configuration and falls back to `exa` when necessary. Provides `ll` and `lls`. |
+| `z4h-gencomp-lazy` | Generates completion from a command's help output on explicit `Shift-Tab`, caches it, loads it immediately, and remembers failed attempts for the current session. It also provides the manual `gencomp` command. |
+| `z4h-mise` | Caches Mise activation and completion, avoids duplicate directory hooks, provides `asdf` compatibility, enhances `mise use`, and synchronizes selections to `.tool-versions`. |
+| `z4h-oh-my-posh` | Loads Oh My Posh only when selected and caches the generated Zsh initialization until the binary, theme, or plugin changes. |
+| `z4h-misc` | Provides compatibility aliases, the optional allafine behavior, and a searchable `Ctrl-K` keybinding reference for Zsh, fzf, tmux, and Micro. |
+
+## 🚀 Installation
+
+The installer checks the platform, installs Git when necessary, clones the repository into `~/.dotfiles`, installs the base packages, and creates the required configuration links.
+
+Download the installer before running it so it can be reviewed locally:
+
+```sh
+curl -fsSL \
+  https://raw.githubusercontent.com/michelemadonna/dotfiles-next/main/install.sh \
+  -o /tmp/dotfiles-next-install.sh
+sh /tmp/dotfiles-next-install.sh
+```
+
+You can also clone the repository yourself and run:
+
+```sh
+./install.sh
+```
+
+### Interactive mode
+
+With no arguments, the installer asks for:
+
+- Prompt: `powerlevel10k` or `ohmyposh`.
+- Editor: `vim`, `nano`, `fresh`, or `micro`.
+- Fastfetch, fzf-tab, generated completion, and selected Oh My Zsh helpers.
+- SSH key loading, key display, and forced askpass behavior.
+- Mise installation.
+
+The answers are written to `zsh/.zshenv`, and `~/.zshenv` points to that generated file. Only the selected editor is installed. Fastfetch and Oh My Posh are installed only when enabled.
+
+### Non-interactive mode
+
+Both spellings are supported:
+
+```sh
+./install.sh non-interactive
+./install.sh --non-interactive
+```
+
+This mode never asks questions. It reads its installation choices from the environment:
+
+| Variable | Accepted values | Default |
+| --- | --- | --- |
+| `EDITOR` | `vim`, `nano`, `fresh`, `micro` | `micro`; unsupported values also fall back to `micro` |
+| `Z4H_PROMPT` | `powerlevel10k`, `ohmyposh` | `powerlevel10k` |
+| `Z4H_SHOW_FASTFETCH` | `true`, `false` | `false` |
+
+Example:
+
+```sh
+EDITOR=fresh \
+Z4H_PROMPT=ohmyposh \
+Z4H_SHOW_FASTFETCH=true \
+./install.sh non-interactive
+```
+
+Non-interactive mode uses non-prompting package-manager options, including `sudo -n` on Linux, and fails if credentials are required. It never installs Mise and does not generate `zsh/.zshenv`; instead, `~/.zshenv` points directly to `zsh/.zshenv.init`, which preserves supported values already present in the environment.
+
+### Paths, state, and repeat runs
+
+| Variable | Purpose | Default |
+| --- | --- | --- |
+| `HOME` | Installation home directory | Current user's home |
+| `DOTFILES_DIR` | Repository checkout and configuration source | `$HOME/.dotfiles` |
+| `DOTFILES_REPO_URL` | Repository cloned by the bootstrap installer | This GitHub repository |
+| `XDG_STATE_HOME` | Base directory for the installation marker and shell state | `$HOME/.local/state` |
+
+Base packages and fonts are guarded by this platform-specific marker:
+
+```text
+${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles-next/base-packages-v1-<platform>.done
+```
+
+The marker is created only after the base installation succeeds. Later executions skip that step. Git remains a separate idempotent prerequisite check, while optional components are evaluated on every run.
+
+Existing regular files or directories at managed destinations are moved to a timestamped `.backup.YYYYMMDDhhmmss` path before linking. Existing symbolic links are replaced. The base installer manages:
+
+- `~/.zshenv`
+- `~/.ssh/config`
+- `~/.config/tmux`
+- `~/.config/ripgrep`
+- The selected editor's configuration when using Micro or Fresh
+- Fastfetch, Mise, and Oh My Posh configuration when those components are installed
+
+After installation, start a fresh login shell:
+
+```sh
+exec zsh -l
+```
+
+The first Zsh startup downloads z4h and the enabled external plugins, so it requires an internet connection and can take longer than subsequent starts.
+
+## 🐳 Docker demo
+
+The Dockerfile builds a **complete demonstration and preview environment**, not a small production image. It is based on Ubuntu 26.04 and includes the base tools, optional editors, Fastfetch, Mise, Oh My Posh, OpenSSH client, Java, Python, Node.js, and all repository configurations.
+
+Build and start it from the repository root:
+
+```sh
+docker build -t dotfiles-next-demo .
+docker run --rm -it dotfiles-next-demo
+```
+
+The container runs as the unprivileged `demo` user with Zsh as its login shell. During the build it also:
+
+- Installs Fresh, Micro, Mise, Fastfetch, and Oh My Posh.
+- Links the Zsh, Git, SSH, tmux, ripgrep, editor, prompt, and runtime configurations.
+- Clones Java/Maven, Node.js, Python, and image repositories under `/home/demo/Developer` for testing completions and previews.
+- Installs Java `17.0.2`, Python `3.13.6`, and Node.js `22.14.0` through Mise and assigns them to the matching sample projects.
+
+The default prompt inside the image remains Powerlevel10k because the Docker setup uses the defaults from `zsh/.zshenv.init`. Oh My Posh is installed so the alternative prompt can also be tested.
+
+## 📁 Repository layout
+
+| Path | Contents |
+| --- | --- |
+| [`zsh`](zsh) | Zsh startup files, Powerlevel10k configuration, helpers, and custom plugins. |
+| [`git`](git) | Git defaults plus local, personal, and work include examples. |
+| [`tmux`](tmux) | tmux configuration with an `Alt-A` prefix, mouse support, and top status line. |
+| [`micro`](micro) / [`fresh`](fresh) | Editor settings and bundled Micro plugins. |
+| [`oh-my-posh`](oh-my-posh) | Custom Oh My Posh theme. |
+| [`fastfetch`](fastfetch) / [`mise`](mise) | System-summary and runtime-manager settings. |
+| [`ghostty`](ghostty) / [`iTerm2`](iTerm2) | Terminal settings, themes, profiles, and shaders. |
+| [`fonts`](fonts) | Nerd Fonts used by the shell UI. |
+| [`ssh`](ssh) / [`ripgrep`](ripgrep) | SSH client and ripgrep configuration. |
+
+## ⌨️ Useful keys
+
+| Key | Action |
+| --- | --- |
+| `Tab` | Open normal or fzf-tab completion. |
+| `Shift-Tab` | Generate completion for the current command from its help output, then open it. |
+| `Ctrl-H` | Toggle hidden files in fzf-tab, `Ctrl-T`, and `Alt-C`. |
+| `Ctrl-P` | Cycle the fzf-tab preview between right, bottom, and hidden layouts. |
+| `Ctrl-T` | Select files with fzf and insert them into the command line. |
+| `Alt-C` | Select a directory with fzf and change into it. |
+| `Ctrl-K` | Open the searchable custom keybinding reference. |
+| `Up` / `Down` | Traverse command history chronologically. |
+
+## 🔧 Customization
+
+The main defaults live in [`zsh/.zshenv.init`](zsh/.zshenv.init), while interactive installations generate `zsh/.zshenv`. The primary shell configuration is [`zsh/home/.zshrc`](zsh/home/.zshrc).
+
+Store machine-specific shell values in `~/.env.zsh`; it is sourced automatically when present. Git include templates are available in [`git/examples`](git/examples), and tmux loads `~/.tmux.conf.local` when that file exists.
+
+## 📜 License
+
+Released under the [MIT License](LICENSE).
