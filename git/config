@@ -1,0 +1,7 @@
+[core]
+	excludesfile = ./.gitignore_global
+    attributesfile = ./.gitattributes
+[include]
+	path = ./.main.gitconfig
+[include]
+	path = ./local.gitconfig

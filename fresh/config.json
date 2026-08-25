@@ -1,0 +1,91 @@
+{
+  "version": 2,
+  "theme": "terminal",
+  "editor": {
+    "enable_semantic_tokens_full": true,
+    "use_terminal_bg": true,
+    "screensaver_enabled": true,
+    "indentation_guide": "all",
+    "completion_popup_auto_show": true,
+    "nerd_font_icons": true,
+    "auto_read_only": false,
+   },
+  "active_keybinding_map": "vscode",
+  "default_language": "bash",
+  "plugins": {
+    "vi_mode": {
+      "enabled": true,
+      "settings": {
+        "autoStart": false,
+        "arrowKeys": true,
+        "searchWordUnderCursor": true
+      }
+    },
+    "dashboard": {
+      "settings": {
+        "autoOpen": true
+      },
+      "enabled": true
+    },
+    "git_explorer": {
+      "settings": {
+        "colorNames": true
+      },
+      "enabled": true
+    }
+  }, 
+  "keybindings": [
+    {
+      "key": "Enter",
+      "action": "prompt_accept_suggestion",
+      "when": "prompt",
+    },
+    {
+      "key": "Enter",
+      "action": "completion_accept",
+      "when": "completion",
+    },
+    {
+      "key": "g",
+      "modifiers": ["ctrl"],
+      "action": "goto_line",
+      "when": "normal",
+    },
+    {
+      "key": "Up",
+      "modifiers": ["shift", "alt"],
+      "action": "add_cursor_above",
+      "when": "normal",
+    },
+    {
+      "key": "Down",
+      "action": "add_cursor_below",
+      "modifiers": ["shift", "alt"],
+      "when": "normal",
+    },
+    {
+      "key": "f",
+      "modifiers": ["alt"],
+      "action": "move_word_right",
+      "when": "global",
+    },
+    {
+      "key": "<",
+      "modifiers": ["alt"],
+      "action": "menu_open",
+      "args": {
+        "name": "File",
+      },
+      "when": "global",
+    },
+  ],
+  "file_explorer": {
+    "show_hidden": true
+  },
+  "clipboard": {
+    "use_osc52": true
+  },
+  "file_browser": {
+    "show_hidden": true
+  }
+}

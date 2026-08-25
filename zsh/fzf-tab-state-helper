@@ -1,0 +1,75 @@
+#!/usr/bin/env zsh
+
+emulate -L zsh
+
+action=${1:-}
+state_file=${2:-}
+marker_file=${3:-}
+
+[[ -n $state_file ]] || exit 1
+
+state_dir=${state_file:h}
+mkdir -p -- "$state_dir" || exit 1
+
+if [[ $action == list-files || $action == list-directories ]]; then
+    state=''
+    [[ -r $state_file ]] && state=$(<"$state_file")
+
+    if (( $+commands[fd] )); then
+        fd_args=(--follow --color=never --exclude .git --exclude node_modules)
+        [[ $state == on ]] && fd_args+=(--hidden)
+        [[ $action == list-files ]] && fd_args+=(--type f) || fd_args+=(--type d)
+        command fd "${fd_args[@]}" .
+    elif [[ $action == list-files ]]; then
+        if [[ $state == on ]]; then
+            command find . \
+                \( -path '*/.git/*' -o -path '*/node_modules/*' \) -prune -o \
+                -type f -print
+        else
+            command find . \
+                \( -path '*/.*' -o -path '*/node_modules/*' \) -prune -o \
+                -type f -print
+        fi
+    elif [[ $state == on ]]; then
+        command find . \
+            \( -path '*/.git' -o -path '*/node_modules' \) -prune -o \
+            -type d -print
+    else
+        command find . \
+            \( -path '*/.*' -o -path '*/node_modules' \) -prune -o \
+            -type d -print
+    fi
+    exit
+fi
+
+case $action in
+    cycle-preview)
+        state=''
+        [[ -r $state_file ]] && state=$(<"$state_file")
+        case $state in
+            right)  next=down ;;
+            down)   next=hidden ;;
+            hidden) next=right ;;
+            *)      next=right ;;
+        esac
+        ;;
+    toggle-hidden)
+        state=''
+        [[ -r $state_file ]] && state=$(<"$state_file")
+        case $state in
+            on) next=off ;;
+            *)  next=on ;;
+        esac
+        ;;
+    *)
+        exit 1
+        ;;
+esac
+
+tmp_file="${state_file}.${$}.tmp"
+print -r -- "$next" >| "$tmp_file" || exit 1
+mv -f -- "$tmp_file" "$state_file" || exit 1
+
+if [[ $action == toggle-hidden && -n $marker_file ]]; then
+    print -r -- "$next" >| "$marker_file"
+fi

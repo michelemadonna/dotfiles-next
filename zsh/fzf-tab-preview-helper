@@ -1,0 +1,298 @@
+#!/usr/bin/env zsh
+
+# ============================================================
+# Dependencies
+# ============================================================
+#
+# macOS:
+#
+#   brew install \
+#       fzf \
+#       bat \
+#       eza \
+#       chafa \
+#       mediainfo \
+#       poppler \
+#       tree \
+#       file \
+#       bind \
+#       fd
+#
+# Ubuntu / Debian / Kali:
+#
+#   sudo apt update
+#
+#   sudo apt install \
+#       fzf \
+#       bat \
+#       eza \
+#       chafa \
+#       mediainfo \
+#       poppler-utils \
+#       tree \
+#       file \
+#       dnsutils \
+#       fd-find
+# Notes:
+#
+# - chafa:
+#     image preview
+#
+# - bat:
+#     text/source preview
+#
+# - eza:
+#     directory preview
+#
+# - mediainfo:
+#     audio/video/image metadata
+#
+# - poppler / poppler-utils:
+#     pdftotext
+#
+# - bind / dnsutils:
+#     dig for SSH host preview
+#
+# ============================================================
+
+emulate -L zsh
+
+setopt pipe_fail
+
+preview_path="${1:-}"
+
+[[ -n "$preview_path" ]] || exit 0
+
+preview_path="${preview_path:A}"
+
+[[ -e "$preview_path" ]] || exit 0
+
+typeset -i cols="${FZF_PREVIEW_COLUMNS:-80}"
+typeset -i lines="${FZF_PREVIEW_LINES:-40}"
+
+# ============================================================
+# Directory
+# ============================================================
+
+if [[ -d "$preview_path" ]]; then
+
+    if (( $+commands[eza] )); then
+
+        eza \
+            --color=always \
+            --icons=always \
+            --group-directories-first \
+            --git \
+            --git-ignore \
+            --tree \
+            --level=3 \
+            -a \
+            -- "$preview_path"
+
+    elif (( $+commands[tree] )); then
+
+        tree \
+            -a \
+            -C \
+            -L 3 \
+            --gitignore \
+            -- "$preview_path"
+
+    else
+
+        command ls -la -- "$preview_path"
+
+    fi
+
+    exit 0
+fi
+
+# ============================================================
+# MIME detection
+# ============================================================
+
+mime="$(
+    file \
+        -Lb \
+        --mime-type \
+        -- "$preview_path" \
+        2>/dev/null
+)"
+
+# ============================================================
+# Preview
+# ============================================================
+
+case "$mime" in
+
+    # --------------------------------------------------------
+    # Images
+    # --------------------------------------------------------
+
+    image/*)
+
+        if (( $+commands[chafa] )); then
+
+            typeset -i image_lines=$(( lines - 6 ))
+
+            (( image_lines < 10 )) &&
+                image_lines=10
+
+            chafa \
+                --format=symbols \
+                --animate=off \
+                --size="${cols}x${image_lines}" \
+                -- "$preview_path"
+
+        fi
+        ;;
+
+    # --------------------------------------------------------
+    # Video
+    # --------------------------------------------------------
+
+    video/*)
+
+        if (( $+commands[mediainfo] )); then
+
+            mediainfo -- "$preview_path"
+
+        else
+
+            file -- "$preview_path"
+
+        fi
+        ;;
+
+    # --------------------------------------------------------
+    # Audio
+    # --------------------------------------------------------
+
+    audio/*)
+
+        if (( $+commands[mediainfo] )); then
+
+            mediainfo -- "$preview_path"
+
+        else
+
+            file -- "$preview_path"
+
+        fi
+        ;;
+
+    # --------------------------------------------------------
+    # Text / source
+    # --------------------------------------------------------
+
+    text/*|\
+    application/json|\
+    application/xml|\
+    application/javascript|\
+    application/x-javascript|\
+    application/x-shellscript|\
+    application/x-yaml|\
+    application/yaml|\
+    application/toml)
+
+        if (( $+commands[bat] )); then
+
+            bat \
+                --color=always \
+                --style=numbers \
+                --paging=never \
+                --line-range=:500 \
+                -- "$preview_path"
+
+        elif (( $+commands[batcat] )); then
+
+            batcat \
+                --color=always \
+                --style=numbers \
+                --paging=never \
+                --line-range=:500 \
+                -- "$preview_path"
+
+        else
+
+            sed -n '1,500p' "$preview_path"
+
+        fi
+        ;;
+
+    # --------------------------------------------------------
+    # PDF
+    # --------------------------------------------------------
+
+    application/pdf)
+
+        if (( $+commands[pdftotext] )); then
+
+            pdftotext \
+                "$preview_path" \
+                - \
+                2>/dev/null |
+                head -n 300
+
+        elif (( $+commands[mediainfo] )); then
+
+            mediainfo -- "$preview_path"
+
+        else
+
+            file -- "$preview_path"
+
+        fi
+        ;;
+
+    # --------------------------------------------------------
+    # ZIP
+    # --------------------------------------------------------
+
+    application/zip)
+
+        unzip \
+            -l \
+            -- "$preview_path" \
+            2>/dev/null |
+            head -n 300
+        ;;
+
+    # --------------------------------------------------------
+    # TAR / compressed archives
+    # --------------------------------------------------------
+
+    application/x-tar|\
+    application/gzip|\
+    application/x-gzip|\
+    application/x-xz|\
+    application/x-bzip2)
+
+        tar \
+            -tf \
+            "$preview_path" \
+            2>/dev/null |
+            head -n 300
+        ;;
+
+    # --------------------------------------------------------
+    # Other
+    # --------------------------------------------------------
+
+    *)
+
+        if (( $+commands[mediainfo] )); then
+
+            mediainfo \
+                -- "$preview_path" \
+                2>/dev/null ||
+                file -- "$preview_path"
+
+        else
+
+            file -- "$preview_path"
+
+        fi
+        ;;
+
+esac

@@ -1,0 +1,104 @@
+# This is the configuration file for Ghostty.
+#
+# This template file has been automatically created at the following
+# path since Ghostty couldn't find any existing config files on your system:
+#
+#   /Users/michele/Library/Application Support/com.mitchellh.ghostty/config
+#
+# The template does not set any default options, since Ghostty ships
+# with sensible defaults for all options. Users should only need to set
+# options that they want to change from the default.
+#
+# Run `ghostty +show-config --default --docs` to view a list of
+# all available config options and their default values.
+#
+# Additionally, each config option is also explained in detail
+# on Ghostty's website, at https://ghostty.org/docs/config.
+
+# Config syntax crash course
+# ==========================
+# # The config file consists of simple key-value pairs,
+# # separated by equals signs.
+# font-family = Iosevka
+# window-padding-x = 2
+#
+# # Spacing around the equals sign does not matter.
+# # All of these are identical:
+# key=value
+# key= value
+# key =value
+# key = value
+#
+# # Any line beginning with a # is a comment. It's not possible to put
+# # a comment after a config option, since it would be interpreted as a
+# # part of the value. For example, this will have a value of "#123abc":
+# background = #123abc
+#
+# # Empty values are used to reset config keys to default.
+# key =
+#
+# # Some config options have unique syntaxes for their value,
+# # which is explained in the docs for that config option.
+# # Just for example:
+# resize-overlay-duration = 4s 200ms
+
+
+font-family="FiraCode Nerd Font Mono"
+font-size=12.0
+bold-is-bright=true
+adjust-cell-height = 0%
+
+shell-integration=zsh
+shell-integration-features = no-cursor,sudo,no-title
+
+window-padding-x = 3
+window-padding-y = 5
+window-padding-color=background
+window-padding-balance = true
+window-colorspace = "display-p3"
+window-save-state = always
+window-height = 30
+window-width = 140
+
+macos-titlebar-style = transparent
+macos-option-as-alt=left
+macos-titlebar-proxy-icon=hidden
+
+cursor-style-blink= false
+cursor-style=block
+cursor-click-to-move=true
+
+#keybind = global:cmd+t=toggle_quick_terminal
+
+quit-after-last-window-closed-delay=60s
+quit-after-last-window-closed=true
+confirm-close-surface=false
+mouse-hide-while-typing = true
+mouse-scroll-multiplier = 2
+
+copy-on-select = clipboard
+clipboard-read=allow
+clipboard-write=allow
+
+#term=xterm-256color
+#keybind = alt+c=esc:c
+
+theme = Astronaut
+config-file=?shaders_config
+config-file=?config.local
+
+
+gtk-toolbar-style=flat
+window-theme=ghostty
+gtk-titlebar-style=native
+
+#keybind = performable:super+c=copy_to_clipboard
+#keybind = chain=esc:[99;5u
+
+#keybind = alt+\=text:`
+#keybind = alt+5=text:~
+#keybind = super+a=unbind
+#on ubuntu with gtk you need to add to your config.local
+#set the windows-bar backgroud color to match the background of your theme also if ghostty is not in foreground
+#window-titlebar-background=#292c33
+			

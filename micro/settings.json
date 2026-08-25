@@ -1,0 +1,51 @@
+{
+    // Automatically use sudo when required
+    "autosu": true,
+
+    // Set the colorscheme to "dracula-tc"
+    "colorscheme": "dracula-tc",
+
+    // Show a diff gutter in the editor
+    "diffgutter": true,
+
+    // Do not add a newline at end of file automatically
+    "eofnewline": false,
+
+    // Enable fast dirty checking for file changes
+    "fastdirty": true,
+
+    // Highlight search results as you type
+    "hisearch": true,
+
+    // Make search case-sensitive
+    "ignorecase": false,
+
+    // Keep auto-indentation when starting a new line
+    "keepautoindent": true,
+
+    // List of plugin channels to fetch plugins from
+    "pluginchannels": [
+        "https://raw.githubusercontent.com/micro-editor/plugin-channel/master/channel.json"
+    ],
+
+    // List of additional plugin repositories (empty here)
+    "pluginrepos": [],
+
+    // Show a scrollbar in the editor
+    "scrollbar": true,
+
+    // Enable soft wrapping of long lines
+    "softwrap": true,
+
+    // Open new splits at the bottom
+    "splitBottom": true,
+
+    // Open new splits to the right
+    "splitRight": true,
+
+    // Do not set the terminal title
+    "termtitle": false,
+
+    "clipboard": "external"
+}
+

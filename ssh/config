@@ -1,0 +1,21 @@
+# Added by OrbStack: 'orb' SSH host for Linux machines
+# This only works if it's at the top of ssh_config (before any Host blocks).
+# This won't be added again if you remove it.
+Include ~/.orbstack/ssh/config
+
+# Default settings for all SSH connections
+Host *
+    IgnoreUnknown UseKeychain
+    AddKeysToAgent yes        # Automatically adds keys to ssh-agent
+    UseKeychain yes           # macOS-specific: Load keys from keychain
+    IdentityFile ~/.ssh/id_rsa  # Default SSH key
+    Compression yes           # Enable compression for faster transfers
+    ServerAliveInterval 60    # Keep connection alive every 60s
+    ServerAliveCountMax 5     # Disconnect after 5 failed keepalive responses
+    TCPKeepAlive yes          # Keep TCP connections alive
+    ControlMaster auto        # Allow connection multiplexing
+    ControlPath ~/.ssh/control-%r@%h:%p  # Socket for multiplexing
+    ControlPersist 10m        # Keep connection open for 10 minutes after use
+
+Include ~/.ssh/local.sshconfig
+

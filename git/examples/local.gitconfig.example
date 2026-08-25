@@ -1,0 +1,8 @@
+[user]
+    name = myname
+    email = mayname@email.xxx
+
+[includeIf "gitdir:~/Developer/personal@github/"]
+    path = ./gitconfig.personal@github
+[includeIf "gitdir:~/Developer/work@github/"]
+    path = ./gitconfig.work@github
