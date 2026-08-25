@@ -1,5 +1,5 @@
 
-if [[ -f ${ZDOTDIR:-$HOME}/.z4h-zprof-enabled ]]; then
+if [[ -f ${HOME}/.z4h-zprof-enabled ]]; then
   zmodload zsh/zprof
 fi
 

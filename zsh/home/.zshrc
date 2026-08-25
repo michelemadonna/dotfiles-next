@@ -397,7 +397,7 @@ if [[ -o interactive && ${Z4H_SHOW_FASTFETCH:-false} == true && -z ${Z4H_FASTFET
 	fi
 fi
 
-if [[ -f ${ZDOTDIR:-$HOME}/.z4h-zprof-enabled ]]; then
+if [[ -f ${HOME}/.z4h-zprof-enabled ]]; then
   zprof
 fi
 #################################################################
