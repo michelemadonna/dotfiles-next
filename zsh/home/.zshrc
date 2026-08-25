@@ -231,17 +231,7 @@ if [[ -o interactive && -z ${SSH_CLIENT-} && -z ${SSH_CONNECTION-} &&
 	load-our-ssh-keys
 fi
 
-if [[ ${Z4H_SSH_SHOW_KEY:-false} == true ]]; then
-	print
-	print 'Current SSH Keys:'
-	if (( ${_ZQS_SSH_KEYS_VALID:-0} )) && (( ${_ZQS_SSH_KEYS_STATUS:-2} == 0 )); then
-		print -r -- "$_ZQS_SSH_KEYS"
-	else
-		ssh-add -l
-	fi
-	print
-fi
-unset _ZQS_SSH_KEYS _ZQS_SSH_KEYS_STATUS _ZQS_SSH_KEYS_VALID
+
 
 # Source additional local files if they exist.
 z4h source ~/.env.zsh
@@ -416,6 +406,18 @@ if [[ -o interactive && ${Z4H_SHOW_FASTFETCH:-false} == true && -z ${Z4H_FASTFET
 		print -u2 "fastfetch not found. See $DOTFILES_DIR/Readme.md"
 	fi
 fi
+
+if [[ ${Z4H_SSH_SHOW_KEY:-false} == true ]]; then
+	print
+	print 'Current SSH Keys:'
+	if (( ${_ZQS_SSH_KEYS_VALID:-0} )) && (( ${_ZQS_SSH_KEYS_STATUS:-2} == 0 )); then
+		print -r -- "$_ZQS_SSH_KEYS"
+	else
+		ssh-add -l
+	fi
+	print
+fi
+unset _ZQS_SSH_KEYS _ZQS_SSH_KEYS_STATUS _ZQS_SSH_KEYS_VALID
 
 if [[ -f ${HOME}/.z4h-zprof-enabled ]]; then
   zprof
