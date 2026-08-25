@@ -149,7 +149,6 @@ if [[ ${Z4H_USE_FZF_TAB} = true ]]; then
 	z4h install zdharma-continuum/fast-syntax-highlighting || return
 	z4h install zsh-users/zsh-history-substring-search || return
 	z4h install zsh-users/zsh-autosuggestions || return
-	z4h install unixorn/fzf-zsh-plugin@main || return
 	z4h install Aloxaf/fzf-tab || return
 fi
 #################################################################
@@ -285,9 +284,10 @@ if [[ ${Z4H_ENABLE_OH_MY_ZSH} = true ]]; then
 fi
 
 if [[ ${Z4H_USE_FZF_TAB} = true ]]; then
-	# fzf-zsh-plugin provides its helpers while z4h remains the sole fzf install.
+	# z4h supplies fzf. Load its native Ctrl-T, Ctrl-R and Alt-C widgets
+	# directly so no second plugin can overwrite the custom preview options.
 	export FZF_PATH="${XDG_CACHE_HOME}/zsh4humans/v5/fzf"
-	z4h load -c unixorn/fzf-zsh-plugin
+	source "$FZF_PATH/shell/key-bindings.zsh"
 	# fzf-tab must wrap the stock completion widget, not z4h-fzf-complete.
 	bindkey '^I' expand-or-complete
 	z4h load -c Aloxaf/fzf-tab

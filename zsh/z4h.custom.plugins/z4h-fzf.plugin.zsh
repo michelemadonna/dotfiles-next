@@ -215,40 +215,41 @@ zstyle ':fzf-tab:*' \
 #
 # ============================================================
 
-_fzf_tab_refresh_flags() {
+_fzf_preview_layout() {
     emulate -L zsh
 
     local preview_position=''
-    local preview_window
-    local preview_cycle
-    local hidden_marker_q="${(q)FZF_TAB_HIDDEN_MARKER}"
-    local hidden_state_q="${(q)FZF_TAB_HIDDEN_STATE_FILE}"
-    local preview_state_q="${(q)FZF_TAB_PREVIEW_STATE_FILE}"
-    local state_command_q="${(q)FZF_TAB_STATE_COMMAND}"
-    local state_helper_q="${(q)FZF_TAB_STATE_HELPER}"
-
     [[ -r $FZF_TAB_PREVIEW_STATE_FILE ]] &&
         preview_position=$(<"$FZF_TAB_PREVIEW_STATE_FILE")
 
     case $preview_position in
         right)
-            preview_window='right:60%:wrap'
-            preview_cycle='down:50%:wrap|hidden|right:60%:wrap'
+            reply=('right:60%:wrap' 'down:50%:wrap|hidden|right:60%:wrap')
             ;;
         down)
-            preview_window='down:50%:wrap'
-            preview_cycle='hidden|right:60%:wrap|down:50%:wrap'
+            reply=('down:50%:wrap' 'hidden|right:60%:wrap|down:50%:wrap')
             ;;
         hidden)
-            preview_window='hidden'
-            preview_cycle='right:60%:wrap|down:50%:wrap|hidden'
+            reply=('hidden' 'right:60%:wrap|down:50%:wrap|hidden')
             ;;
         *)
-            preview_window='right:60%:wrap'
-            preview_cycle='down:50%:wrap|hidden|right:60%:wrap'
+            reply=('right:60%:wrap' 'down:50%:wrap|hidden|right:60%:wrap')
             print -r -- right >| "$FZF_TAB_PREVIEW_STATE_FILE"
             ;;
     esac
+}
+
+_fzf_tab_refresh_flags() {
+    emulate -L zsh
+
+    _fzf_preview_layout
+    local preview_window=$reply[1]
+    local preview_cycle=$reply[2]
+    local hidden_marker_q="${(q)FZF_TAB_HIDDEN_MARKER}"
+    local hidden_state_q="${(q)FZF_TAB_HIDDEN_STATE_FILE}"
+    local preview_state_q="${(q)FZF_TAB_PREVIEW_STATE_FILE}"
+    local state_command_q="${(q)FZF_TAB_STATE_COMMAND}"
+    local state_helper_q="${(q)FZF_TAB_STATE_HELPER}"
 
     zstyle ':fzf-tab:*' \
         fzf-flags \
@@ -274,8 +275,42 @@ typeset _fzf_list_directories_command="${_fzf_state_command_q} ${_fzf_state_help
 
 export FZF_CTRL_T_COMMAND="$_fzf_list_files_command"
 export FZF_ALT_C_COMMAND="$_fzf_list_directories_command"
-export FZF_CTRL_T_OPTS="--header='TAB/SHIFT-TAB move  ·  CTRL-SPACE select  ·  CTRL-A mark all  ·  CTRL-J/K preview scroll  ·  CTRL-H hidden  ·  ENTER insert  ·  ESC close' --preview '$FZF_TAB_PREVIEW_COMMAND {}' --preview-window=right:60%:wrap --bind='ctrl-a:toggle-all,ctrl-j:preview-down,ctrl-k:preview-up,ctrl-h:execute-silent(${_fzf_toggle_hidden_command})+reload(${_fzf_list_files_command})'"
-export FZF_ALT_C_OPTS="--header='TAB/SHIFT-TAB move  ·  CTRL-J/K preview scroll  ·  CTRL-H hidden  ·  ENTER cd  ·  ESC close' --preview '$FZF_TAB_PREVIEW_COMMAND {}' --preview-window=right:60%:wrap --bind='ctrl-j:preview-down,ctrl-k:preview-up,ctrl-h:execute-silent(${_fzf_toggle_hidden_command})+reload(${_fzf_list_directories_command})'"
+
+_fzf_widget_refresh_flags() {
+    emulate -L zsh
+
+    _fzf_preview_layout
+    local preview_window=$reply[1]
+    local preview_cycle=$reply[2]
+    local preview_state_q="${(q)FZF_TAB_PREVIEW_STATE_FILE}"
+    local hidden_state_q="${(q)FZF_TAB_HIDDEN_STATE_FILE}"
+    local state_command_q="${(q)FZF_TAB_STATE_COMMAND}"
+    local state_helper_q="${(q)FZF_TAB_STATE_HELPER}"
+    local toggle_hidden_command="${state_command_q} ${state_helper_q} toggle-hidden ${hidden_state_q}"
+    local list_files_command="${state_command_q} ${state_helper_q} list-files ${hidden_state_q}"
+    local list_directories_command="${state_command_q} ${state_helper_q} list-directories ${hidden_state_q}"
+
+    export FZF_CTRL_T_OPTS="--header='TAB/SHIFT-TAB move  ·  CTRL-SPACE select  ·  CTRL-A mark all  ·  CTRL-J/K preview scroll  ·  CTRL-P preview  ·  CTRL-H hidden  ·  ENTER insert  ·  ESC close' --preview '$FZF_TAB_PREVIEW_COMMAND {}' --preview-window=${preview_window} --bind='ctrl-a:toggle-all,ctrl-j:preview-down,ctrl-k:preview-up,ctrl-p:execute-silent(${state_command_q} ${state_helper_q} cycle-preview ${preview_state_q})+change-preview-window(${preview_cycle}),ctrl-h:execute-silent(${toggle_hidden_command})+reload(${list_files_command})'"
+    export FZF_ALT_C_OPTS="--header='TAB/SHIFT-TAB move  ·  CTRL-J/K preview scroll  ·  CTRL-P preview  ·  CTRL-H hidden  ·  ENTER cd  ·  ESC close' --preview '$FZF_TAB_PREVIEW_COMMAND {}' --preview-window=${preview_window} --bind='ctrl-j:preview-down,ctrl-k:preview-up,ctrl-p:execute-silent(${state_command_q} ${state_helper_q} cycle-preview ${preview_state_q})+change-preview-window(${preview_cycle}),ctrl-h:execute-silent(${toggle_hidden_command})+reload(${list_directories_command})'"
+}
+
+_z4h_fzf_file_widget() {
+    _fzf_widget_refresh_flags
+    fzf-file-widget
+}
+
+_z4h_fzf_cd_widget() {
+    _fzf_widget_refresh_flags
+    fzf-cd-widget
+}
+
+_fzf_widget_refresh_flags
+zle -N _z4h_fzf_file_widget
+zle -N _z4h_fzf_cd_widget
+bindkey -M emacs '^T' _z4h_fzf_file_widget
+bindkey -M viins '^T' _z4h_fzf_file_widget
+bindkey -M emacs '^[c' _z4h_fzf_cd_widget
+bindkey -M viins '^[c' _z4h_fzf_cd_widget
 
 unset _fzf_state_command_q _fzf_state_helper_q _fzf_hidden_state_file_q
 unset _fzf_toggle_hidden_command _fzf_list_files_command _fzf_list_directories_command
