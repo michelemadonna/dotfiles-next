@@ -293,7 +293,6 @@ if [[ ${Z4H_USE_FZF_TAB} = true ]]; then
 	z4h load -c Aloxaf/fzf-tab
 	
 	z4h source "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-fzf.plugin.zsh"
-	(( $+functions[__fzf_reload] )) && __fzf_reload
 fi
 
 #z4h source -c unixorn/jpb.zshplugin/jpb.plugin.zsh
