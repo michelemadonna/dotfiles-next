@@ -3,9 +3,32 @@
 set -eu
 
 # Set this after creating the repository, or pass DOTFILES_REPO_URL at runtime.
-DEFAULT_REPO_URL="REPLACE_WITH_REPOSITORY_URL"
+DEFAULT_REPO_URL="https://github.com/michelemadonna/dotfiles-next.git"
 REPO_URL=${DOTFILES_REPO_URL:-$DEFAULT_REPO_URL}
 DOTFILES_DIR=${DOTFILES_DIR:-"$HOME/.dotfiles"}
+MODE=interactive
+BASE_PACKAGES_MARKER_VERSION=1
+
+usage() {
+  printf 'Usage: %s [non-interactive|--non-interactive]\n' "$0"
+}
+
+parse_arguments() {
+  case $# in
+    0) ;;
+    1)
+      case $1 in
+        non-interactive | --non-interactive) MODE=non-interactive ;;
+        *) usage >&2; die "Unsupported argument: $1" ;;
+      esac
+      ;;
+    *) usage >&2; die 'Too many arguments.' ;;
+  esac
+}
+
+is_non_interactive() {
+  [ "$MODE" = non-interactive ]
+}
 
 info() {
   printf '\n==> %s\n' "$*"
@@ -23,8 +46,18 @@ have() {
 run_as_root() {
   if [ "$(id -u)" -eq 0 ]; then
     "$@"
+  elif is_non_interactive; then
+    sudo -n "$@"
   else
     sudo "$@"
+  fi
+}
+
+run_apt_get() {
+  if is_non_interactive; then
+    run_as_root env DEBIAN_FRONTEND=noninteractive apt-get "$@"
+  else
+    run_as_root apt-get "$@"
   fi
 }
 
@@ -43,6 +76,26 @@ confirm() {
       y | Y | yes | YES | Yes) return 0 ;;
       '' | n | N | no | NO | No) return 1 ;;
       *) printf 'Please answer y or n.\n' >/dev/tty ;;
+    esac
+  done
+}
+
+ask_choice() {
+  prompt=$1
+  default=$2
+  choices=$3
+
+  if [ ! -r /dev/tty ]; then
+    die "A terminal is required to configure $prompt."
+  fi
+
+  while :; do
+    printf '%s [%s] (%s) ' "$prompt" "$default" "$choices" >/dev/tty
+    IFS= read -r answer </dev/tty || die "Could not read the value for $prompt."
+    answer=${answer:-$default}
+    case " $choices " in
+      *" $answer "*) printf '%s\n' "$answer"; return 0 ;;
+      *) printf 'Please choose one of: %s.\n' "$choices" >/dev/tty ;;
     esac
   done
 }
@@ -92,7 +145,11 @@ setup_platform() {
       if ! have brew; then
         info 'Installing Homebrew'
         have bash || die 'bash is required to install Homebrew.'
-        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+        if is_non_interactive; then
+          NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+        else
+          /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+        fi
       fi
 
       if ! have brew; then
@@ -125,8 +182,8 @@ install_git() {
   if [ "$PLATFORM" = macos ]; then
     brew install git
   else
-    run_as_root apt-get update
-    run_as_root apt-get install -y git
+    run_apt_get update
+    run_apt_get install -y git
   fi
   have git || die 'Git installation failed.'
 }
@@ -156,8 +213,8 @@ install_required_packages() {
     brew install coreutils bat eza fd git-delta htop ripgrep stow tmux tree wget git chafa mediainfo poppler file bind
     brew install --cask font-fira-code-nerd-font
   else
-    run_as_root apt-get update
-    run_as_root apt-get install -y \
+    run_apt_get update
+    run_apt_get install -y \
       bat eza chafa mediainfo poppler-utils tree file dnsutils fd-find wget \
       stow grc ripgrep python3-pip command-not-found git-delta tmux htop
 
@@ -168,22 +225,130 @@ install_required_packages() {
   fi
 }
 
+install_required_packages_once() {
+  state_home=${XDG_STATE_HOME:-"$HOME/.local/state"}
+  marker_dir="$state_home/dotfiles-next"
+  base_packages_marker="$marker_dir/base-packages-v${BASE_PACKAGES_MARKER_VERSION}-${PLATFORM}.done"
+
+  if [ -f "$base_packages_marker" ]; then
+    info "Required packages already installed; found $base_packages_marker"
+    return 0
+  fi
+
+  install_required_packages || return 1
+  mkdir -p "$marker_dir"
+  : >"$base_packages_marker"
+  info "Recorded required package installation in $base_packages_marker"
+}
+
 install_base_links() {
+  zshenv_source=$1
+
   info 'Creating configuration links'
   mkdir -p "$HOME/.config" "$HOME/.ssh"
   chmod 700 "$HOME/.ssh"
 
-  link_path "$DOTFILES_DIR/zsh/.zshenv" "$HOME/.zshenv"
+  link_path "$zshenv_source" "$HOME/.zshenv"
   link_path "$DOTFILES_DIR/ssh/config" "$HOME/.ssh/config"
   link_path "$DOTFILES_DIR/tmux" "$HOME/.config/tmux"
   link_path "$DOTFILES_DIR/ripgrep" "$HOME/.config/ripgrep"
+}
+
+configure_zshenv() {
+  info 'Configuring Zsh preferences'
+  prompt=$(ask_choice 'Prompt' 'powerlevel10k' 'powerlevel10k ohmyposh')
+  editor=$(ask_choice 'Default editor' 'micro' 'vim nano fresh micro')
+  show_fastfetch=$(ask_choice 'Show Fastfetch' 'false' 'false true')
+  use_fzf_tab=$(ask_choice 'Use fzf-tab' 'true' 'true false')
+  enable_auto_gencomp=$(ask_choice 'Enable automatic completions' 'true' 'true false')
+  enable_oh_my_zsh=$(ask_choice 'Enable Oh My Zsh' 'true' 'true false')
+  load_ssh_key=$(ask_choice 'Load SSH keys' 'true' 'true false')
+
+  if [ "$load_ssh_key" = true ]; then
+    show_ssh_key=$(ask_choice 'Show SSH keys' 'true' 'true false')
+    askpass_require=$(ask_choice 'Require SSH askpass' 'false' 'false true')
+  else
+    show_ssh_key=true
+    askpass_require=false
+  fi
+
+  source_file="$DOTFILES_DIR/zsh/.zshenv.init"
+  generated_file="$DOTFILES_DIR/zsh/.zshenv"
+  [ -f "$source_file" ] || die "Missing Zsh template: $source_file"
+
+  awk \
+    -v prompt="$prompt" \
+    -v editor="$editor" \
+    -v show_fastfetch="$show_fastfetch" \
+    -v use_fzf_tab="$use_fzf_tab" \
+    -v enable_auto_gencomp="$enable_auto_gencomp" \
+    -v enable_oh_my_zsh="$enable_oh_my_zsh" \
+    -v load_ssh_key="$load_ssh_key" \
+    -v show_ssh_key="$show_ssh_key" \
+    -v askpass_require="$askpass_require" '
+      /^  export Z4H_PROMPT=/ { $0 = "  export Z4H_PROMPT=\"" prompt "\""; }
+      /^  export Z4H_SHOW_FASTFETCH=/ { $0 = "  export Z4H_SHOW_FASTFETCH=" show_fastfetch; }
+      /^  export Z4H_USE_FZF_TAB=/ { $0 = "  export Z4H_USE_FZF_TAB=" use_fzf_tab; }
+      /^  export Z4H_ENABLE_AUTO_GENCOMP=/ { $0 = "  export Z4H_ENABLE_AUTO_GENCOMP=" enable_auto_gencomp; }
+      /^  export Z4H_ENABLE_OH_MY_ZSH=/ { $0 = "  export Z4H_ENABLE_OH_MY_ZSH=" enable_oh_my_zsh; }
+      /^  export Z4H_SSH_LOAD_KEY=/ { $0 = "  export Z4H_SSH_LOAD_KEY=" load_ssh_key; }
+      /^  export Z4H_SSH_SHOW_KEY=/ { $0 = "  export Z4H_SSH_SHOW_KEY=" show_ssh_key; }
+      /^  export Z4H_SSH_ASKPASS_REQUIRE=/ { $0 = "  export Z4H_SSH_ASKPASS_REQUIRE=" askpass_require; }
+      /^  export EDITOR=/ { $0 = "  export EDITOR=\"" editor "\""; }
+      { print }
+    ' "$source_file" >| "$generated_file"
+}
+
+configure_non_interactive() {
+  prompt=${Z4H_PROMPT:-powerlevel10k}
+  show_fastfetch=${Z4H_SHOW_FASTFETCH:-false}
+  editor=${EDITOR:-micro}
+
+  case $prompt in
+    powerlevel10k | ohmyposh) ;;
+    *) die "Unsupported Z4H_PROMPT value: $prompt" ;;
+  esac
+
+  case $show_fastfetch in
+    true | false) ;;
+    *) die "Unsupported Z4H_SHOW_FASTFETCH value: $show_fastfetch" ;;
+  esac
+
+  case $editor in
+    vim | nano | fresh | micro) ;;
+    *)
+      info "Unsupported EDITOR value '$editor'; using micro."
+      editor=micro
+      ;;
+  esac
+}
+
+install_editor() {
+  case $editor in
+    vim)
+      if [ "$PLATFORM" = macos ]; then
+        brew install vim
+      else
+        run_apt_get install -y vim
+      fi
+      ;;
+    nano)
+      if [ "$PLATFORM" = macos ]; then
+        brew install nano
+      else
+        run_apt_get install -y nano
+      fi
+      ;;
+    fresh) install_fresh ;;
+    micro) install_micro ;;
+  esac
 }
 
 install_micro() {
   if [ "$PLATFORM" = macos ]; then
     brew install micro
   else
-    run_as_root apt-get install -y micro
+    run_apt_get install -y micro
   fi
   link_path "$DOTFILES_DIR/micro" "$HOME/.config/micro"
 }
@@ -204,7 +369,7 @@ install_fresh() {
     package_file="${TMPDIR:-/tmp}/fresh-editor.$$.deb"
     trap 'rm -f "${package_file:-}"' EXIT HUP INT TERM
     curl -fsSL "$download_url" -o "$package_file"
-    run_as_root apt-get install -y "$package_file"
+    run_apt_get install -y "$package_file"
     rm -f "$package_file"
     trap - EXIT HUP INT TERM
   fi
@@ -225,7 +390,7 @@ install_fastfetch() {
   if [ "$PLATFORM" = macos ]; then
     brew install fastfetch
   else
-    run_as_root apt-get install -y fastfetch
+    run_apt_get install -y fastfetch
   fi
   link_path "$DOTFILES_DIR/fastfetch" "$HOME/.config/fastfetch"
 }
@@ -241,18 +406,29 @@ install_oh_my_posh() {
 }
 
 main() {
+  parse_arguments "$@"
   check_prerequisites
   setup_platform
   install_git
   clone_repository
-  install_required_packages
-  install_base_links
+  install_required_packages_once
 
-  confirm 'Micro' && install_micro
-  confirm 'Fresh editor' && install_fresh
-  confirm 'Mise' && install_mise
-  confirm 'Fastfetch' && install_fastfetch
-  confirm 'Oh My Posh' && install_oh_my_posh
+  if is_non_interactive; then
+    configure_non_interactive
+    zshenv_source="$DOTFILES_DIR/zsh/.zshenv.init"
+  else
+    configure_zshenv
+    zshenv_source="$DOTFILES_DIR/zsh/.zshenv"
+  fi
+
+  install_base_links "$zshenv_source"
+  install_editor
+
+  if ! is_non_interactive && confirm 'Mise'; then
+    install_mise
+  fi
+  [ "$show_fastfetch" = true ] && install_fastfetch
+  [ "$prompt" = ohmyposh ] && install_oh_my_posh
 
   info 'Installation complete. Start a new Zsh login session to load the configuration.'
 }

@@ -4,7 +4,7 @@ if [[ -f ${ZDOTDIR:-$HOME}/.z4h-zprof-enabled ]]; then
 fi
 
 if [ -n "${ZSH_VERSION-}" ]; then
-  export Z4H_PROMPT=${Z4U_PROMPT:="powerlevel10k"} # powerlevel10k/ohmyposh
+  export Z4H_PROMPT=${Z4H_PROMPT:="powerlevel10k"} # powerlevel10k/ohmyposh
   export Z4H_SHOW_FASTFETCH=${Z4H_SHOW_FASTFETCH:=false} #false/true
   export Z4H_ENABLE_ALLAFINE=false
   export Z4H_USE_FZF_TAB=${Z4H_USE_FZF_TAB:=true} #true/false
@@ -18,16 +18,29 @@ if [ -n "${ZSH_VERSION-}" ]; then
   export ZDOTDIR="$DOTFILES_DIR/zsh/home"
 
 
-  #mkdir -p "$HOME/.cache/zsh" "$HOME/.local/state/zsh" "$HOME/.ssh"
+  #mkdir -p "$HOME/.cache/zsh" "$HOME/.local/state/zsh" "$HOME/.ssh" "$HOME/.local/bin" "$HOME/.config" "$HOME/.local/share"
   #ln -sfn "$DOTFILES_DIR"/{micro,git,fastfetch,mise,fresh,oh-my-posh,ghostty} "$HOME/.config/"
   #ln -sfn "$DOTFILES_DIR"/ssh/config "$HOME/.ssh/config"
   
-  export HISTFILE=${HISTFILE:="$HOME/.local/state/zsh/history"}
-  export ZSH_COMPDUMP=${ZSH_COMPDUMP:="$HOME/.cache/zsh/.zcompdump-${HOST}-${ZSH_VERSION}"}
+  
+ 
 
   export XDG_CACHE_HOME=${XDG_CACHE_HOME:="$HOME/.cache"}
   export XDG_CONFIG_HOME=${XDG_CONFIG_HOME:="$HOME/.config"}
   export XDG_DATA_HOME=${XDG_DATA_HOME:="$HOME/.local/share"}
+
+  export ZSH_COMPDUMP=${ZSH_COMPDUMP:="$XDG_CACHE_HOME/zsh/.zcompdump-${HOST}-${ZSH_VERSION}"}
+  export HISTFILE=${HISTFILE:="$HOME/.local/state/zsh/history"}
+
+  case ${EDITOR:-} in
+    vim|nano|fresh|micro) ;;
+    *) EDITOR=micro ;;
+  esac
+  export EDITOR=${EDITOR:="micro"}
+  export VISUAL="$EDITOR"
+
+
+
 
   . ${ZDOTDIR}/.zshenv
 
