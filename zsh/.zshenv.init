@@ -1,0 +1,35 @@
+
+if [[ -f ${ZDOTDIR:-$HOME}/.z4h-zprof-enabled ]]; then
+  zmodload zsh/zprof
+fi
+
+if [ -n "${ZSH_VERSION-}" ]; then
+  export Z4H_PROMPT=${Z4U_PROMPT:="powerlevel10k"} # powerlevel10k/ohmyposh
+  export Z4H_SHOW_FASTFETCH=${Z4H_SHOW_FASTFETCH:=false} #false/true
+  export Z4H_ENABLE_ALLAFINE=false
+  export Z4H_USE_FZF_TAB=${Z4H_USE_FZF_TAB:=true} #true/false
+  export Z4H_ENABLE_AUTO_GENCOMP=${Z4H_ENABLE_AUTO_GENCOMP:=true} #true/false
+  export Z4H_ENABLE_OH_MY_ZSH=${Z4H_ENABLE_OH_MY_ZSH:=true} #true/false
+  export Z4H_SSH_LOAD_KEY=${Z4H_SSH_LOAD_KEY:=true} #false/true
+  export Z4H_SSH_SHOW_KEY=${Z4H_SSH_SHOW_KEY:=true} #false/true
+  export Z4H_SSH_ASKPASS_REQUIRE=${Z4H_SSH_ASKPASS_REQUIRE:=false} #false/true
+
+  export DOTFILES_DIR="$HOME/.dotfiles" #${DOTFILES_DIR:="$HOME/.dotfiles"} 
+  export ZDOTDIR="$DOTFILES_DIR/zsh/home"
+
+
+  #mkdir -p "$HOME/.cache/zsh" "$HOME/.local/state/zsh" "$HOME/.ssh"
+  #ln -sfn "$DOTFILES_DIR"/{micro,git,fastfetch,mise,fresh,oh-my-posh,ghostty} "$HOME/.config/"
+  #ln -sfn "$DOTFILES_DIR"/ssh/config "$HOME/.ssh/config"
+  
+  export HISTFILE=${HISTFILE:="$HOME/.local/state/zsh/history"}
+  export ZSH_COMPDUMP=${ZSH_COMPDUMP:="$HOME/.cache/zsh/.zcompdump-${HOST}-${ZSH_VERSION}"}
+
+  export XDG_CACHE_HOME=${XDG_CACHE_HOME:="$HOME/.cache"}
+  export XDG_CONFIG_HOME=${XDG_CONFIG_HOME:="$HOME/.config"}
+  export XDG_DATA_HOME=${XDG_DATA_HOME:="$HOME/.local/share"}
+
+  . ${ZDOTDIR}/.zshenv
+
+  : ${ZDOTDIR:=~}
+fi
