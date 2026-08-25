@@ -1848,8 +1848,8 @@
   done
   typeset -g POWERLEVEL9K_DIR_CONTENT_EXPANSION=$omp_dir_content
 
-  # Oh My Posh session segment, implemented with p10k's native context so it
-  # remains available after `p10k reload` as well as on a fresh shell.
+  # Session segment implemented with p10k's native context so it remains
+  # available after `p10k reload` as well as on a fresh shell.
   typeset -g POWERLEVEL9K_CONTEXT_FOREGROUND='#E0DEF4'
   typeset -g POWERLEVEL9K_CONTEXT_BACKGROUND='#4B95E9'
   typeset -g POWERLEVEL9K_CONTEXT_ROOT_FOREGROUND='#E0DEF4'
@@ -1860,7 +1860,10 @@
   typeset -g POWERLEVEL9K_CONTEXT_ROOT_TEMPLATE=$'\uF0E7'
   typeset -g POWERLEVEL9K_CONTEXT_REMOTE_TEMPLATE=$'\uEBA9 ~'
   typeset -g POWERLEVEL9K_CONTEXT_REMOTE_SUDO_TEMPLATE=$'\uEBA9 \uF0E7'
-  typeset -g POWERLEVEL9K_CONTEXT_{DEFAULT,SUDO,ROOT,REMOTE,REMOTE_SUDO}_CONTENT_EXPANSION='${P9K_CONTENT}'
+  # Close whichever optional segment precedes context on the terminal
+  # background. This mirrors the working right-prompt transition while keeping
+  # dir -> vcs as a direct color transition when the vcs segment is present.
+  typeset -g POWERLEVEL9K_CONTEXT_{DEFAULT,SUDO,ROOT,REMOTE,REMOTE_SUDO}_CONTENT_EXPANSION='${${_p9k__s::=%k${_p9k__s}}+}${P9K_CONTENT}'
   typeset -g POWERLEVEL9K_CONTEXT_{DEFAULT,SUDO,ROOT,REMOTE,REMOTE_SUDO}_VISUAL_IDENTIFIER_EXPANSION=
   typeset -g POWERLEVEL9K_CONTEXT_LEFT_LEFT_WHITESPACE=
   typeset -g POWERLEVEL9K_CONTEXT_LEFT_RIGHT_WHITESPACE=

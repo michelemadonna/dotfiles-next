@@ -111,7 +111,7 @@ fi
 if [[ ${Z4H_PROMPT} == "ohmyposh" ]]; then
 	zstyle ':z4h:powerlevel10k' channel none
 else
-	typeset -g POWERLEVEL9K_CONFIG_FILE="$ZDOTDIR/.p10k.zsh"  
+	typeset -g POWERLEVEL9K_CONFIG_FILE="$DOTFILES_DIR/powerlevel10k/.p10k.zsh"  
 fi
 #################################################################
 
