@@ -4,35 +4,7 @@
 #
 # Documentation: https://github.com/romkatv/zsh4humans/blob/v5/README.md.
 
-## Yes, these are a pain to customize. Fortunately, Geoff Greer made an online
-## tool that makes it easy to customize your color scheme and keep them in sync
-## across Linux and OS X/*BSD at http://geoff.greer.fm/lscolors/
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-if [[ -z ${LSCOLORS-} ]]; then
-	export LSCOLORS='Exfxcxdxbxegedabagacad'
-fi
-if [[ -z ${LS_COLORS-} ]]; then
-	export LS_COLORS='di=1;34;40:ln=35;40:so=32;40:pi=33;40:ex=31;40:bd=34;46:cd=34;43:su=0;41:sg=0;46:tw=0;42:ow=0;43:'
-fi
 
-# Fix weirdness with intellij
-if [[ -z "${INTELLIJ_ENVIRONMENT_READER}" ]]; then
-	export POWERLEVEL9K_INSTANT_PROMPT='quiet'
-fi
-
-## JAVA setup - needed for iam-* tools
-if [ -d /Library/Java/Home ];then
-	export JAVA_HOME=/Library/Java/Home
-fi
-
-if (( $+commands[rg] )); then
-  export RIPGREP_CONFIG_PATH="${XDG_CONFIG_HOME}/ripgrep/ripgreprc"
-fi
-
-if (( $+commands[bat] )); then
-  # Export theme for http://github.com/sharkdp/bat.
-  export BAT_THEME="Solarized (dark)"
-fi
 
 if [[ -z ${TMUX:-} ]]; then
   export TERM=xterm-256color
@@ -43,8 +15,7 @@ alias tmux='TERM=screen-256color-bce tmux'
 typeset -g TMUX_DEFAULT_SESSION=tmux
 alias t='tmux a -d -t ${TMUX_DEFAULT_SESSION} 2>/dev/null || tmux new -s ${TMUX_DEFAULT_SESSION}'
 
-HISTORY_IGNORE="(cd ..|l[s]#( *)#|pwd *|exit *|date *|* --help)"
-export FZF_COMPLETION_TRIGGER='**' # change ** to whatever you like 
+
 #################################################################
 
 # Periodic auto-update on Zsh startup: 'ask' or 'no'.
@@ -111,7 +82,7 @@ fi
 if [[ ${Z4H_PROMPT} == "ohmyposh" ]]; then
 	zstyle ':z4h:powerlevel10k' channel none
 else
-	typeset -g POWERLEVEL9K_CONFIG_FILE="$DOTFILES_DIR/powerlevel10k/.p10k.zsh"  
+	typeset -g POWERLEVEL9K_CONFIG_FILE="$POWERSHELL_CONFIG_FILE"  
 fi
 #################################################################
 

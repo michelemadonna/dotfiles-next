@@ -1,4 +1,6 @@
-FROM ubuntu:26.04
+ARG DOTFILES_SOURCE=remote
+
+FROM ubuntu:26.04 AS base
 
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -85,14 +87,38 @@ RUN mkdir -p /home/demo/Developer/personal@github \
 # selections are applied after the configuration has been copied.
 RUN mise install java@17.0.2 python@3.13.6 node@22.14.0
 
-# Keep the local repository near the end of the Dockerfile. A dotfile change
-# now invalidates only the inexpensive configuration layers below.
+# The default source is the Git repository. Override DOTFILES_REPO_URL or
+# DOTFILES_REF to test another remote checkout without changing this file.
+FROM base AS dotfiles-remote
+
+ARG DOTFILES_REPO_URL=https://github.com/michelemadonna/dotfiles-next.git
+ARG DOTFILES_REF=main
+
+RUN git clone --depth 1 --branch "$DOTFILES_REF" \
+      "$DOTFILES_REPO_URL" /home/demo/.dotfiles
+
+# Local development is opt-in with --build-arg DOTFILES_SOURCE=local.
+FROM base AS dotfiles-local
+
 COPY --chown=demo:demo . /home/demo/.dotfiles
 
-# Use the default answers in the template for the non-interactive Docker setup.
-# Zsh reads this link from $HOME before ZDOTDIR is configured.
-RUN cp /home/demo/.dotfiles/zsh/.zshenv.init /home/demo/.dotfiles/zsh/.zshenv \
-    && ln -s .dotfiles/zsh/.zshenv /home/demo/.zshenv
+# install.sh accepts an existing checkout only when it contains Git metadata.
+RUN git -C /home/demo/.dotfiles init -q
+
+# Select either dotfiles-remote (default) or dotfiles-local while sharing the
+# complete configuration sequence below.
+FROM dotfiles-${DOTFILES_SOURCE} AS final
+
+# System packages are already installed in the cacheable base stage. Seed the
+# installer's versioned marker, then let the repository configure its own
+# non-interactive links and defaults.
+RUN mkdir -p /home/demo/.local/state/dotfiles-next \
+    && touch /home/demo/.local/state/dotfiles-next/base-packages-v1-linux.done \
+    && cd /home/demo/.dotfiles \
+    && EDITOR=micro \
+      Z4H_PROMPT=powerlevel10k \
+      Z4H_SHOW_FASTFETCH=false \
+      sh ./install.sh non-interactive
 
 RUN mkdir -p \
       /home/demo/.config \

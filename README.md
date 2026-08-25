@@ -1,6 +1,6 @@
 # dotfiles-next
 
-> A batteries-included Zsh environment for macOS and APT-based Linux systems, built around Zsh for Humans.
+> A batteries-included Zsh environment for macOS and Ubuntu 26.04, built around Zsh for Humans.
 
 ## ✨ Introduction
 
@@ -12,10 +12,10 @@ The default prompt is **Powerlevel10k**. **Oh My Posh** is available as an expli
 
 The host installer supports:
 
-- macOS with Homebrew, or an APT-based Linux distribution.
+- macOS with Homebrew, or Ubuntu 26.04 with APT.
 - Zsh already installed and configured as the current user's login shell.
 - `curl` and an internet connection.
-- `sudo` access on Linux when installation is not run as root.
+- `sudo` access on Ubuntu 26.04 when installation is not run as root.
 - `bash` on macOS if Homebrew must be installed automatically.
 
 Check the active login shell before running the installer:
@@ -30,7 +30,7 @@ If necessary, set Zsh as the login shell and start a new login session:
 chsh -s "$(command -v zsh)"
 ```
 
-A terminal with Nerd Font support is strongly recommended because the prompts, tmux status line, and file icons use additional glyphs. The installer installs Fira Code Nerd Font on macOS and the bundled fonts on Linux.
+A terminal with Nerd Font support is strongly recommended because the prompts, tmux status line, and file icons use additional glyphs. The installer installs Fira Code Nerd Font on macOS and the bundled fonts on Ubuntu 26.04.
 
 To use the demo image, install Docker Desktop or Docker Engine with BuildKit. Building the image requires internet access and considerably more time and disk space than the host installation.
 
@@ -42,9 +42,9 @@ The base package set is installed once per platform. It supplies the commands us
 
 | Component | Purpose |
 | --- | --- |
-| `bat` | Syntax-highlighted file viewing. On some Debian/Ubuntu releases the packaged command is named `batcat`; the preview helper supports both names. |
+| `bat` | Syntax-highlighted file viewing. On Ubuntu 26.04 the packaged command is named `batcat`; the preview helper supports both names. |
 | `eza` | Modern, icon-aware replacement for `ls`. |
-| `fd` | Fast file discovery. The Linux package is named `fd-find` and may expose the command as `fdfind`; the Docker demo adds an `fd` compatibility link. |
+| `fd` | Fast file discovery. On Ubuntu 26.04 the package is named `fd-find` and exposes `fdfind`; the Docker demo adds an `fd` compatibility link. |
 | `ripgrep` | Fast recursive text search. |
 | `git` and `git-delta` | Version control plus readable, side-by-side diffs. |
 | `fzf` and `fzf-tab` | Fuzzy file selection and interactive Zsh completion. `fzf` is provided through the z4h-managed plugin stack. |
@@ -54,7 +54,7 @@ The base package set is installed once per platform. It supplies the commands us
 | `stow` | Available for manual dotfile workflows; the installer itself creates explicit symbolic links. |
 | Nerd Fonts | Prompt, file, Git, and tmux glyphs. |
 
-Package names differ slightly by platform. For example, Linux uses `poppler-utils`, `dnsutils`, `fd-find`, and `command-not-found`, while macOS uses the corresponding Homebrew formulae such as `poppler`, `bind`, and `fd`. Linux additionally installs `grc` and `python3-pip`; macOS installs GNU core utilities.
+Package names differ slightly by platform. Ubuntu 26.04 uses `poppler-utils`, `dnsutils`, `fd-find`, and `command-not-found`, while macOS uses the corresponding Homebrew formulae such as `poppler`, `bind`, and `fd`. Ubuntu 26.04 additionally installs `grc` and `python3-pip`; macOS installs GNU core utilities.
 
 ### Shell and optional components
 
@@ -143,7 +143,7 @@ Z4H_SHOW_FASTFETCH=true \
 ./install.sh non-interactive
 ```
 
-Non-interactive mode uses non-prompting package-manager options, including `sudo -n` on Linux, and fails if credentials are required. It never installs Mise and does not generate `zsh/.zshenv`; instead, `~/.zshenv` points directly to `zsh/.zshenv.init`, which preserves supported values already present in the environment.
+Non-interactive mode uses non-prompting package-manager options, including `sudo -n` on Ubuntu 26.04, and fails if credentials are required. It never installs Mise and does not generate `zsh/.zshenv`; instead, `~/.zshenv` points directly to `zsh/.zshenv.init`, which preserves supported values already present in the environment.
 
 ### Paths, state, and repeat runs
 
@@ -183,15 +183,34 @@ The first Zsh startup downloads z4h and the enabled external plugins, so it requ
 
 The Dockerfile builds a **complete demonstration and preview environment**, not a small production image. It is based on Ubuntu 26.04 and includes the base tools, optional editors, Fastfetch, Mise, Oh My Posh, OpenSSH client, Java, Python, Node.js, and all repository configurations.
 
-Build and start it from the repository root:
+By default, the build clones the `main` branch from this GitHub repository, so
+the resulting image does not depend on uncommitted files in the current directory:
 
 ```sh
 docker build -t dotfiles-next-demo .
 docker run --rm -it dotfiles-next-demo
 ```
 
+To test the files from the current directory instead, select the local source explicitly:
+
+```sh
+docker build \
+  --build-arg DOTFILES_SOURCE=local \
+  -t dotfiles-next-demo .
+```
+
+Remote builds can target another repository or branch without editing the Dockerfile:
+
+```sh
+docker build \
+  --build-arg DOTFILES_REPO_URL=https://github.com/example/dotfiles.git \
+  --build-arg DOTFILES_REF=feature-branch \
+  -t dotfiles-next-demo .
+```
+
 The container runs as the unprivileged `demo` user with Zsh as its login shell. During the build it also:
 
+- Runs the selected checkout's `install.sh non-interactive` with the default Powerlevel10k and Micro choices. The base-package marker is prepared because those packages are already installed in the cacheable base stage.
 - Installs Fresh, Micro, Mise, Fastfetch, and Oh My Posh.
 - Links the Zsh, Git, SSH, tmux, ripgrep, editor, prompt, and runtime configurations.
 - Clones Java/Maven, Node.js, Python, and image repositories under `/home/demo/Developer` for testing completions and previews.
@@ -203,6 +222,7 @@ The default prompt inside the image remains Powerlevel10k because the Docker set
 
 | Path | Contents |
 | --- | --- |
+| [`AGENTS.md`](AGENTS.md) | Repository-specific instructions, constraints, and validation requirements for coding agents. |
 | [`zsh`](zsh) | Zsh startup files, Powerlevel10k configuration, helpers, and custom plugins. |
 | [`git`](git) | Git defaults plus local, personal, and work include examples. |
 | [`tmux`](tmux) | tmux configuration with an `Alt-A` prefix, mouse support, and top status line. |
