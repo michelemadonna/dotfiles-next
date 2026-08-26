@@ -347,6 +347,43 @@ have() {
   command -v "$1" >/dev/null 2>&1
 }
 
+zsh_prerequisite_error() {
+  reason=$1
+
+  case $(uname -s) in
+    Darwin)
+      zsh_install_steps='Install Zsh with Homebrew:
+  brew install zsh'
+      ;;
+    Linux)
+      zsh_install_steps='Install Zsh with APT:
+  sudo apt-get update
+  sudo apt-get install -y zsh'
+      ;;
+    *)
+      zsh_install_steps='Install Zsh with your operating system package manager.'
+      ;;
+  esac
+
+  zsh_activate_steps="Make Zsh your login shell:
+  chsh -s \"\$(command -v zsh)\""
+
+  if have zsh; then
+    zsh_setup_steps=$zsh_activate_steps
+  else
+    zsh_setup_steps="$zsh_install_steps
+
+$zsh_activate_steps"
+  fi
+
+  log_box_error "$COLOR_RED" "$(icon_label "$ICON_ERROR" 'ZSH SETUP REQUIRED')" "$reason
+
+$zsh_setup_steps
+
+Sign out and sign back in, then rerun this installer."
+  exit 1
+}
+
 run_as_root() {
   if [ "$(id -u)" -eq 0 ]; then
     "$@"
@@ -393,11 +430,11 @@ link_path() {
 
 check_prerequisites() {
   [ -n "${HOME:-}" ] || die 'HOME is not set.'
-  have zsh || die 'Zsh must already be installed.'
+  have zsh || zsh_prerequisite_error 'Zsh was not found.'
 
   login_shell=${SHELL:-}
   [ "${login_shell##*/}" = zsh ] ||
-    die "Zsh must be the login shell for the current user (current: ${login_shell:-unknown})."
+    zsh_prerequisite_error "Zsh is installed, but it is not the login shell for the current user (current: ${login_shell:-unknown})."
 
   have curl || die 'curl is required.'
 
@@ -539,6 +576,7 @@ install_base_links() {
 
   link_path "$zshenv_source" "$HOME/.zshenv"
   link_path "$DOTFILES_DIR/ssh/config" "$HOME/.ssh/config"
+  link_path "$DOTFILES_DIR/git" "$HOME/.config/git"
   link_path "$DOTFILES_DIR/tmux" "$HOME/.config/tmux"
   link_path "$DOTFILES_DIR/ripgrep" "$HOME/.config/ripgrep"
 }
@@ -553,7 +591,6 @@ set_interactive_defaults() {
   load_ssh_key=true
   show_ssh_key=true
   askpass_require=false
-  install_mise_choice=false
 }
 
 ask_boolean_menu() {
@@ -601,9 +638,6 @@ f|first|Yes, but only at the first terminal prompt'
     show_ssh_key=true
     askpass_require=false
   fi
-
-  ask_boolean_menu 'Mise' 'Install Mise and prepare its Zsh and ASDF compatibility caches?' n
-  install_mise_choice=$MENU_VALUE
 }
 
 human_boolean() {
@@ -688,6 +722,7 @@ ui_summary() {
     ui_summary_line 'Git' "$git_action"
     ui_summary_line 'Repository' "$repository_action"
     ui_summary_line 'Base packages' "$base_packages_action"
+    ui_summary_line 'Mise' 'Install and prepare shell caches'
     ui_line '' ''
     ui_section 'Zsh preferences'
     ui_summary_line 'Prompt' "$prompt"
@@ -704,7 +739,6 @@ ui_summary() {
       ui_summary_line 'Show SSH keys' 'Not applicable'
       ui_summary_line 'Require SSH askpass' 'Not applicable'
     fi
-    ui_summary_line 'Install Mise' "$(human_boolean "$install_mise_choice")"
     ui_line '' ''
     ui_text "$(icon_label "$ICON_SUCCESS" 'No installation operation has been performed yet.')" "$COLOR_GREEN$COLOR_BOLD"
     ui_line '' ''
@@ -877,7 +911,7 @@ apply_installation() {
   install_base_links "$zshenv_source"
   install_editor
 
-  if ! is_non_interactive && [ "$install_mise_choice" = true ]; then
+  if ! is_non_interactive; then
     install_mise
   fi
   case $show_fastfetch in

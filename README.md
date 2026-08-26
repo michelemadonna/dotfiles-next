@@ -18,9 +18,21 @@ The host installer supports:
 - `sudo` access on Ubuntu 26.04 when installation is not run as root.
 - `bash` on macOS if Homebrew must be installed automatically.
 
-Check the active login shell before running the installer:
+If Zsh is missing, install it with the platform package manager:
 
 ```sh
+# macOS
+brew install zsh
+
+# Ubuntu 26.04
+sudo apt-get update
+sudo apt-get install -y zsh
+```
+
+Check that Zsh is available and is the active login shell before running the installer:
+
+```sh
+command -v zsh
 printf '%s\n' "$SHELL"
 ```
 
@@ -29,6 +41,10 @@ If necessary, set Zsh as the login shell and start a new login session:
 ```sh
 chsh -s "$(command -v zsh)"
 ```
+
+Sign out and back in after `chsh`. If Zsh is missing or is not the current
+user's login shell, the installer stops before changing the system and displays
+these platform-specific setup instructions.
 
 A terminal with Nerd Font support is strongly recommended because the prompts, tmux status line, and file icons use additional glyphs. The installer installs Fira Code Nerd Font on macOS and the bundled fonts on Ubuntu 26.04.
 
@@ -80,7 +96,7 @@ Package names differ slightly by platform. Ubuntu 26.04 uses `poppler-utils`, `d
 | fzf-tab stack | Optional, enabled by default | Adds fuzzy completion, previews, syntax highlighting, history search, and suggestions. |
 | Completion generator | Optional, enabled by default | Generates and caches getopt-style completion for the current command when explicitly requested with `Shift-Tab`. |
 | Fastfetch | Optional | Displays a visual overview of the operating system, hardware, memory, disks, shell, terminal, and other system details. It can run at every interactive Zsh startup or only at the first active terminal prompt. |
-| Mise | Host interactive option | Installs and activates language/tool runtimes and maintains compatibility with `.tool-versions`. It is also preinstalled in the Docker demo. |
+| Mise | Host interactive installation | Installed automatically in interactive mode, activates language/tool runtimes, and maintains compatibility with `.tool-versions`. It is also preinstalled in the Docker demo. |
 | Micro, Fresh, Vim, or Nano | Select one | Configures the requested default editor; Micro is the default. Repository configurations are linked for Micro and Fresh. |
 
 The repository also contains configurations for Git, Ghostty, iTerm2, Fastfetch, Mise, SSH, ripgrep, tmux, Micro, and Fresh. Some are reference configurations and are not all linked by the host installer.
@@ -133,10 +149,11 @@ The wizard asks for:
 - Editor: `vim`, `nano`, `fresh`, or `micro`.
 - Fastfetch (disabled, shown at every interactive Zsh startup, or shown only at the first active terminal prompt), fzf-tab, generated completion, and selected Oh My Zsh helpers.
 - SSH key loading, key display, and forced askpass behavior.
-- Mise installation.
-- Mise activation/completion cache generation and ASDF compatibility-data
-  preparation when Mise is selected, keeping this work out of the first Zsh
-  startup.
+
+The wizard does not ask whether packages should be installed. After the plan is
+approved, the interactive installer installs Mise automatically and prepares
+its activation/completion caches and ASDF compatibility data, keeping this work
+out of the first Zsh startup.
 
 After the questions, the installer clears the screen and shows the detected
 platform, repository and package operations together with every selected
@@ -144,7 +161,7 @@ preference. No package, repository, file, backup, or symbolic link is changed
 before this summary is accepted. Press `a` or `Enter` to apply the plan, `r` to
 restart the wizard, or `q` to quit without changes.
 
-The answers are written to `zsh/.zshenv`, and `~/.zshenv` points to that generated file. Only the selected editor is installed. Fastfetch and Oh My Posh are installed only when enabled.
+The answers are written to `zsh/.zshenv`, and `~/.zshenv` points to that generated file. Of the available editors, only the selected editor is installed. Mise is always installed in interactive mode, while Fastfetch and Oh My Posh are installed only when enabled.
 The Fastfetch `first` mode counts distinct active `ttys*` devices on macOS and
 `pts/*` devices on Linux. This is a deliberately global and simple check: SSH
 sessions, IDE terminals, and terminals opened by other applications contribute
@@ -206,7 +223,8 @@ The marker is created only after the base installation succeeds. Later execution
 Existing regular files or directories at managed destinations are moved to a timestamped `.backup.YYYYMMDDhhmmss` path before linking. Existing symbolic links are replaced. The base installer manages:
 
 - `~/.zshenv`
-- `~/.ssh/config`
+- `~/.ssh/config` → `~/.dotfiles/ssh/config`
+- `~/.config/git` → `~/.dotfiles/git`
 - `~/.config/tmux`
 - `~/.config/ripgrep`
 - The selected editor's configuration when using Micro or Fresh
@@ -234,7 +252,8 @@ the resulting image does not depend on uncommitted files in the current director
 For the default remote source, `docker run -it` starts the repository's
 **interactive** installer before entering Zsh. The container therefore requires
 a TTY and asks for the prompt, editor, Fastfetch, fzf-tab, completion, Oh My Zsh,
-SSH, and Mise preferences on every new container.
+and SSH preferences on every new container. Mise is installed automatically
+after the plan is approved.
 
 To test the files from the current directory instead, select the local source
 explicitly. This mode runs `install.sh non-interactive` during the build and
@@ -264,7 +283,7 @@ The container runs as the unprivileged `demo` user with Zsh as its login shell. 
 
 - Runs the remote checkout's interactive installer at container startup, or the local checkout's non-interactive installer during the build.
 - Prepares Mise activation/completion caches during a local build; a remote
-  container prepares them when Mise is selected in the interactive installer.
+  container prepares them through the interactive installer.
 - Installs Fresh, Micro, Mise, Fastfetch, and Oh My Posh.
 - Links the Zsh, Git, SSH, tmux, ripgrep, editor, prompt, and runtime configurations.
 - Clones Java/Maven, Node.js, Python, and image repositories under `/home/demo/Developer` for testing completions and previews.
