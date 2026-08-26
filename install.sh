@@ -711,6 +711,205 @@ ui_section() {
   ui_line "$COLOR_BOLD$COLOR_YELLOW" "$(icon_label "$ICON_SECTION" "$1")"
 }
 
+tool_executable_available() {
+  case $1 in
+    */*) [ -x "$1" ] ;;
+    *) have "$1" ;;
+  esac
+}
+
+report_tool_version() {
+  tool_label=$1
+  tool_executable=$2
+  tool_version_line=$3
+  shift 3
+
+  if ! tool_executable_available "$tool_executable"; then
+    ui_summary_line "$tool_label" 'not found'
+    return 0
+  fi
+
+  tool_version=$(
+    "$tool_executable" "$@" 2>&1 |
+      awk -v wanted="$tool_version_line" '
+        NF {
+          ++seen
+          if (seen == wanted) {
+            sub(/\r$/, "")
+            print
+            exit
+          }
+        }
+      '
+  ) || tool_version=
+  [ -n "$tool_version" ] || tool_version='version unavailable'
+  ui_summary_line "$tool_label" "$tool_version"
+}
+
+report_homebrew_tool_version() {
+  homebrew_tool_label=$1
+  homebrew_formula=$2
+  homebrew_executable=$3
+  homebrew_version_line=$4
+  shift 4
+
+  if [ -z "${homebrew_prefix:-}" ]; then
+    ui_summary_line "$homebrew_tool_label" 'not found'
+    return 0
+  fi
+
+  report_tool_version \
+    "$homebrew_tool_label" \
+    "$homebrew_prefix/opt/$homebrew_formula/bin/$homebrew_executable" \
+    "$homebrew_version_line" \
+    "$@"
+}
+
+report_z4h_versions() {
+  z4h_root=${Z4H:-${XDG_CACHE_HOME:-$HOME/.cache}/zsh4humans/v5}
+  z4h_revision=
+
+  if [ -r "$z4h_root/zsh4humans/main.zsh" ] && [ -r "$z4h_root/zsh4humans/version" ]; then
+    z4h_revision=$(tr -d '\r\n' <"$z4h_root/zsh4humans/version") || z4h_revision=
+    case $z4h_revision in
+      '' | *[!0-9]*) z4h_revision= ;;
+    esac
+  fi
+
+  if [ -n "$z4h_revision" ]; then
+    ui_summary_line 'Zsh for Humans' "v5 (revision $z4h_revision)"
+  else
+    ui_summary_line 'Zsh for Humans' 'v5 (pending first Zsh startup)'
+  fi
+
+  z4h_fzf="$z4h_root/fzf/bin/fzf"
+  if [ -x "$z4h_fzf" ]; then
+    report_tool_version 'fzf (z4h)' "$z4h_fzf" 1 --version
+  else
+    ui_summary_line 'fzf (z4h)' 'pending first Zsh startup'
+  fi
+}
+
+show_installed_tool_versions() {
+  is_non_interactive && return 0
+
+  printf '\n' >&3
+  ui_begin "$(icon_label "$ICON_SUCCESS" 'Installed tool versions')"
+
+  ui_section 'Zsh for Humans'
+  report_z4h_versions
+
+  if [ "$PLATFORM" = macos ]; then
+    homebrew_prefix=$(brew --prefix 2>/dev/null || true)
+    ui_line '' ''
+    ui_section 'Package manager'
+    report_tool_version 'Homebrew' brew 1 --version
+  fi
+
+  ui_line '' ''
+  ui_section 'Base command-line tools'
+  if [ "$PLATFORM" = macos ]; then
+    report_homebrew_tool_version 'Git' git git 1 --version
+    report_homebrew_tool_version 'GNU coreutils' coreutils gdate 1 --version
+    report_homebrew_tool_version 'bat' bat bat 1 --version
+    report_homebrew_tool_version 'eza' eza eza 2 --version
+    report_homebrew_tool_version 'fd' fd fd 1 --version
+    report_homebrew_tool_version 'delta' git-delta delta 1 --version
+    report_homebrew_tool_version 'htop' htop htop 1 --version
+    report_homebrew_tool_version 'ripgrep' ripgrep rg 1 --version
+    report_homebrew_tool_version 'GNU Stow' stow stow 1 --version
+    report_homebrew_tool_version 'tmux' tmux tmux 1 -V
+    report_homebrew_tool_version 'tree' tree tree 1 --version
+    report_homebrew_tool_version 'Wget' wget wget 1 --version
+    report_homebrew_tool_version 'Chafa' chafa chafa 1 --version
+    report_homebrew_tool_version 'MediaInfo' mediainfo mediainfo 2 --Version
+    report_homebrew_tool_version 'Poppler' poppler pdftotext 1 -v
+    report_homebrew_tool_version 'file' file file 1 --version
+    report_homebrew_tool_version 'DNS tools' bind dig 1 -v
+  else
+    report_tool_version 'Git' git 1 --version
+    report_tool_version 'bat' batcat 1 --version
+    report_tool_version 'eza' eza 2 --version
+    report_tool_version 'fd' fdfind 1 --version
+    report_tool_version 'delta' delta 1 --version
+    report_tool_version 'htop' htop 1 --version
+    report_tool_version 'ripgrep' rg 1 --version
+    report_tool_version 'GNU Stow' stow 1 --version
+    report_tool_version 'tmux' tmux 1 -V
+    report_tool_version 'tree' tree 1 --version
+    report_tool_version 'Wget' wget 1 --version
+    report_tool_version 'Chafa' chafa 1 --version
+    report_tool_version 'MediaInfo' mediainfo 2 --Version
+    report_tool_version 'Poppler' pdftotext 1 -v
+    report_tool_version 'file' file 1 --version
+    report_tool_version 'DNS tools' dig 1 -v
+    report_tool_version 'grc' grc 1 --version
+    report_tool_version 'pip' python3 1 -m pip --version
+    report_tool_version 'command-not-found package' dpkg-query 1 -W "-f=\${Version}\n" command-not-found
+  fi
+
+  ui_line '' ''
+  ui_section 'Interactive selections'
+  case $editor in
+    vim)
+      if [ "$PLATFORM" = macos ]; then
+        report_homebrew_tool_version 'Vim' vim vim 1 --version
+      else
+        report_tool_version 'Vim' vim 1 --version
+      fi
+      ;;
+    nano)
+      if [ "$PLATFORM" = macos ]; then
+        report_homebrew_tool_version 'Nano' nano nano 1 --version
+      else
+        report_tool_version 'Nano' nano 1 --version
+      fi
+      ;;
+    fresh)
+      if [ "$PLATFORM" = macos ]; then
+        report_homebrew_tool_version 'Fresh' fresh-editor fresh 1 --version
+      else
+        report_tool_version 'Fresh' fresh 1 --version
+      fi
+      ;;
+    micro)
+      if [ "$PLATFORM" = macos ]; then
+        report_homebrew_tool_version 'Micro' micro micro 1 --version
+      else
+        report_tool_version 'Micro' micro 1 --version
+      fi
+      ;;
+  esac
+
+  if [ "$PLATFORM" = macos ]; then
+    report_homebrew_tool_version 'Mise' mise mise 1 --version
+  else
+    mise_executable="$HOME/.local/bin/mise"
+    report_tool_version 'Mise' "$mise_executable" 1 --version
+  fi
+
+  case $show_fastfetch in
+    true | first)
+      if [ "$PLATFORM" = macos ]; then
+        report_homebrew_tool_version 'Fastfetch' fastfetch fastfetch 1 --version
+      else
+        report_tool_version 'Fastfetch' fastfetch 1 --version
+      fi
+      ;;
+  esac
+
+  if [ "$prompt" = ohmyposh ]; then
+    if [ "$PLATFORM" = macos ]; then
+      report_homebrew_tool_version 'Oh My Posh' oh-my-posh oh-my-posh 1 --version
+    else
+      oh_my_posh_executable="$HOME/.local/bin/oh-my-posh"
+      report_tool_version 'Oh My Posh' "$oh_my_posh_executable" 1 --version
+    fi
+  fi
+
+  ui_end
+}
+
 ui_summary() {
   UI_ERROR=
   while :; do
@@ -946,6 +1145,10 @@ main() {
   fi
 
   apply_installation
+
+  if ! is_non_interactive; then
+    show_installed_tool_versions
+  fi
 
   success 'Installation complete. Start a new Zsh login session to load the configuration.'
 }
