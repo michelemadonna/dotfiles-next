@@ -60,14 +60,6 @@ zstyle ':z4h:direnv:success' notify 'yes'
 zstyle ':completion:*' list-colors ${(s.:.)LS_COLORS}
 zstyle ':completion:*:descriptions' format '[%d]'
 zstyle ':completion:*:git-checkout:*' sort false
-## Restore the complete Git candidate set exposed by Quickstart. z4h normally
-## hides symbolic heads, recent branches and commit objects.
-#zstyle -d ':completion:*:git-*:argument-rest:heads' ignored-patterns
-#zstyle -d ':completion:*:git-*:argument-rest:heads-local' ignored-patterns
-#zstyle -d ':completion:*:git-*:argument-rest:heads-remote' ignored-patterns
-#zstyle -d ':completion:*:git-*:argument-rest:commits' ignored-patterns
-#zstyle -d ':completion:*:git-*:argument-rest:commit-objects' ignored-patterns
-#zstyle -d ':completion:*:git-*:argument-rest:recent-branches' ignored-patterns
 
 
 if [[ ${Z4H_USE_FZF_TAB} = true ]]; then
@@ -143,6 +135,29 @@ fi
 # is fully initialized. Everything that requires user interaction or can
 # perform network I/O must be done above. Everything else is best done below.
 z4h init || return
+
+if (( $+commands[git] )); then
+	# Homebrew's _git delegates to Bash completion and drops the grouped refs,
+	# recent commits and descriptions provided by macOS's native Zsh completion.
+	if [[ $OSTYPE == darwin* ]]; then
+		typeset _z4h_native_git_completion=/usr/share/zsh/$ZSH_VERSION/functions/_git
+		if [[ -r $_z4h_native_git_completion ]]; then
+			unfunction _git 2>/dev/null
+			autoload -Uz -R "$_z4h_native_git_completion"
+			compdef _git git gitk
+		fi
+		unset _z4h_native_git_completion
+	fi
+
+	# z4h hides these expensive groups by default. Restore the complete Git
+	# candidate set after z4h init so fzf-tab receives them.
+	zstyle -d ':completion:*:git-*:argument-rest:heads' ignored-patterns
+	zstyle -d ':completion:*:git-*:argument-rest:heads-local' ignored-patterns
+	zstyle -d ':completion:*:git-*:argument-rest:heads-remote' ignored-patterns
+	zstyle -d ':completion:*:git-*:argument-rest:commits' ignored-patterns
+	zstyle -d ':completion:*:git-*:argument-rest:commit-objects' ignored-patterns
+	zstyle -d ':completion:*:git-*:argument-rest:recent-branches' ignored-patterns
+fi
 
 # Extend PATH.
 path=(~/local/bin $path)
@@ -376,6 +391,10 @@ REPORTTIME=${REPORTTIME:-2}
 
 TIMEFMT="%U user %S system %P cpu %*Es total"
 
+# Fix bracketed paste issue
+# Closes #73
+ZSH_AUTOSUGGEST_CLEAR_WIDGETS+=(bracketed-paste)
+
 # deal with screen, if we're using it - courtesy MacOSXHints.com
 # Login greeting ------------------
 if [ "$TERM" = "screen" -a ! "$SHOWED_SCREEN_MESSAGE" = "true" ]; then
@@ -391,20 +410,48 @@ fi
 
 print -n $'\e[9999;1H'
 
-if [[ -o interactive && ${Z4H_SHOW_FASTFETCH:-false} == true && -z ${Z4H_FASTFETCH_SHOWN:-} ]]; then
+if [[ -o interactive && ${Z4H_SHOW_FASTFETCH:-false} != false && -z ${Z4H_FASTFETCH_SHOWN:-} ]]; then
 	# Exported markers are inherited by nested shells and tmux children, so
 	# Fastfetch is displayed only once for the terminal/session.
 	export Z4H_FASTFETCH_SHOWN=1
-	if (( $+commands[fastfetch] )); then
+	show_fastfetch=true
+
+	active_terminals=$(ps -axo tty= 2>/dev/null | awk '
+			$1 ~ /^ttys[0-9]+$/ || $1 ~ /^pts\/[0-9]+$/ { seen[$1] = 1 }
+			END { for (tty in seen) count++; print count + 0 }
+		')
+
+		echo "+---------------------------------------+"
+		echo "| ttys*/pts*: count of active terminals: $active_terminals |"
+		echo "| Z4H_SHOW_FASTFETCH=$Z4H_SHOW_FASTFETCH |"
+		echo "| show_fastfetch=$show_fastfetch |"
+		echo "+---------------------------------------+"
+
+	if [[ $Z4H_SHOW_FASTFETCH == first ]]; then
+		active_terminals=$(ps -axo tty= 2>/dev/null | awk '
+			$1 ~ /^ttys[0-9]+$/ || $1 ~ /^pts\/[0-9]+$/ { seen[$1] = 1 }
+			END { for (tty in seen) count++; print count + 0 }
+		')
+
+		echo "+---------------------------------------+"
+		echo "| ttys*/pts*: count of active terminals: $active_terminals |"
+		echo "| Z4H_SHOW_FASTFETCH=$Z4H_SHOW_FASTFETCH |"
+		echo "| show_fastfetch=$show_fastfetch |"
+		echo "+---------------------------------------+"
+
+		(( active_terminals <= 1 )) || show_fastfetch=false
+	fi
+	if [[ $show_fastfetch == true ]] && (( $+commands[fastfetch] )); then
 		parent_cmd=$(ps -o comm= -p $PPID 2>/dev/null)
 		case "${parent_cmd:l}" in
 			*zed*|*code*|*micro*|*nvim*|*vim*|*idea*|*clion*|*goland*|*phpstorm*|*pycharm*|*tmux*|*fresh*|*helix*|*terminal*) ;;
 			*) fastfetch --pipe false ;;
 		esac
 		unset parent_cmd
-	else
+	elif [[ $show_fastfetch == true ]]; then
 		print -u2 "fastfetch not found. See $DOTFILES_DIR/Readme.md"
 	fi
+	unset active_terminals show_fastfetch
 fi
 
 if [[ ${Z4H_SSH_SHOW_KEY:-false} == true ]]; then

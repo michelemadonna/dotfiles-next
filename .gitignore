@@ -1,3 +1,6 @@
 .DS_Store
 *.zwc
 
+dotfiles-next
+micro/backups
+micro/buffers

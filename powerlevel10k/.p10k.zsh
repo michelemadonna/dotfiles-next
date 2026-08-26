@@ -605,7 +605,7 @@
   #
   # Note: If this parameter is set to true, it won't hide tools.
   # Tip: Override this parameter for ${TOOL} with POWERLEVEL9K_ASDF_${TOOL}_SHOW_SYSTEM.
-  typeset -g POWERLEVEL9K_ASDF_SHOW_SYSTEM=true
+  typeset -g POWERLEVEL9K_ASDF_SHOW_SYSTEM=false
 
   # If set to non-empty value, hide tools unless there is a file matching the specified file pattern
   # in the current directory, or its parent directory, or its grandparent directory, and so on.
@@ -1910,8 +1910,9 @@
 
   # Runtime segments share the same light capsule used by Oh My Posh.
   local omp_runtime_segment
-  for omp_runtime_segment in asdf virtualenv anaconda pyenv goenv nodenv nvm nodeenv \
-      rbenv rvm fvm luaenv jenv plenv perlbrew phpenv scalaenv haskell_stack; do
+  #for omp_runtime_segment in asdf virtualenv anaconda pyenv goenv nodenv nvm nodeenv \
+  #    rbenv rvm fvm luaenv jenv plenv perlbrew phpenv scalaenv haskell_stack; do
+  for omp_runtime_segment in asdf ; do
     typeset -g "POWERLEVEL9K_${(U)omp_runtime_segment}_FOREGROUND=#D81E5B"
     typeset -g "POWERLEVEL9K_${(U)omp_runtime_segment}_BACKGROUND=#E8E8E8"
     typeset -g "POWERLEVEL9K_${(U)omp_runtime_segment}_ICON_BEFORE_CONTENT=true"

@@ -34,6 +34,19 @@ A terminal with Nerd Font support is strongly recommended because the prompts, t
 
 To use the demo image, install Docker Desktop or Docker Engine with BuildKit. Building the image requires internet access and considerably more time and disk space than the host installation.
 
+For a minimal disposable Ubuntu 26.04 shell intended only for manual installer
+testing, build [`Dockerfile.test`](Dockerfile.test) and open its default Zsh
+session:
+
+```sh
+docker build -f Dockerfile.test -t dotfiles-next-test-shell .
+docker run --rm -it dotfiles-next-test-shell
+```
+
+The container runs as the passwordless-sudo `demo` user. It includes only Zsh,
+sudo, curl, and HTTPS certificates, leaving Git and the dotfiles packages for
+the installer under test.
+
 ## 🧰 Components
 
 ### Core command-line tools
@@ -66,7 +79,7 @@ Package names differ slightly by platform. Ubuntu 26.04 uses `poppler-utils`, `d
 | Oh My Zsh helpers | Optional, enabled by default | Loads selected libraries and plugins such as `sudo`, `command-not-found`, and the macOS/Homebrew helpers without sourcing the complete `oh-my-zsh.sh`. |
 | fzf-tab stack | Optional, enabled by default | Adds fuzzy completion, previews, syntax highlighting, history search, and suggestions. |
 | Completion generator | Optional, enabled by default | Generates and caches getopt-style completion for the current command when explicitly requested with `Shift-Tab`. |
-| Fastfetch | Optional | Displays the configured system summary once per interactive shell session. |
+| Fastfetch | Optional | Displays a visual overview of the operating system, hardware, memory, disks, shell, terminal, and other system details. It can run at every interactive Zsh startup or only at the first active terminal prompt. |
 | Mise | Host interactive option | Installs and activates language/tool runtimes and maintains compatibility with `.tool-versions`. It is also preinstalled in the Docker demo. |
 | Micro, Fresh, Vim, or Nano | Select one | Configures the requested default editor; Micro is the default. Repository configurations are linked for Micro and Fresh. |
 
@@ -78,7 +91,7 @@ The project-specific plugins live in [`zsh/z4h.custom.plugins`](zsh/z4h.custom.p
 
 | Plugin | What it does |
 | --- | --- |
-| `z4h-fzf` | Extends fzf-tab, `Ctrl-T`, and `Alt-C` with shared hidden-file state, persistent preview layout, contextual previews, and command-specific views for Git, Docker, package managers, SSH, processes, manuals, and systemd. |
+| `z4h-fzf` | Extends fzf-tab, `Ctrl-T`, and `Alt-C` with shared hidden-file state, persistent preview layout, contextual previews, grouped Git refs and recent commits, and command-specific views for Git, Docker, package managers, SSH, processes, manuals, and systemd. |
 | `z4h-containers` | Adds Docker and kubectl aliases, caches CLI-generated completion, improves Docker completion contexts, and supplies JSON/YAML kubectl helpers when the required tools are available. |
 | `z4h-eza` | Replaces common `ls` forms with an icon-aware `eza` configuration and falls back to `exa` when necessary. Provides `ll` and `lls`. |
 | `z4h-gencomp-lazy` | Generates completion from a command's help output on explicit `Shift-Tab`, caches it, loads it immediately, and remembers failed attempts for the current session. It also provides the manual `gencomp` command. |
@@ -107,20 +120,40 @@ You can also clone the repository yourself and run:
 
 ### Interactive mode
 
-With no arguments, the installer asks for:
+With no arguments, the installer opens a Powerlevel10k-style full-screen
+wizard. The first screen introduces the repository and explains the operations
+the script can perform. Every question is shown in a colored frame and uses a
+single-key menu: press the displayed letter immediately, or press `Enter` to
+accept the option marked `(default)`. Press `q` on any question to quit without
+changing the system.
+
+The wizard asks for:
 
 - Prompt: `powerlevel10k` or `ohmyposh`.
 - Editor: `vim`, `nano`, `fresh`, or `micro`.
-- Fastfetch, fzf-tab, generated completion, and selected Oh My Zsh helpers.
+- Fastfetch (disabled, shown at every interactive Zsh startup, or shown only at the first active terminal prompt), fzf-tab, generated completion, and selected Oh My Zsh helpers.
 - SSH key loading, key display, and forced askpass behavior.
 - Mise installation.
 - Mise activation/completion cache generation and ASDF compatibility-data
   preparation when Mise is selected, keeping this work out of the first Zsh
   startup.
 
+After the questions, the installer clears the screen and shows the detected
+platform, repository and package operations together with every selected
+preference. No package, repository, file, backup, or symbolic link is changed
+before this summary is accepted. Press `a` or `Enter` to apply the plan, `r` to
+restart the wizard, or `q` to quit without changes.
+
 The answers are written to `zsh/.zshenv`, and `~/.zshenv` points to that generated file. Only the selected editor is installed. Fastfetch and Oh My Posh are installed only when enabled.
-Interactive output uses the same yellow, green, bold, and error-color style as
-z4h when stdout is a terminal. Set `NO_COLOR=1` to disable ANSI colors.
+The Fastfetch `first` mode counts distinct active `ttys*` devices on macOS and
+`pts/*` devices on Linux. This is a deliberately global and simple check: SSH
+sessions, IDE terminals, and terminals opened by other applications contribute
+to the count, so they can prevent Fastfetch from being displayed.
+The wizard and installer-owned progress messages always use ANSI colors and
+framed output; `NO_COLOR` is intentionally ignored. UTF-8 terminals also get
+Unicode borders, status icons, highlighted defaults, and emphasized section
+labels, while other locales receive an ASCII fallback. External
+package-manager output is passed through unchanged.
 
 ### Non-interactive mode
 
@@ -131,13 +164,16 @@ Both spellings are supported:
 ./install.sh --non-interactive
 ```
 
-This mode never asks questions. It reads its installation choices from the environment:
+This mode never reads from `/dev/tty`, changes terminal input settings, clears
+the screen, opens menus, shows a review screen, or asks questions. It reads its
+installation choices from the environment. Installer-owned status messages
+still use the same colored frames as interactive mode:
 
 | Variable | Accepted values | Default |
 | --- | --- | --- |
 | `EDITOR` | `vim`, `nano`, `fresh`, `micro` | `micro`; unsupported values also fall back to `micro` |
 | `Z4H_PROMPT` | `powerlevel10k`, `ohmyposh` | `powerlevel10k` |
-| `Z4H_SHOW_FASTFETCH` | `true`, `false` | `false` |
+| `Z4H_SHOW_FASTFETCH` | `true`, `false`, `first` | `false` |
 
 Example:
 
