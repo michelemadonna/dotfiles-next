@@ -31,3 +31,4 @@ micro/backups
 *.zwc
 local
 zsh/home/.zsh_history
+zsh/.zshenv
