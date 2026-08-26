@@ -353,7 +353,7 @@ zsh_prerequisite_error() {
   case $(uname -s) in
     Darwin)
       zsh_install_steps='Install Zsh with Homebrew:
-  brew install zsh'
+  brew install -y zsh'
       ;;
     Linux)
       zsh_install_steps='Install Zsh with APT:
@@ -502,7 +502,7 @@ install_git() {
 
   info 'Installing Git'
   if [ "$PLATFORM" = macos ]; then
-    brew install git
+    brew install -y git
   else
     run_apt_get update
     run_apt_get install -y git
@@ -532,8 +532,8 @@ clone_repository() {
 install_required_packages() {
   info 'Installing required packages'
   if [ "$PLATFORM" = macos ]; then
-    brew install coreutils bat eza fd git-delta htop ripgrep stow tmux tree wget git chafa mediainfo poppler file bind
-    brew install --cask font-fira-code-nerd-font
+    brew install -y coreutils bat eza fd git-delta htop ripgrep stow tmux tree wget git chafa mediainfo poppler file bind
+    brew install -y --cask font-fira-code-nerd-font
   else
     run_apt_get update
     run_apt_get install -y \
@@ -1014,14 +1014,14 @@ install_editor() {
   case $editor in
     vim)
       if [ "$PLATFORM" = macos ]; then
-        brew install vim
+        brew install -y vim
       else
         run_apt_get install -y vim
       fi
       ;;
     nano)
       if [ "$PLATFORM" = macos ]; then
-        brew install nano
+        brew install -y nano
       else
         run_apt_get install -y nano
       fi
@@ -1033,7 +1033,7 @@ install_editor() {
 
 install_micro() {
   if [ "$PLATFORM" = macos ]; then
-    brew install micro
+    brew install -y micro
   else
     run_apt_get install -y micro
   fi
@@ -1042,7 +1042,7 @@ install_micro() {
 
 install_fresh() {
   if [ "$PLATFORM" = macos ]; then
-    brew install fresh-editor
+    brew install -y fresh-editor
   else
     architecture=$(dpkg --print-architecture)
     download_url=$(
@@ -1065,7 +1065,7 @@ install_fresh() {
 
 install_mise() {
   if [ "$PLATFORM" = macos ]; then
-    brew install mise
+    brew install -y mise
   else
     mkdir -p "$HOME/.local/bin"
     curl -fsSL https://mise.run | sh
@@ -1077,7 +1077,7 @@ install_mise() {
 
 install_fastfetch() {
   if [ "$PLATFORM" = macos ]; then
-    brew install fastfetch
+    brew install -y fastfetch
   else
     run_apt_get install -y fastfetch
   fi
