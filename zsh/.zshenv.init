@@ -77,7 +77,7 @@ if [ -n "${ZSH_VERSION-}" ]; then
   export POWERLEVEL9K_CONFIG_FILE="$DOTFILES_DIR/powerlevel10k/.p10k.zsh" 
   export Z4H_OH_MY_POSH_CONFIG="$DOTFILES_DIR/oh-my-posh/custom.omp.json"
   
-  . ${ZDOTDIR}/.zshenv
+  . ${ZDOTDIR}/.zshenv_z4h
 
   : ${ZDOTDIR:=~}
 fi

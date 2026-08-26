@@ -960,7 +960,7 @@ write_interactive_configuration() {
   info 'Configuring Zsh preferences'
 
   source_file="$DOTFILES_DIR/zsh/.zshenv.init"
-  generated_file="$DOTFILES_DIR/zsh/.zshenv"
+  generated_file="$DOTFILES_DIR/zsh/home/.zshenv"
   [ -f "$source_file" ] || die "Missing Zsh template: $source_file"
 
   awk \
@@ -1104,7 +1104,7 @@ apply_installation() {
     zshenv_source="$DOTFILES_DIR/zsh/.zshenv.init"
   else
     write_interactive_configuration
-    zshenv_source="$DOTFILES_DIR/zsh/.zshenv"
+    zshenv_source="$DOTFILES_DIR/zsh/home/.zshenv"
   fi
 
   install_base_links "$zshenv_source"
