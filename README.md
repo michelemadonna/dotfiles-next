@@ -99,6 +99,8 @@ Package names differ slightly by platform. Ubuntu 26.04 uses `poppler-utils`, `d
 | Mise | Host interactive installation | Installed automatically in interactive mode, activates language/tool runtimes, and maintains compatibility with `.tool-versions`. It is also preinstalled in the Docker demo. |
 | Micro, Fresh, Vim, or Nano | Select one | Configures the requested default editor; Micro is the default. Repository configurations are linked for Micro and Fresh. |
 
+Powerlevel10k shows detected Mise/ASDF project runtimes in the right prompt. When several runtimes are active, each tool keeps its own light capsule and starts with a white left-pointing chevron; Zsh hides the right prompt when it cannot fit beside the left prompt.
+
 The repository also contains configurations for Git, Ghostty, iTerm2, Fastfetch, Mise, SSH, ripgrep, tmux, Micro, and Fresh. Some are reference configurations and are not all linked by the host installer.
 
 ## 🧩 Custom Zsh plugins
