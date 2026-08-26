@@ -220,6 +220,27 @@ ${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles-next/base-packages-v1-<platform>.
 
 The marker is created only after the base installation succeeds. Later executions skip that step. Git remains a separate idempotent prerequisite check, while optional components are evaluated on every run.
 
+To remove every cache and persistent state file created by this environment,
+run:
+
+```zsh
+zqs-reset-zsh-cache
+```
+
+The function lists its targets and asks for confirmation. It removes the z4h
+runtime and plugins, Zsh/Mise/Oh My Posh/completion caches, compiled `.zwc`
+files in the checkout, fzf state and temporary markers, shell history, the
+saved SSH agent environment, and the `dotfiles-next` installer marker. It does
+not remove configuration, backups, Mise/ASDF data, `.tool-versions`, or stop a
+running SSH agent. Close other Zsh sessions first so they cannot recreate
+history or state after the cleanup.
+
+Use `--dry-run` to inspect the exact paths, `--yes` to skip confirmation, or
+`--no-restart` to leave the current shell running. Normally the function
+restarts Zsh; that startup requires network access to download z4h again.
+Because the installer marker is removed, the next installer run executes the
+base-package step again.
+
 Existing regular files or directories at managed destinations are moved to a timestamped `.backup.YYYYMMDDhhmmss` path before linking. Existing symbolic links are replaced. The base installer manages:
 
 - `~/.zshenv`
@@ -313,7 +334,7 @@ The default prompt inside the image remains Powerlevel10k because the Docker set
 | `Tab` | Open normal or fzf-tab completion. |
 | `Shift-Tab` | Generate completion for the current command from its help output, then open it. |
 | `Ctrl-H` | Toggle hidden files in fzf-tab, `Ctrl-T`, and `Alt-C`. |
-| `Ctrl-P` | Cycle the fzf-tab preview between right, bottom, and hidden layouts. |
+| `Ctrl-P` | Cycle the shared fzf-tab, `Ctrl-T`, and `Alt-C` preview between right, bottom, and hidden layouts. |
 | `Ctrl-T` | Select files with fzf and insert them into the command line. |
 | `Alt-C` | Select a directory with fzf and change into it. |
 | `Ctrl-K` | Open the searchable custom keybinding reference. |

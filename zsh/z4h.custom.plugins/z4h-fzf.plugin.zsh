@@ -224,16 +224,16 @@ _fzf_preview_layout() {
 
     case $preview_position in
         right)
-            reply=('right:60%:wrap' 'down:50%:wrap|hidden|right:60%:wrap')
+            reply=('right:60%:wrap:nohidden' 'down:50%:wrap:nohidden|hidden|right:60%:wrap:nohidden')
             ;;
         down)
-            reply=('down:50%:wrap' 'hidden|right:60%:wrap|down:50%:wrap')
+            reply=('down:50%:wrap:nohidden' 'hidden|right:60%:wrap:nohidden|down:50%:wrap:nohidden')
             ;;
         hidden)
-            reply=('hidden' 'right:60%:wrap|down:50%:wrap|hidden')
+            reply=('hidden' 'right:60%:wrap:nohidden|down:50%:wrap:nohidden|hidden')
             ;;
         *)
-            reply=('right:60%:wrap' 'down:50%:wrap|hidden|right:60%:wrap')
+            reply=('right:60%:wrap:nohidden' 'down:50%:wrap:nohidden|hidden|right:60%:wrap:nohidden')
             print -r -- right >| "$FZF_TAB_PREVIEW_STATE_FILE"
             ;;
     esac
@@ -297,11 +297,17 @@ _fzf_widget_refresh_flags() {
 _z4h_fzf_file_widget() {
     _fzf_widget_refresh_flags
     fzf-file-widget
+    local widget_status=$?
+    _fzf_widget_refresh_flags
+    return widget_status
 }
 
 _z4h_fzf_cd_widget() {
     _fzf_widget_refresh_flags
     fzf-cd-widget
+    local widget_status=$?
+    _fzf_widget_refresh_flags
+    return widget_status
 }
 
 _fzf_widget_refresh_flags
@@ -341,6 +347,7 @@ _fzf_tab_complete_with_dots() {
     print -nP -- '%F{red}..%f'
     zle fzf-tab-complete
     zle redisplay
+    _fzf_widget_refresh_flags
 
     [[ -e $FZF_TAB_HIDDEN_MARKER ]] || return
 
