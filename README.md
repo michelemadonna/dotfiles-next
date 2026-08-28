@@ -96,7 +96,7 @@ Package names differ slightly by platform. Ubuntu 26.04 uses `poppler-utils`, `d
 | fzf-tab stack | Optional, enabled by default | Adds fuzzy completion, previews, syntax highlighting, history search, and suggestions. |
 | Completion generator | Optional, enabled by default | Generates and caches getopt-style completion for the current command when explicitly requested with `Shift-Tab`. |
 | Fastfetch | Optional | Displays a visual overview of the operating system, hardware, memory, disks, shell, terminal, and other system details. It can run at every interactive Zsh startup or only at the first active terminal prompt. |
-| Mise | Host interactive installation | Installed automatically in interactive mode, activates language/tool runtimes, and maintains compatibility with `.tool-versions`. It is also preinstalled in the Docker demo. |
+| Mise | Optional, enabled by default | Installs and activates language/tool runtimes, and maintains compatibility with `.tool-versions`. It is also preinstalled in the Docker demo. |
 | Micro, Fresh, Vim, or Nano | Select one | Configures the requested default editor; Micro is the default. Repository configurations are linked for Micro and Fresh. |
 
 Powerlevel10k shows detected Mise/ASDF project runtimes in the right prompt. When several runtimes are active, each tool keeps its own light capsule and starts with a white left-pointing chevron; Zsh hides the right prompt when it cannot fit beside the left prompt.
@@ -152,10 +152,10 @@ The wizard asks for:
 - Fastfetch (disabled, shown at every interactive Zsh startup, or shown only at the first active terminal prompt), fzf-tab, generated completion, and selected Oh My Zsh helpers.
 - SSH key loading, key display, and forced askpass behavior.
 
-The wizard does not ask whether packages should be installed. After the plan is
-approved, the interactive installer installs Mise automatically and prepares
-its activation/completion caches and ASDF compatibility data, keeping this work
-out of the first Zsh startup.
+The wizard does not ask whether base packages should be installed. It asks
+whether Mise should be enabled. When enabled, the interactive installer
+installs Mise and prepares its activation/completion caches and ASDF
+compatibility data, keeping this work out of the first Zsh startup.
 
 After the questions, the installer clears the screen and shows the detected
 platform, repository and package operations together with every selected
@@ -163,7 +163,7 @@ preference. No package, repository, file, backup, or symbolic link is changed
 before this summary is accepted. Press `a` or `Enter` to apply the plan, `r` to
 restart the wizard, or `q` to quit without changes.
 
-The answers are written to `zsh/.zshenv`, and `~/.zshenv` points to that generated file. The interactive wizard also asks whether the shell should use z4h's native fzf or the latest local Git build in `~/.local/share/fzf`, with its binary in `~/.local/bin/fzf`. Of the available editors, only the selected editor is installed. Mise is always installed in interactive mode, while Fastfetch and Oh My Posh are installed only when enabled.
+The answers are written to `zsh/.zshenv`, and `~/.zshenv` points to that generated file. The interactive wizard also asks whether the shell should use z4h's native fzf or the latest local Git build in `~/.local/share/fzf`, with its binary in `~/.local/bin/fzf`, and whether to install Mise. When enabled, Mise uses Homebrew on macOS and `curl https://mise.run | sh` on Ubuntu/Linux; Linux installs the binary at `~/.local/bin/mise` and keeps its data under `~/.local/share/mise`. Of the available editors, only the selected editor is installed. Mise is installed only when enabled, while Fastfetch and Oh My Posh are installed only when enabled.
 At the end, interactive mode shows a framed version report for the installed
 base tools, the selected editor, Mise, and any enabled optional binaries. It
 also reports the configured z4h v5 channel and checks the selected fzf source.
@@ -210,7 +210,7 @@ Z4H_SHOW_FASTFETCH=true \
 ./install.sh non-interactive
 ```
 
-Non-interactive mode uses non-prompting package-manager options, including `sudo -n` on Ubuntu 26.04, and fails if credentials are required. It never installs Mise and does not generate `zsh/.zshenv`; instead, `~/.zshenv` points directly to `zsh/.zshenv.init`, which preserves supported values already present in the environment.
+Non-interactive mode uses non-prompting package-manager options, including `sudo -n` on Ubuntu 26.04, and fails if credentials are required. Mise follows `Z4H_USE_MISE` (default `true`) and is installed when enabled; it does not generate `zsh/.zshenv`, and `~/.zshenv` points directly to `zsh/.zshenv.init`.
 
 ### Paths, state, and repeat runs
 

@@ -587,6 +587,7 @@ set_interactive_defaults() {
   show_fastfetch=false
   use_fzf_tab=true
   use_fzf_from_z4h=true
+  use_mise=true
   enable_auto_gencomp=true
   enable_oh_my_zsh=true
   load_ssh_key=true
@@ -624,6 +625,9 @@ f|first|Yes, but only at the first terminal prompt'
   ui_menu 'fzf binary' 'Select the fzf binary used by the shell.' z 'z|true|Use the z4h-native fzf
 l|false|Use the latest local Git build'
   use_fzf_from_z4h=$MENU_VALUE
+
+  ask_boolean_menu 'Mise' 'Install Mise and prepare its shell caches?' y
+  use_mise=$MENU_VALUE
 
   ask_boolean_menu 'Completion generator' 'Enable explicit Shift-Tab completion generation and caching?' y
   enable_auto_gencomp=$MENU_VALUE
@@ -886,11 +890,13 @@ show_installed_tool_versions() {
       ;;
   esac
 
-  if [ "$PLATFORM" = macos ]; then
-    report_homebrew_tool_version 'Mise' mise mise 1 --version
-  else
-    mise_executable="$HOME/.local/bin/mise"
-    report_tool_version 'Mise' "$mise_executable" 1 --version
+  if [ "$use_mise" = true ]; then
+    if [ "$PLATFORM" = macos ]; then
+      report_homebrew_tool_version 'Mise' mise mise 1 --version
+    else
+      mise_executable="$HOME/.local/bin/mise"
+      report_tool_version 'Mise' "$mise_executable" 1 --version
+    fi
   fi
 
   case $show_fastfetch in
@@ -926,7 +932,7 @@ ui_summary() {
     ui_summary_line 'Git' "$git_action"
     ui_summary_line 'Repository' "$repository_action"
     ui_summary_line 'Base packages' "$base_packages_action"
-    ui_summary_line 'Mise' 'Install and prepare shell caches'
+    ui_summary_line 'Mise' "$(human_boolean "$use_mise")"
     ui_line '' ''
     ui_section 'Zsh preferences'
     ui_summary_line 'Prompt' "$prompt"
@@ -975,6 +981,7 @@ write_interactive_configuration() {
     -v show_fastfetch="$show_fastfetch" \
     -v use_fzf_tab="$use_fzf_tab" \
     -v use_fzf_from_z4h="$use_fzf_from_z4h" \
+    -v use_mise="$use_mise" \
     -v enable_auto_gencomp="$enable_auto_gencomp" \
     -v enable_oh_my_zsh="$enable_oh_my_zsh" \
     -v load_ssh_key="$load_ssh_key" \
@@ -984,6 +991,7 @@ write_interactive_configuration() {
       /^  export Z4H_SHOW_FASTFETCH=/ { $0 = "  export Z4H_SHOW_FASTFETCH=" show_fastfetch; }
       /^  export Z4H_USE_FZF_TAB=/ { $0 = "  export Z4H_USE_FZF_TAB=" use_fzf_tab; }
       /^  export Z4H_USE_FZF_FROM_Z4H=/ { $0 = "  export Z4H_USE_FZF_FROM_Z4H=" use_fzf_from_z4h; }
+      /^  export Z4H_USE_MISE=/ { $0 = "  export Z4H_USE_MISE=" use_mise; }
       /^  export Z4H_ENABLE_AUTO_GENCOMP=/ { $0 = "  export Z4H_ENABLE_AUTO_GENCOMP=" enable_auto_gencomp; }
       /^  export Z4H_ENABLE_OH_MY_ZSH=/ { $0 = "  export Z4H_ENABLE_OH_MY_ZSH=" enable_oh_my_zsh; }
       /^  export Z4H_SSH_LOAD_KEY=/ { $0 = "  export Z4H_SSH_LOAD_KEY=" load_ssh_key; }
@@ -998,11 +1006,16 @@ configure_non_interactive() {
   prompt=${Z4H_PROMPT:-powerlevel10k}
   show_fastfetch=${Z4H_SHOW_FASTFETCH:-false}
   use_fzf_from_z4h=${Z4H_USE_FZF_FROM_Z4H:-true}
+  use_mise=${Z4H_USE_MISE:-true}
   editor=${EDITOR:-micro}
 
   case $use_fzf_from_z4h in
     true | false) ;;
     *) use_fzf_from_z4h=true ;;
+  esac
+  case $use_mise in
+    true | false) ;;
+    *) use_mise=true ;;
   esac
 
   case $prompt in
@@ -1078,12 +1091,17 @@ install_fresh() {
 }
 
 install_mise() {
-  if [ "$PLATFORM" = macos ]; then
+  if command -v mise >/dev/null 2>&1 || [ -x "$HOME/.local/bin/mise" ]; then
+    info 'Mise already installed; skipping installation'
+  elif [ "$PLATFORM" = macos ]; then
     brew install -y mise
   else
     mkdir -p "$HOME/.local/bin"
+    MISE_INSTALL_PATH="$HOME/.local/bin/mise"
+    export MISE_INSTALL_PATH
     curl -fsSL https://mise.run | sh
   fi
+  command -v mise >/dev/null 2>&1 || [ -x "$HOME/.local/bin/mise" ] || return 1
   link_path "$DOTFILES_DIR/mise" "$HOME/.config/mise"
   info 'Preparing Mise shell caches'
   sh "$DOTFILES_DIR/zsh/prepare-mise-cache.sh"
@@ -1124,7 +1142,7 @@ apply_installation() {
   install_base_links "$zshenv_source"
   install_editor
 
-  if ! is_non_interactive; then
+  if [ "$use_mise" = true ]; then
     install_mise
   fi
   case $show_fastfetch in

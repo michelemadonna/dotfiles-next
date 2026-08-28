@@ -14,6 +14,7 @@ if [ -n "${ZSH_VERSION-}" ]; then
   export Z4H_SSH_SHOW_KEY=${Z4H_SSH_SHOW_KEY:=true} #false/true
   export Z4H_SSH_ASKPASS_REQUIRE=${Z4H_SSH_ASKPASS_REQUIRE:=false} #false/true
   export Z4H_MISE_REFRESH_SECONDS=${Z4H_MISE_REFRESH_SECONDS:=5} #0 checks every prompt
+  export Z4H_USE_MISE=${Z4H_USE_MISE:=true} #true/false
   export Z4H_USE_FZF_FROM_Z4H=${Z4H_USE_FZF_FROM_Z4H:=true} #true/false use fzf from z4h or from local build
   export DOTFILES_DIR="$HOME/.dotfiles" #${DOTFILES_DIR:="$HOME/.dotfiles"} 
   export ZDOTDIR="$DOTFILES_DIR/zsh/home"
@@ -28,6 +29,16 @@ if [ -n "${ZSH_VERSION-}" ]; then
   export XDG_DATA_HOME=${XDG_DATA_HOME:="$HOME/.local/share"}
 
   path=("$HOME/.local/bin" $path)
+
+  if [[ $Z4H_USE_MISE = true ]] && ! command -v mise >/dev/null 2>&1; then
+    mkdir -p -- "$HOME/.local/bin" "$XDG_DATA_HOME" 2>/dev/null || true
+    if [[ $OSTYPE == darwin* ]] && (( $+commands[brew] )); then
+      command brew install -y mise >/dev/null 2>&1 || true
+    elif [[ $OSTYPE == linux* ]] && (( $+commands[curl] )); then
+      export MISE_INSTALL_PATH="$HOME/.local/bin/mise"
+      command curl -fsSL https://mise.run 2>/dev/null | sh >/dev/null 2>&1 || true
+    fi
+  fi
 
   if [[ ${Z4H_USE_FZF_FROM_Z4H} = false ]]; then
     # Use a current fzf build independently of Homebrew, APT, and z4h.

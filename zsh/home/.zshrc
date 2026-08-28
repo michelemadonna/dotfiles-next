@@ -371,7 +371,9 @@ fi
 z4h source "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-eza.plugin.zsh"
 z4h source "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-misc.plugin.zsh"
 z4h source "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-containers.plugin.zsh"
-z4h source "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-mise.plugin.zsh"
+if [[ ${Z4H_USE_MISE} = true ]]; then
+	z4h source "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-mise.plugin.zsh"
+fi
 
 if [[ ${Z4H_ENABLE_AUTO_GENCOMP} = true ]]; then
 	z4h source "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-gencomp-lazy.plugin.zsh"
