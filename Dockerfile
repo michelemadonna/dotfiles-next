@@ -149,7 +149,7 @@ RUN mkdir -p \
     && ln -sfnT /home/demo/.dotfiles/fastfetch /home/demo/.config/fastfetch \
     && ln -sfnT /home/demo/.dotfiles/oh-my-posh /home/demo/.config/oh-my-posh \
     && if [ "$DOTFILES_SOURCE_MODE" = local ]; then \
-      sh /home/demo/.dotfiles/zsh/prepare-mise-cache.sh; \
+      sh /home/demo/.dotfiles/zsh/helpers/prepare-mise-cache.sh; \
     fi
 
 RUN cd /home/demo \

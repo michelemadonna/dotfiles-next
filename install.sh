@@ -1104,7 +1104,7 @@ install_mise() {
   command -v mise >/dev/null 2>&1 || [ -x "$HOME/.local/bin/mise" ] || return 1
   link_path "$DOTFILES_DIR/mise" "$HOME/.config/mise"
   info 'Preparing Mise shell caches'
-  sh "$DOTFILES_DIR/zsh/prepare-mise-cache.sh"
+  sh "$DOTFILES_DIR/zsh/helpers/prepare-mise-cache.sh"
 }
 
 install_fastfetch() {

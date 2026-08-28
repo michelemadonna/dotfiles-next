@@ -117,6 +117,10 @@ The project-specific plugins live in [`zsh/z4h.custom.plugins`](zsh/z4h.custom.p
 | `z4h-oh-my-posh` | Loads Oh My Posh only when selected and caches the generated Zsh initialization until the binary, theme, or plugin changes. |
 | `z4h-misc` | Provides compatibility aliases, the optional allafine behavior, and a searchable `Ctrl-K` keybinding reference for Zsh, fzf, tmux, and Micro. |
 
+Shell bootstrap and runtime helpers live under [`zsh/helpers`](zsh/helpers): SSH and
+Fastfetch initialization, optional Mise/fzf bootstraps, fzf-tab preview/state
+helpers, and Mise cache preparation.
+
 ## 🚀 Installation
 
 The installer checks the platform, installs Git when necessary, clones the repository into `~/.dotfiles`, installs the base packages, and creates the required configuration links.

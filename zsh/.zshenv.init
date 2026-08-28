@@ -30,33 +30,10 @@ if [ -n "${ZSH_VERSION-}" ]; then
 
   path=("$HOME/.local/bin" $path)
 
-  if [[ $Z4H_USE_MISE = true ]] && ! command -v mise >/dev/null 2>&1; then
-    mkdir -p -- "$HOME/.local/bin" "$XDG_DATA_HOME" 2>/dev/null || true
-    if [[ $OSTYPE == darwin* ]] && (( $+commands[brew] )); then
-      command brew install -y mise >/dev/null 2>&1 || true
-    elif [[ $OSTYPE == linux* ]] && (( $+commands[curl] )); then
-      export MISE_INSTALL_PATH="$HOME/.local/bin/mise"
-      command curl -fsSL https://mise.run 2>/dev/null | sh >/dev/null 2>&1 || true
-    fi
-  fi
-
-  if [[ ${Z4H_USE_FZF_FROM_Z4H} = false ]]; then
-    # Use a current fzf build independently of Homebrew, APT, and z4h.
-    export FZF_LOCAL_REPO="$XDG_DATA_HOME/fzf"
-    export FZF_LOCAL_BIN="$HOME/.local/bin/fzf"
-    export FZF_PATH="$FZF_LOCAL_REPO"
-
-    if [[ ! -x "$FZF_LOCAL_BIN" && -n ${commands[git]-} && -n ${commands[make]-} ]]; then
-      mkdir -p -- "$XDG_DATA_HOME" "$HOME/.local/bin" 2>/dev/null || true
-      if [[ ! -d "$FZF_LOCAL_REPO/.git" ]]; then
-        command git clone --depth=1 https://github.com/junegunn/fzf.git "$FZF_LOCAL_REPO" >/dev/null 2>&1 || true
-      fi
-      if [[ -d "$FZF_LOCAL_REPO/.git" ]]; then
-        command make -C "$FZF_LOCAL_REPO" >/dev/null 2>&1 || true
-        [[ -x "$FZF_LOCAL_REPO/bin/fzf" ]] && command cp -- "$FZF_LOCAL_REPO/bin/fzf" "$FZF_LOCAL_BIN" 2>/dev/null || true
-      fi
-    fi
-  fi
+  source "$DOTFILES_DIR/zsh/helpers/mise-bootstrap.zsh"
+  install-mise-bootstrap
+  source "$DOTFILES_DIR/zsh/helpers/fzf-bootstrap.zsh"
+  install-fzf-bootstrap
 
   export ZSH_COMPDUMP=${ZSH_COMPDUMP:="$XDG_CACHE_HOME/zsh/.zcompdump-${HOST}-${ZSH_VERSION}"}
   

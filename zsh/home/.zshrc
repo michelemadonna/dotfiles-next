@@ -4,8 +4,6 @@
 #
 # Documentation: https://github.com/romkatv/zsh4humans/blob/v5/README.md.
 
-
-
 if [[ -z ${TMUX:-} ]]; then
   export TERM=xterm-256color
 fi
@@ -14,9 +12,6 @@ fi
 alias tmux='TERM=screen-256color-bce tmux'
 typeset -g TMUX_DEFAULT_SESSION=tmux
 alias t='tmux a -d -t ${TMUX_DEFAULT_SESSION} 2>/dev/null || tmux new -s ${TMUX_DEFAULT_SESSION}'
-
-
-#################################################################
 
 # Periodic auto-update on Zsh startup: 'ask' or 'no'.
 # You can manually run `z4h update` to update everything.
@@ -56,7 +51,6 @@ zstyle ':z4h:direnv:success' notify 'yes'
 # enabled hosts.
 #zstyle ':z4h:ssh:*' send-extra-files '~/.nanorc' '~/.env.zsh'
 
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 zstyle ':completion:*' list-colors ${(s.:.)LS_COLORS}
 zstyle ':completion:*:descriptions' format '[%d]'
 zstyle ':completion:*:git-checkout:*' sort false
@@ -76,10 +70,6 @@ if [[ ${Z4H_PROMPT} == "ohmyposh" ]]; then
 else
 	typeset -g POWERLEVEL9K_CONFIG_FILE="$POWERLEVEL9K_CONFIG_FILE"  
 fi
-#################################################################
-
-
-
 
 # Clone additional Git repositories from GitHub.
 #
@@ -90,8 +80,6 @@ fi
 if [[ ${Z4H_ENABLE_OH_MY_ZSH} = true ]]; then
 	z4h install ohmyzsh/ohmyzsh || return
 fi
-
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 #z4h install unixorn/jpb.zshplugin@main || return
 #z4h install unixorn/warhol.plugin.zsh@main || return
@@ -114,7 +102,6 @@ if [[ ${Z4H_USE_FZF_TAB} = true ]]; then
 	z4h install zsh-users/zsh-autosuggestions || return
 	z4h install Aloxaf/fzf-tab || return
 fi
-#################################################################
 
 # Homebrew's native completion must be visible when z4h runs compinit. It
 # provides the formula and cask candidates for `brew install`, unlike a
@@ -130,79 +117,8 @@ if (( $+commands[brew] )); then
 	unset _z4h_brew_prefix
 fi
 
-# Start or reuse an SSH agent and load local private keys. Homebrew keychain is
-# optional; when it isn't installed, keep the agent environment in ~/.ssh.
-function load-our-ssh-keys() {
-	emulate -L zsh
-	setopt local_options no_unset
-
-	local agent_file=$HOME/.ssh/ssh-agent
-	local agent_status agent_keys key fingerprint fingerprint_line
-	local -a keys
-	typeset -g _ZQS_SSH_KEYS=
-	typeset -gi _ZQS_SSH_KEYS_STATUS=2
-	typeset -gi _ZQS_SSH_KEYS_VALID=0
-
-	if (( $+commands[keychain] )); then
-		eval "$(keychain -q --eval)" || return
-		agent_keys=$(ssh-add -l 2>/dev/null)
-		agent_status=$?
-	else
-		mkdir -p -- "$HOME/.ssh" || return
-		chmod 700 -- "$HOME/.ssh" 2>/dev/null
-
-		agent_keys=$(ssh-add -l 2>/dev/null)
-		agent_status=$?
-		if (( agent_status == 2 )) && [[ -r $agent_file ]]; then
-			source "$agent_file"
-			agent_keys=$(ssh-add -l 2>/dev/null)
-			agent_status=$?
-		fi
-
-		if (( agent_status == 2 )); then
-			eval "$(ssh-agent -s)" >/dev/null || return
-			{
-				print -r -- "export SSH_AUTH_SOCK=${(q)SSH_AUTH_SOCK}"
-				print -r -- "export SSH_AGENT_PID=${(q)SSH_AGENT_PID}"
-			} >| "$agent_file"
-			chmod 600 -- "$agent_file" 2>/dev/null
-			agent_keys=
-			agent_status=1
-		fi
-	fi
-
-	(( agent_status == 2 )) && return 1
-	_ZQS_SSH_KEYS=$agent_keys
-	_ZQS_SSH_KEYS_STATUS=$agent_status
-	(( agent_status == 0 )) && _ZQS_SSH_KEYS_VALID=1
-
-	if (( agent_status == 1 )); then
-		if [[ $OSTYPE == darwin* ]]; then
-			if (( $+commands[sw_vers] )) && (( ${$(sw_vers -productVersion)%%.*} >= 12 )); then
-				ssh-add --apple-load-keychain >/dev/null 2>&1
-			else
-				ssh-add -qA >/dev/null 2>&1
-			fi
-			agent_keys=$(ssh-add -l 2>/dev/null)
-			agent_status=$?
-			_ZQS_SSH_KEYS=$agent_keys
-			_ZQS_SSH_KEYS_STATUS=$agent_status
-			(( agent_status == 0 )) && _ZQS_SSH_KEYS_VALID=1
-		fi
-
-		keys=(~/.ssh/**/*id_(rsa|dsa|ecdsa|ed25519)(N.))
-		for key in $keys; do
-			fingerprint_line=$(ssh-keygen -l -f "$key" 2>/dev/null) || continue
-			fingerprint=${${(z)fingerprint_line}[2]}
-			[[ -n $fingerprint ]] || continue
-			if [[ $agent_keys != *"$fingerprint"* ]] && ssh-add -q -- "$key"; then
-				agent_keys+=$'\n'$fingerprint
-				_ZQS_SSH_KEYS_VALID=0
-			fi
-		done
-	fi
-}
-
+# Start or reuse an SSH agent and load local private keys.
+source "$DOTFILES_DIR/zsh/helpers/ssh.zsh"
 if [[ -o interactive && -z ${SSH_CLIENT-} && -z ${SSH_CONNECTION-} &&
       ${Z4H_SSH_LOAD_KEY:-true} != false ]]; then
 	if [[ ${Z4H_SSH_ASKPASS_REQUIRE:-false} == true ]]; then
@@ -224,41 +140,9 @@ fi
 
 
 print -n $'\e[9999;1H'
+source "$DOTFILES_DIR/zsh/helpers/fastfetch.zsh"
+run-fastfetch
 
-if [[ -o interactive && ${Z4H_SHOW_FASTFETCH:-false} != false && -z ${Z4H_FASTFETCH_SHOWN:-} ]]; then
-	# Exported markers are inherited by nested shells and tmux children, so
-	# Fastfetch is displayed only once for the terminal/session.
-	export Z4H_FASTFETCH_SHOWN=1
-	show_fastfetch=true
-
-	
-
-	if [[ $Z4H_SHOW_FASTFETCH == first ]]; then
-		active_terminals=$(ps -axo tty= 2>/dev/null | awk '
-			$1 ~ /^ttys[0-9]+$/ || $1 ~ /^pts\/[0-9]+$/ { seen[$1] = 1 }
-			END { for (tty in seen) count++; print count + 0 }
-		')
-
-		#echo "+---------------------------------------+"
-		#echo "| ttys*/pts*: count of active terminals: $active_terminals |"
-		#echo "| Z4H_SHOW_FASTFETCH=$Z4H_SHOW_FASTFETCH |"
-		#echo "| show_fastfetch=$show_fastfetch |"
-		#echo "+---------------------------------------+"
-
-		(( active_terminals <= 1 )) || show_fastfetch=false
-	fi
-	if [[ $show_fastfetch == true ]] && (( $+commands[fastfetch] )); then
-		parent_cmd=$(ps -o comm= -p $PPID 2>/dev/null)
-		case "${parent_cmd:l}" in
-			*zed*|*code*|*micro*|*nvim*|*vim*|*idea*|*clion*|*goland*|*phpstorm*|*pycharm*|*tmux*|*fresh*|*helix*|*terminal*) ;;
-			*) fastfetch --pipe false ;;
-		esac
-		unset parent_cmd
-	elif [[ $show_fastfetch == true ]]; then
-		print -u2 "fastfetch not found. See $DOTFILES_DIR/Readme.md"
-	fi
-	unset active_terminals show_fastfetch
-fi
 
 if [[ ${Z4H_SSH_SHOW_KEY:-false} == true ]]; then
 	print
@@ -308,10 +192,6 @@ typeset -gU path PATH
 # Export environment variables.
 export GPG_TTY=$TTY
 
-
-
-
-
 # Source additional local files if they exist.
 z4h source ~/.env.zsh
 
@@ -321,8 +201,6 @@ z4h source ~/.env.zsh
 #z4h source ohmyzsh/ohmyzsh/lib/diagnostics.zsh  # source an individual file
 #z4h load   ohmyzsh/ohmyzsh/plugins/emoji-clock  # load a plugin
 
-
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # Oh My Zsh libraries and plugins, without sourcing oh-my-zsh.sh or running a
 # second compinit/keymap setup.
 if [[ ${Z4H_ENABLE_OH_MY_ZSH} = true ]]; then
@@ -394,8 +272,6 @@ if [[ ${Z4H_USE_FZF_TAB} = true ]]; then
 	#bindkey '^I' fzf_tab_no_space_after_at
 fi
 
-#################################################################
-
 # Define key bindings.
 z4h bindkey undo Ctrl+/               # undo the last command line change
 z4h bindkey redo Option+/            # redo the last undone command line change
@@ -405,8 +281,6 @@ z4h bindkey z4h-cd-forward Shift+Right  # cd into the next directory
 z4h bindkey z4h-cd-up      Shift+Up     # cd into the parent directory
 z4h bindkey z4h-cd-down    Shift+Down   # cd into a child directory
 
-
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 z4h bindkey up-history Up
 z4h bindkey down-history Down
 
@@ -415,9 +289,6 @@ TRAPINT() {
 	print -n -u2 '^C'
 	return $((128 + $1))
 }
-
-
-#################################################################
 
 # Autoload functions.
 autoload -Uz zmv
@@ -441,7 +312,6 @@ alias ls="${aliases[ls]:-ls} -A"
 setopt glob_dots     # no special treatment for file names with a leading dot
 setopt no_auto_menu  # require an extra TAB press to open the completion menu
 
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 setopt AUTO_CD  # If a command is issued that can’t be executed as a normal command,
 								# and the command is the name of a directory, perform the cd command
 								# to that directory.
@@ -460,9 +330,7 @@ TIMEFMT="%U user %S system %P cpu %*Es total"
 # Closes #73
 ZSH_AUTOSUGGEST_CLEAR_WIDGETS+=(bracketed-paste)
 
-
-
 if [[ -f ${HOME}/.z4h-zprof-enabled ]]; then
   zprof
 fi
-#################################################################
+

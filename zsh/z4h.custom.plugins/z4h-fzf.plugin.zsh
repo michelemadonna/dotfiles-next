@@ -55,9 +55,9 @@
 # Paths
 # ============================================================
 
-typeset -g FZF_TAB_PREVIEW_COMMAND="$DOTFILES_DIR/zsh/fzf-tab-preview-helper"
+typeset -g FZF_TAB_PREVIEW_COMMAND="$DOTFILES_DIR/zsh/helpers/fzf-tab-preview-helper"
 typeset -g FZF_TAB_STATE_COMMAND="${commands[zsh]:-/bin/zsh}"
-typeset -g FZF_TAB_STATE_HELPER="$DOTFILES_DIR/zsh/fzf-tab-state-helper"
+typeset -g FZF_TAB_STATE_HELPER="$DOTFILES_DIR/zsh/helpers/fzf-tab-state-helper"
 typeset -g FZF_TAB_STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/zsh/fzf-tab"
 typeset -gx FZF_TAB_PREVIEW_STATE_FILE="$FZF_TAB_STATE_DIR/preview-position"
 typeset -gx FZF_TAB_HEIGHT_STATE_FILE="$FZF_TAB_STATE_DIR/height"
