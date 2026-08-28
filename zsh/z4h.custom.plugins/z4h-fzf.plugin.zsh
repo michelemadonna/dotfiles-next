@@ -67,6 +67,13 @@ typeset -g FZF_TAB_HIDDEN_MARKER="${TMPDIR:-/tmp}/fzf-tab-hidden-${$}"
 mkdir -p -- "$FZF_TAB_STATE_DIR" 2>/dev/null || return
 rm -f -- "$FZF_TAB_HIDDEN_MARKER"
 
+# Hidden files are ON by default and the choice persists across sessions.
+if [[ ! -r $FZF_TAB_HIDDEN_STATE_FILE ]] ||
+    [[ $(<"$FZF_TAB_HIDDEN_STATE_FILE") != on &&
+       $(<"$FZF_TAB_HIDDEN_STATE_FILE") != off ]]; then
+    print -r -- on >| "$FZF_TAB_HIDDEN_STATE_FILE"
+fi
+
 __fzf_default_command() {
     emulate -L zsh
 
@@ -108,8 +115,8 @@ zstyle ':completion:*:descriptions' \
 zstyle ':completion:*' \
     menu no
 
-# Hidden files are OFF by default and persisted across shells.
-typeset -g FZF_TAB_SHOW_HIDDEN=0
+# Hidden files are ON by default and persisted across shells.
+typeset -g FZF_TAB_SHOW_HIDDEN=1
 
 _fzf_tab_apply_hidden_state() {
     local hidden_state=''
@@ -120,17 +127,21 @@ _fzf_tab_apply_hidden_state() {
         FZF_TAB_SHOW_HIDDEN=1
         setopt globdots
         zstyle ':completion:*' \
-            file-patterns '*(D):all-files'
+            file-patterns \
+            './.*(D):hidden-files' \
+            '.*(D):hidden-files' \
+            '*(D):all-files'
         zstyle ':completion:*:cd:*' \
             file-patterns \
             '*(-/):directories .*(-/):hidden-directories'
     else
         FZF_TAB_SHOW_HIDDEN=0
         unsetopt globdots
-        [[ $hidden_state == off ]] ||
-            print -r -- off >| "$FZF_TAB_HIDDEN_STATE_FILE"
-        zstyle -d ':completion:*' \
-            file-patterns
+        zstyle ':completion:*' \
+            file-patterns \
+            '*(-^-/):all-files' \
+            './.*(D):hidden-files' \
+            '.*(D):hidden-files'
         zstyle -d ':completion:*:cd:*' \
             file-patterns
         # For cd, offer hidden directories only as a fallback. This lets

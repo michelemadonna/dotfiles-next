@@ -350,7 +350,7 @@ The default prompt inside the image remains Powerlevel10k because the Docker set
 | --- | --- |
 | `Tab` | Open normal or fzf-tab completion. |
 | `Shift-Tab` | Generate completion for the current command from its help output, then open it. |
-| `Ctrl-H` | Toggle hidden files in fzf-tab, `Ctrl-T`, and `Alt-C`. |
+| `Ctrl-H` | Toggle hidden files in fzf-tab, `Ctrl-T`, and `Alt-C`; hidden files are shown by default. |
 | `Ctrl-P` | Cycle the shared fzf-tab, `Ctrl-T`, and `Alt-C` preview between right, bottom, and hidden layouts. |
 | `Ctrl-F` | Cycle the persistent fzf height: 33%, 50%, 66%, and 99%, keeping the current prompt visible. |
 | `Ctrl-T` | Select files with fzf and insert them into the command line. |
