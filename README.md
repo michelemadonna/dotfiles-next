@@ -163,11 +163,12 @@ preference. No package, repository, file, backup, or symbolic link is changed
 before this summary is accepted. Press `a` or `Enter` to apply the plan, `r` to
 restart the wizard, or `q` to quit without changes.
 
-The answers are written to `zsh/.zshenv`, and `~/.zshenv` points to that generated file. Of the available editors, only the selected editor is installed. Mise is always installed in interactive mode, while Fastfetch and Oh My Posh are installed only when enabled.
+The answers are written to `zsh/.zshenv`, and `~/.zshenv` points to that generated file. The interactive wizard also asks whether the shell should use z4h's native fzf or the latest local Git build in `~/.local/share/fzf`, with its binary in `~/.local/bin/fzf`. Of the available editors, only the selected editor is installed. Mise is always installed in interactive mode, while Fastfetch and Oh My Posh are installed only when enabled.
 At the end, interactive mode shows a framed version report for the installed
 base tools, the selected editor, Mise, and any enabled optional binaries. It
-also reports the configured z4h v5 channel and checks only the fzf binary
-managed by z4h; it never installs or reports a separate system fzf. On a clean
+also reports the configured z4h v5 channel and checks the selected fzf source.
+When the local Git build is selected, it uses the repository in
+`~/.local/share/fzf` and its binary in `~/.local/bin/fzf`. On a clean
 installation, z4h and fzf are marked as pending until the first Zsh startup
 downloads them. This report is not displayed in non-interactive mode.
 The Fastfetch `first` mode counts distinct active `ttys*` devices on macOS and

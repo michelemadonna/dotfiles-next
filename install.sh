@@ -586,6 +586,7 @@ set_interactive_defaults() {
   editor=micro
   show_fastfetch=false
   use_fzf_tab=true
+  use_fzf_from_z4h=true
   enable_auto_gencomp=true
   enable_oh_my_zsh=true
   load_ssh_key=true
@@ -619,6 +620,10 @@ f|first|Yes, but only at the first terminal prompt'
 
   ask_boolean_menu 'fzf-tab' 'Enable fuzzy completion, previews, history search, and suggestions?' y
   use_fzf_tab=$MENU_VALUE
+
+  ui_menu 'fzf binary' 'Select the fzf binary used by the shell.' z 'z|true|Use the z4h-native fzf
+l|false|Use the latest local Git build'
+  use_fzf_from_z4h=$MENU_VALUE
 
   ask_boolean_menu 'Completion generator' 'Enable explicit Shift-Tab completion generation and caching?' y
   enable_auto_gencomp=$MENU_VALUE
@@ -928,6 +933,7 @@ ui_summary() {
     ui_summary_line 'Editor' "$editor"
     ui_summary_line 'Fastfetch' "$(human_boolean "$show_fastfetch")"
     ui_summary_line 'fzf-tab' "$(human_boolean "$use_fzf_tab")"
+    ui_summary_line 'fzf binary' "$(if [ "$use_fzf_from_z4h" = true ]; then printf 'z4h native'; else printf 'latest local Git build'; fi)"
     ui_summary_line 'Completion generator' "$(human_boolean "$enable_auto_gencomp")"
     ui_summary_line 'Oh My Zsh helpers' "$(human_boolean "$enable_oh_my_zsh")"
     ui_summary_line 'Load SSH keys' "$(human_boolean "$load_ssh_key")"
@@ -968,6 +974,7 @@ write_interactive_configuration() {
     -v editor="$editor" \
     -v show_fastfetch="$show_fastfetch" \
     -v use_fzf_tab="$use_fzf_tab" \
+    -v use_fzf_from_z4h="$use_fzf_from_z4h" \
     -v enable_auto_gencomp="$enable_auto_gencomp" \
     -v enable_oh_my_zsh="$enable_oh_my_zsh" \
     -v load_ssh_key="$load_ssh_key" \
@@ -976,6 +983,7 @@ write_interactive_configuration() {
       /^  export Z4H_PROMPT=/ { $0 = "  export Z4H_PROMPT=\"" prompt "\""; }
       /^  export Z4H_SHOW_FASTFETCH=/ { $0 = "  export Z4H_SHOW_FASTFETCH=" show_fastfetch; }
       /^  export Z4H_USE_FZF_TAB=/ { $0 = "  export Z4H_USE_FZF_TAB=" use_fzf_tab; }
+      /^  export Z4H_USE_FZF_FROM_Z4H=/ { $0 = "  export Z4H_USE_FZF_FROM_Z4H=" use_fzf_from_z4h; }
       /^  export Z4H_ENABLE_AUTO_GENCOMP=/ { $0 = "  export Z4H_ENABLE_AUTO_GENCOMP=" enable_auto_gencomp; }
       /^  export Z4H_ENABLE_OH_MY_ZSH=/ { $0 = "  export Z4H_ENABLE_OH_MY_ZSH=" enable_oh_my_zsh; }
       /^  export Z4H_SSH_LOAD_KEY=/ { $0 = "  export Z4H_SSH_LOAD_KEY=" load_ssh_key; }
@@ -989,7 +997,13 @@ write_interactive_configuration() {
 configure_non_interactive() {
   prompt=${Z4H_PROMPT:-powerlevel10k}
   show_fastfetch=${Z4H_SHOW_FASTFETCH:-false}
+  use_fzf_from_z4h=${Z4H_USE_FZF_FROM_Z4H:-true}
   editor=${EDITOR:-micro}
+
+  case $use_fzf_from_z4h in
+    true | false) ;;
+    *) use_fzf_from_z4h=true ;;
+  esac
 
   case $prompt in
     powerlevel10k | ohmyposh) ;;
