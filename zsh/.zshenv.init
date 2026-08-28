@@ -4,8 +4,8 @@ if [[ -f ${HOME}/.z4h-zprof-enabled ]]; then
 fi
 
 if [ -n "${ZSH_VERSION-}" ]; then
-  export Z4H_PROMPT=${Z4H_PROMPT:="powerlevel10k"} # powerlevel10k/ohmyposh
-  export Z4H_SHOW_FASTFETCH=${Z4H_SHOW_FASTFETCH:=first} #false/true/first
+  export Z4H_PROMPT=${Z4H_PROMPT:="powerlevel10k"} # powerlevel10k/ohmyposh/minimal
+  export Z4H_SHOW_FASTFETCH=${Z4H_SHOW_FASTFETCH:=true} #false/true/first
   export Z4H_ENABLE_ALLAFINE=false
   export Z4H_USE_FZF_TAB=${Z4H_USE_FZF_TAB:=true} #true/false
   export Z4H_ENABLE_AUTO_GENCOMP=${Z4H_ENABLE_AUTO_GENCOMP:=true} #true/false
@@ -14,6 +14,7 @@ if [ -n "${ZSH_VERSION-}" ]; then
   export Z4H_SSH_SHOW_KEY=${Z4H_SSH_SHOW_KEY:=true} #false/true
   export Z4H_SSH_ASKPASS_REQUIRE=${Z4H_SSH_ASKPASS_REQUIRE:=false} #false/true
   export Z4H_MISE_REFRESH_SECONDS=${Z4H_MISE_REFRESH_SECONDS:=5} #0 checks every prompt
+  export Z4H_USE_FZF_FROM_Z4H=${Z4H_USE_FZF_FROM_Z4H:=true} #true/false use fzf from z4h or from local build
   export DOTFILES_DIR="$HOME/.dotfiles" #${DOTFILES_DIR:="$HOME/.dotfiles"} 
   export ZDOTDIR="$DOTFILES_DIR/zsh/home"
 
@@ -21,13 +22,30 @@ if [ -n "${ZSH_VERSION-}" ]; then
   #mkdir -p "$HOME/.cache/zsh" "$HOME/.local/state/zsh" "$HOME/.ssh" "$HOME/.local/bin" "$HOME/.config" "$HOME/.local/share"
   #ln -sfn "$DOTFILES_DIR"/{micro,git,fastfetch,mise,fresh,oh-my-posh,ghostty} "$HOME/.config/"
   #ln -sfn "$DOTFILES_DIR"/ssh/config "$HOME/.ssh/config"
-  
-  
- 
 
   export XDG_CACHE_HOME=${XDG_CACHE_HOME:="$HOME/.cache"}
   export XDG_CONFIG_HOME=${XDG_CONFIG_HOME:="$HOME/.config"}
   export XDG_DATA_HOME=${XDG_DATA_HOME:="$HOME/.local/share"}
+
+  path=("$HOME/.local/bin" $path)
+
+  if [[ ${Z4H_USE_FZF_FROM_Z4H} = false ]]; then
+    # Use a current fzf build independently of Homebrew, APT, and z4h.
+    export FZF_LOCAL_REPO="$XDG_DATA_HOME/fzf"
+    export FZF_LOCAL_BIN="$HOME/.local/bin/fzf"
+    export FZF_PATH="$FZF_LOCAL_REPO"
+
+    if [[ ! -x "$FZF_LOCAL_BIN" && -n ${commands[git]-} && -n ${commands[make]-} ]]; then
+      mkdir -p -- "$XDG_DATA_HOME" "$HOME/.local/bin" 2>/dev/null || true
+      if [[ ! -d "$FZF_LOCAL_REPO/.git" ]]; then
+        command git clone --depth=1 https://github.com/junegunn/fzf.git "$FZF_LOCAL_REPO" >/dev/null 2>&1 || true
+      fi
+      if [[ -d "$FZF_LOCAL_REPO/.git" ]]; then
+        command make -C "$FZF_LOCAL_REPO" >/dev/null 2>&1 || true
+        [[ -x "$FZF_LOCAL_REPO/bin/fzf" ]] && command cp -- "$FZF_LOCAL_REPO/bin/fzf" "$FZF_LOCAL_BIN" 2>/dev/null || true
+      fi
+    fi
+  fi
 
   export ZSH_COMPDUMP=${ZSH_COMPDUMP:="$XDG_CACHE_HOME/zsh/.zcompdump-${HOST}-${ZSH_VERSION}"}
   

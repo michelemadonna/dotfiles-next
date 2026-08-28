@@ -10,20 +10,10 @@ a complete Docker demo.
 Read `README.md`, `install.sh`, and the relevant source files before changing
 behavior. Treat the repository contents as the source of truth.
 
-## Non-negotiable rules
+## Repository-specific rules
 
-1. Minimize tokens in user-facing responses. Report the outcome, relevant
-   validation, and material caveats only.
-2. Do not modify existing working behavior outside the requested context.
-   Make the smallest change that fully satisfies the request; do not perform
-   opportunistic refactors, formatting, renames, or cleanup.
-3. Verify assumptions before editing. Reproduce or inspect the current
-   behavior, validate the solution after editing, and never claim completion
-   without evidence appropriate to the change.
-4. Preserve unrelated user changes in a dirty worktree. Never revert or
-   overwrite them.
-5. Update `README.md` whenever commands, options, defaults, supported
-   platforms, installation behavior, Docker usage, or interactive UX changes.
+- Update `README.md` whenever commands, options, defaults, supported
+  platforms, installation behavior, Docker usage, or interactive UX changes.
 
 ## Repository contracts
 
@@ -53,13 +43,7 @@ behavior. Treat the repository contents as the source of truth.
   describe or implement it as automatic first-Tab generation.
 - Edit persistent repository sources, not generated files or cache artifacts.
 
-## Working method
-
-1. Inspect the exact files and current Git diff relevant to the request.
-2. Establish the cause or expected behavior before applying a patch.
-3. Apply a minimal, localized change.
-4. Run the narrow checks first, then the relevant integration test.
-5. Reinspect the final diff and confirm that only intended files changed.
+## Repository-specific validation and runtime checks
 
 Do not use non-interactive shell startup as proof of ZLE, fzf, prompt, or
 terminal behavior. Exercise the exact keys in a real PTY, preferably in the
@@ -70,9 +54,7 @@ For temporary macOS shell validation, use
 test HOME and launcher; do not use or recreate a repository-local `fhome.sh`
 as a substitute.
 
-## Validation
-
-Choose checks proportionate to the modified area:
+Use the global validation rules and these repository-specific checks:
 
 - All changes: `git diff --check` and final `git status --short`/diff review.
 - POSIX installer: `sh -n install.sh`; run ShellCheck when available. Test

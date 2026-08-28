@@ -303,6 +303,7 @@ fi
 
 # Extend PATH.
 path=(~/local/bin $path)
+typeset -gU path PATH
 
 # Export environment variables.
 export GPG_TTY=$TTY
@@ -343,9 +344,8 @@ if [[ ${Z4H_ENABLE_OH_MY_ZSH} = true ]]; then
 fi
 
 if [[ ${Z4H_USE_FZF_TAB} = true ]]; then
-	# z4h supplies fzf. Load its native Ctrl-T, Ctrl-R and Alt-C widgets
-	# directly so no second plugin can overwrite the custom preview options.
-	export FZF_PATH="${XDG_CACHE_HOME}/zsh4humans/v5/fzf"
+	# Prefer the locally built fzf; retain the z4h fallback if bootstrap failed.
+	export FZF_PATH="${FZF_PATH:=${XDG_CACHE_HOME}/zsh4humans/v5/fzf}"
 	source "$FZF_PATH/shell/key-bindings.zsh"
 	# fzf-tab must wrap the stock completion widget, not z4h-fzf-complete.
 	bindkey '^I' expand-or-complete

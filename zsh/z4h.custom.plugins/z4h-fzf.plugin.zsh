@@ -60,6 +60,7 @@ typeset -g FZF_TAB_STATE_COMMAND="${commands[zsh]:-/bin/zsh}"
 typeset -g FZF_TAB_STATE_HELPER="$DOTFILES_DIR/zsh/fzf-tab-state-helper"
 typeset -g FZF_TAB_STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/zsh/fzf-tab"
 typeset -gx FZF_TAB_PREVIEW_STATE_FILE="$FZF_TAB_STATE_DIR/preview-position"
+typeset -gx FZF_TAB_HEIGHT_STATE_FILE="$FZF_TAB_STATE_DIR/height"
 typeset -g FZF_TAB_HIDDEN_STATE_FILE="$FZF_TAB_STATE_DIR/show-hidden"
 typeset -g FZF_TAB_HIDDEN_MARKER="${TMPDIR:-/tmp}/fzf-tab-hidden-${$}"
 
@@ -239,12 +240,24 @@ _fzf_preview_layout() {
     esac
 }
 
+_fzf_height() {
+    emulate -L zsh
+    local height=''
+    [[ -r $FZF_TAB_HEIGHT_STATE_FILE ]] && height=$(<"$FZF_TAB_HEIGHT_STATE_FILE")
+    case $height in
+        33%|50%|66%|100%) reply=($height) ;;
+        *) reply=(33%) ; print -r -- 33% >| "$FZF_TAB_HEIGHT_STATE_FILE" ;;
+    esac
+}
+
 _fzf_tab_refresh_flags() {
     emulate -L zsh
 
     _fzf_preview_layout
     local preview_window=$reply[1]
     local preview_cycle=$reply[2]
+    _fzf_height
+    local fzf_height=$reply[1]
     local hidden_marker_q="${(q)FZF_TAB_HIDDEN_MARKER}"
     local hidden_state_q="${(q)FZF_TAB_HIDDEN_STATE_FILE}"
     local preview_state_q="${(q)FZF_TAB_PREVIEW_STATE_FILE}"
@@ -253,7 +266,7 @@ _fzf_tab_refresh_flags() {
 
     zstyle ':fzf-tab:*' \
         fzf-flags \
-            --height=33% \
+            "--height=${fzf_height}" \
             --layout=reverse \
             --border \
             --info=inline \
@@ -289,9 +302,11 @@ _fzf_widget_refresh_flags() {
     local toggle_hidden_command="${state_command_q} ${state_helper_q} toggle-hidden ${hidden_state_q}"
     local list_files_command="${state_command_q} ${state_helper_q} list-files ${hidden_state_q}"
     local list_directories_command="${state_command_q} ${state_helper_q} list-directories ${hidden_state_q}"
+    _fzf_height
+    local fzf_height=$reply[1]
 
-    export FZF_CTRL_T_OPTS="--header='TAB/SHIFT-TAB move  ·  CTRL-SPACE select  ·  CTRL-A mark all  ·  CTRL-J/K preview scroll  ·  CTRL-P preview  ·  CTRL-H hidden  ·  ENTER insert  ·  ESC close' --preview '$FZF_TAB_PREVIEW_COMMAND {}' --preview-window=${preview_window} --bind='ctrl-a:toggle-all,ctrl-j:preview-down,ctrl-k:preview-up,ctrl-p:execute-silent(${state_command_q} ${state_helper_q} cycle-preview ${preview_state_q})+change-preview-window(${preview_cycle}),ctrl-h:execute-silent(${toggle_hidden_command})+reload(${list_files_command})'"
-    export FZF_ALT_C_OPTS="--header='TAB/SHIFT-TAB move  ·  CTRL-J/K preview scroll  ·  CTRL-P preview  ·  CTRL-H hidden  ·  ENTER cd  ·  ESC close' --preview '$FZF_TAB_PREVIEW_COMMAND {}' --preview-window=${preview_window} --bind='ctrl-j:preview-down,ctrl-k:preview-up,ctrl-p:execute-silent(${state_command_q} ${state_helper_q} cycle-preview ${preview_state_q})+change-preview-window(${preview_cycle}),ctrl-h:execute-silent(${toggle_hidden_command})+reload(${list_directories_command})'"
+    export FZF_CTRL_T_OPTS="--height=${fzf_height} --header='TAB/SHIFT-TAB move  ·  CTRL-SPACE select  ·  CTRL-A mark all  ·  CTRL-J/K preview scroll  ·  CTRL-P preview  ·  CTRL-H hidden  ·  ENTER insert  ·  ESC close' --preview '$FZF_TAB_PREVIEW_COMMAND {}' --preview-window=${preview_window} --bind='ctrl-a:toggle-all,ctrl-j:preview-down,ctrl-k:preview-up,ctrl-p:execute-silent(${state_command_q} ${state_helper_q} cycle-preview ${preview_state_q})+change-preview-window(${preview_cycle}),ctrl-h:execute-silent(${toggle_hidden_command})+reload(${list_files_command})'"
+    export FZF_ALT_C_OPTS="--height=${fzf_height} --header='TAB/SHIFT-TAB move  ·  CTRL-J/K preview scroll  ·  CTRL-P preview  ·  CTRL-H hidden  ·  ENTER cd  ·  ESC close' --preview '$FZF_TAB_PREVIEW_COMMAND {}' --preview-window=${preview_window} --bind='ctrl-j:preview-down,ctrl-k:preview-up,ctrl-p:execute-silent(${state_command_q} ${state_helper_q} cycle-preview ${preview_state_q})+change-preview-window(${preview_cycle}),ctrl-h:execute-silent(${toggle_hidden_command})+reload(${list_directories_command})'"
 }
 
 _z4h_fzf_file_widget() {
@@ -310,13 +325,31 @@ _z4h_fzf_cd_widget() {
     return widget_status
 }
 
+_fzf_cycle_height() {
+    emulate -L zsh
+    _fzf_height
+    case $reply[1] in
+        33%) reply=(50%) ;;
+        50%) reply=(66%) ;;
+        66%) reply=(100%) ;;
+        *) reply=(33%) ;;
+    esac
+    print -r -- "$reply[1]" >| "$FZF_TAB_HEIGHT_STATE_FILE"
+    _fzf_tab_refresh_flags
+    _fzf_widget_refresh_flags
+    zle -M "🔎 fzf  ·  Height ${reply[1]}"
+}
+
 _fzf_widget_refresh_flags
 zle -N _z4h_fzf_file_widget
 zle -N _z4h_fzf_cd_widget
+zle -N _fzf_cycle_height
 bindkey -M emacs '^T' _z4h_fzf_file_widget
 bindkey -M viins '^T' _z4h_fzf_file_widget
 bindkey -M emacs '^[c' _z4h_fzf_cd_widget
 bindkey -M viins '^[c' _z4h_fzf_cd_widget
+bindkey -M emacs '^F' _fzf_cycle_height
+bindkey -M viins '^F' _fzf_cycle_height
 
 unset _fzf_state_command_q _fzf_state_helper_q _fzf_hidden_state_file_q
 unset _fzf_toggle_hidden_command _fzf_list_files_command _fzf_list_directories_command
