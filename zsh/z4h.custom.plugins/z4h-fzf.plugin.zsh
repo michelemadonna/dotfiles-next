@@ -245,7 +245,7 @@ _fzf_height() {
     local height=''
     [[ -r $FZF_TAB_HEIGHT_STATE_FILE ]] && height=$(<"$FZF_TAB_HEIGHT_STATE_FILE")
     case $height in
-        33%|50%|66%|-1) reply=($height) ;;
+        33%|50%|66%|99%) reply=($height) ;;
         *) reply=(33%) ; print -r -- 33% >| "$FZF_TAB_HEIGHT_STATE_FILE" ;;
     esac
 }
@@ -331,7 +331,7 @@ _fzf_cycle_height() {
     case $reply[1] in
         33%) reply=(50%) ;;
         50%) reply=(66%) ;;
-        66%) reply=(-1) ;;
+        66%) reply=(99%) ;;
         *) reply=(33%) ;;
     esac
     print -r -- "$reply[1]" >| "$FZF_TAB_HEIGHT_STATE_FILE"

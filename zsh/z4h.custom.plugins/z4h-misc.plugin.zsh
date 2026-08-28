@@ -183,7 +183,7 @@ Ctrl+Space                    │ Mark / unmark item
 Ctrl+A                        │ Toggle all marked / unmarked
 Enter                         │ Select current item(s)
 Ctrl+P                        │ Toggle / move preview window
-Ctrl+F                        │ Cycle fzf height: 33%, 50%, 66%, prompt-safe full height
+Ctrl+F                        │ Cycle fzf height: 33%, 50%, 66%, 99% prompt-safe
 Ctrl+J / K                    │ Scroll preview down / up
 < / >                         │ Switch group (fzf-tab)
 Ctrl+G then ?                 │ Show all available fzf-git shortcuts
