@@ -337,7 +337,14 @@ _fzf_cycle_height() {
     print -r -- "$reply[1]" >| "$FZF_TAB_HEIGHT_STATE_FILE"
     _fzf_tab_refresh_flags
     _fzf_widget_refresh_flags
-    zle -M "🔎 fzf  ·  Height ${reply[1]}"
+    local height_bar
+    case $reply[1] in
+        33%) height_bar='▰▰░░░' ;;
+        50%) height_bar='▰▰▰░░' ;;
+        66%) height_bar='▰▰▰▰░' ;;
+        99%) height_bar='▰▰▰▰▰' ;;
+    esac
+    zle -M "🔎 fzf ❯ height ${reply[1]} ${height_bar}"
 }
 
 _fzf_widget_refresh_flags
@@ -402,10 +409,19 @@ _fzf_tab_toggle_hidden() {
     _fzf_tab_apply_hidden_state
     export FZF_DEFAULT_COMMAND="$(__fzf_default_command)"
     if (( FZF_TAB_SHOW_HIDDEN )); then
-        zle -M '🙉 Hidden files visible'
+        _fzf_hidden_notice '🔎 fzf ❯ 🙉 show hidden ON' green
     else
-        zle -M '🙈 Hidden files hidden'
+        _fzf_hidden_notice '🔎 fzf ❯ 🙈 show hidden OFF' red
     fi
+}
+
+_fzf_hidden_notice() {
+    emulate -L zsh
+    local message=$1 color=$2
+    PREDISPLAY="$message"$'\n'
+    region_highlight=(${region_highlight:#*memo=fzf-hidden-notice})
+    region_highlight+=("P0 ${#message} fg=$color,bold memo=fzf-hidden-notice")
+    zle -R
 }
 
 zle -N \
