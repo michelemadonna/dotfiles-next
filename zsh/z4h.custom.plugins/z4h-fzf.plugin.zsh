@@ -409,19 +409,10 @@ _fzf_tab_toggle_hidden() {
     _fzf_tab_apply_hidden_state
     export FZF_DEFAULT_COMMAND="$(__fzf_default_command)"
     if (( FZF_TAB_SHOW_HIDDEN )); then
-        _fzf_hidden_notice '🔎 fzf ❯ 🙉 show hidden ON' green
+        zle -M '🔎 fzf ❯ 🙉 show hidden ON'
     else
-        _fzf_hidden_notice '🔎 fzf ❯ 🙈 show hidden OFF' red
+        zle -M '🔎 fzf ❯ 🙈 show hidden OFF'
     fi
-}
-
-_fzf_hidden_notice() {
-    emulate -L zsh
-    local message=$1 color=$2
-    PREDISPLAY="$message"$'\n'
-    region_highlight=(${region_highlight:#*memo=fzf-hidden-notice})
-    region_highlight+=("P0 ${#message} fg=$color,bold memo=fzf-hidden-notice")
-    zle -R
 }
 
 zle -N \
