@@ -348,7 +348,7 @@ The default prompt inside the image remains Powerlevel10k because the Docker set
 | `Shift-Tab` | Generate completion for the current command from its help output, then open it. |
 | `Ctrl-H` | Toggle hidden files in fzf-tab, `Ctrl-T`, and `Alt-C`. |
 | `Ctrl-P` | Cycle the shared fzf-tab, `Ctrl-T`, and `Alt-C` preview between right, bottom, and hidden layouts. |
-| `Ctrl-F` | Cycle the persistent fzf height: 33%, 50%, 66%, and 100%. |
+| `Ctrl-F` | Cycle the persistent fzf height: 33%, 50%, 66%, and full height while keeping the current prompt visible. |
 | `Ctrl-T` | Select files with fzf and insert them into the command line. |
 | `Alt-C` | Select a directory with fzf and change into it. |
 | `Ctrl-K` | Open the searchable custom keybinding reference. |
