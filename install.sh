@@ -9,8 +9,62 @@ DOTFILES_DIR=${DOTFILES_DIR:-"$HOME/.dotfiles"}
 MODE=interactive
 BASE_PACKAGES_MARKER_VERSION=1
 
+COLOR_CYAN=$(printf '\033[36m')
+COLOR_YELLOW=$(printf '\033[33m')
+COLOR_GREEN=$(printf '\033[32m')
+COLOR_RED=$(printf '\033[31m')
+COLOR_BOLD=$(printf '\033[1m')
+COLOR_RESET=$(printf '\033[0m')
+
+case ${LC_ALL:-${LC_CTYPE:-${LANG:-}}} in
+  *UTF-8* | *utf8*)
+    FRAME_TOP_LEFT='╭'
+    FRAME_TOP_RIGHT='╮'
+    FRAME_BOTTOM_LEFT='╰'
+    FRAME_BOTTOM_RIGHT='╯'
+    FRAME_HORIZONTAL='─'
+    FRAME_VERTICAL='│'
+    ICON_WIZARD='◆'
+    ICON_INFO='●'
+    ICON_SUCCESS='✓'
+    ICON_ERROR='✕'
+    ICON_OPTION='○'
+    ICON_SELECTED='●'
+    ICON_CONTINUE='→'
+    ICON_RESTART='↻'
+    ICON_QUIT='×'
+    ICON_SECTION='▸'
+    ;;
+  *)
+    FRAME_TOP_LEFT='+'
+    FRAME_TOP_RIGHT='+'
+    FRAME_BOTTOM_LEFT='+'
+    FRAME_BOTTOM_RIGHT='+'
+    FRAME_HORIZONTAL='-'
+    FRAME_VERTICAL='|'
+    ICON_WIZARD=
+    ICON_INFO=
+    ICON_SUCCESS=
+    ICON_ERROR=
+    ICON_OPTION=
+    ICON_SELECTED='*'
+    ICON_CONTINUE='>'
+    ICON_RESTART=
+    ICON_QUIT='x'
+    ICON_SECTION='>'
+    ;;
+esac
+
+UI_WIDTH=80
+UI_INNER_WIDTH=76
+UI_FDS_OPEN=false
+UI_TTY_STATE=
+TEMP_PACKAGE_FILE=
+MENU_VALUE=
+UI_ERROR=
+
 usage() {
-  printf 'Usage: %s [non-interactive|--non-interactive]\n' "$0"
+  log_box "$COLOR_YELLOW" "$(icon_label "$ICON_CONTINUE" 'USAGE')" "$0 [non-interactive|--non-interactive]"
 }
 
 parse_arguments() {
@@ -31,16 +85,303 @@ is_non_interactive() {
 }
 
 info() {
-  printf '\n==> %s\n' "$*"
+  log_box "$COLOR_YELLOW" "$(icon_label "$ICON_INFO" 'INFO')" "$*"
+}
+
+success() {
+  log_box "$COLOR_GREEN" "$(icon_label "$ICON_SUCCESS" 'DONE')" "$*"
 }
 
 die() {
-  printf '\nError: %s\n' "$*" >&2
+  log_box_error "$COLOR_RED" "$(icon_label "$ICON_ERROR" 'ERROR')" "$*"
   exit 1
+}
+
+icon_label() {
+  icon=$1
+  label=$2
+  if [ -n "$icon" ]; then
+    printf '%s %s' "$icon" "$label"
+  else
+    printf '%s' "$label"
+  fi
+}
+
+set_ui_geometry() {
+  columns=${COLUMNS:-}
+  case $columns in
+    '' | *[!0-9]*) columns=80 ;;
+  esac
+
+  if [ "$MODE" = interactive ] && [ "$UI_FDS_OPEN" = true ] && command -v tput >/dev/null 2>&1; then
+    detected_columns=$(tput cols <&4 2>/dev/null || true)
+    case $detected_columns in
+      '' | *[!0-9]*) ;;
+      *) columns=$detected_columns ;;
+    esac
+  fi
+
+  [ "$columns" -lt 48 ] && columns=48
+  [ "$columns" -gt 88 ] && columns=88
+  UI_WIDTH=$columns
+  UI_INNER_WIDTH=$((UI_WIDTH - 4))
+}
+
+repeat_character() {
+  character=$1
+  count=$2
+  while [ "$count" -gt 0 ]; do
+    printf '%s' "$character"
+    count=$((count - 1))
+  done
+}
+
+print_spaces() {
+  repeat_character ' ' "$1"
+}
+
+log_border() {
+  color=$1
+  left=$2
+  right=$3
+  printf '%s%s' "$color" "$left"
+  repeat_character "$FRAME_HORIZONTAL" $((UI_WIDTH - 2))
+  printf '%s%s\n' "$right" "$COLOR_RESET"
+}
+
+log_line() {
+  color=$1
+  text=$2
+  length=${#text}
+  padding=$((UI_INNER_WIDTH - length + 1))
+  [ "$padding" -lt 0 ] && padding=0
+  printf '%s%s%s %s%s%s' "$color" "$FRAME_VERTICAL" "$COLOR_RESET" "$color" "$text" "$COLOR_RESET"
+  print_spaces "$padding"
+  printf '%s%s%s\n' "$color" "$FRAME_VERTICAL" "$COLOR_RESET"
+}
+
+log_box() {
+  log_box_color=$1
+  log_box_title=$2
+  log_box_message=$3
+  set_ui_geometry
+  printf '\n'
+  log_border "$log_box_color" "$FRAME_TOP_LEFT" "$FRAME_TOP_RIGHT"
+  log_line "$log_box_color$COLOR_BOLD" "$log_box_title"
+  printf '%s\n' "$log_box_message" | fold -s -w "$UI_INNER_WIDTH" |
+    while IFS= read -r line || [ -n "$line" ]; do
+      log_line "$log_box_color" "$line"
+    done
+  log_border "$log_box_color" "$FRAME_BOTTOM_LEFT" "$FRAME_BOTTOM_RIGHT"
+}
+
+log_box_error() {
+  log_box_color=$1
+  log_box_title=$2
+  log_box_message=$3
+  set_ui_geometry
+  {
+    printf '\n'
+    log_border "$log_box_color" "$FRAME_TOP_LEFT" "$FRAME_TOP_RIGHT"
+    log_line "$log_box_color$COLOR_BOLD" "$log_box_title"
+    printf '%s\n' "$log_box_message" | fold -s -w "$UI_INNER_WIDTH" |
+      while IFS= read -r line || [ -n "$line" ]; do
+        log_line "$log_box_color" "$line"
+      done
+    log_border "$log_box_color" "$FRAME_BOTTOM_LEFT" "$FRAME_BOTTOM_RIGHT"
+  } >&2
+}
+
+restore_terminal() {
+  if [ -n "${UI_TTY_STATE:-}" ]; then
+    stty "$UI_TTY_STATE" <&4 2>/dev/null || true
+    UI_TTY_STATE=
+  fi
+}
+
+cleanup() {
+  restore_terminal
+  if [ -n "${TEMP_PACKAGE_FILE:-}" ]; then
+    rm -f -- "$TEMP_PACKAGE_FILE"
+    TEMP_PACKAGE_FILE=
+  fi
+}
+
+handle_signal() {
+  cleanup
+  exit 130
+}
+
+trap cleanup 0
+trap handle_signal HUP INT TERM
+
+ui_clear() {
+  printf '\033[H\033[2J\033[3J' >&3
+}
+
+ui_border() {
+  color=$1
+  left=$2
+  right=$3
+  {
+    printf '%s%s' "$color" "$left"
+    repeat_character "$FRAME_HORIZONTAL" $((UI_WIDTH - 2))
+    printf '%s%s\n' "$right" "$COLOR_RESET"
+  } >&3
+}
+
+ui_line() {
+  color=$1
+  text=$2
+  length=${#text}
+  padding=$((UI_INNER_WIDTH - length + 1))
+  [ "$padding" -lt 0 ] && padding=0
+  {
+    printf '%s%s%s %s%s%s' "$COLOR_CYAN" "$FRAME_VERTICAL" "$COLOR_RESET" "$color" "$text" "$COLOR_RESET"
+    print_spaces "$padding"
+    printf '%s%s%s\n' "$COLOR_CYAN" "$FRAME_VERTICAL" "$COLOR_RESET"
+  } >&3
+}
+
+ui_text() {
+  text=$1
+  color=${2:-}
+  printf '%s\n' "$text" | fold -s -w "$UI_INNER_WIDTH" |
+    while IFS= read -r line || [ -n "$line" ]; do
+      ui_line "$color" "$line"
+    done
+}
+
+ui_begin() {
+  title=$1
+  set_ui_geometry
+  ui_border "$COLOR_CYAN" "$FRAME_TOP_LEFT" "$FRAME_TOP_RIGHT"
+  ui_line "$COLOR_BOLD$COLOR_CYAN" "$title"
+  ui_line '' ''
+}
+
+ui_end() {
+  ui_border "$COLOR_CYAN" "$FRAME_BOTTOM_LEFT" "$FRAME_BOTTOM_RIGHT"
+}
+
+ui_read_key() {
+  UI_TTY_STATE=$(stty -g <&4) || die 'Could not read terminal settings.'
+  stty -echo -icanon min 1 time 0 <&4 || {
+    restore_terminal
+    die 'Could not configure terminal input.'
+  }
+  UI_KEY=$(dd bs=1 count=1 <&4 2>/dev/null || true)
+  restore_terminal
+  case $UI_KEY in
+    [A-Z]) UI_KEY=$(printf '%s' "$UI_KEY" | tr '[:upper:]' '[:lower:]') ;;
+  esac
+}
+
+ui_show_error() {
+  [ -n "$UI_ERROR" ] || return 0
+  ui_line '' ''
+  ui_text "$(icon_label "$ICON_ERROR" "$UI_ERROR")" "$COLOR_RED$COLOR_BOLD"
+}
+
+ui_intro() {
+  UI_ERROR=
+  while :; do
+    ui_clear
+    ui_begin "$(icon_label "$ICON_WIZARD" 'dotfiles-next setup wizard')"
+    ui_text 'A polished, batteries-included Zsh environment for macOS and Ubuntu 26.04, built around Zsh for Humans.' "$COLOR_BOLD"
+    ui_line '' ''
+    ui_text 'The installer can install the required command-line tools and fonts, clone or reuse the repository, back up managed paths, create configuration links, and configure your prompt, editor, completions, SSH helpers, Fastfetch, and Mise.'
+    ui_line '' ''
+    ui_text "$(icon_label "$ICON_SUCCESS" 'Nothing changes until you review and approve the installation summary.')" "$COLOR_GREEN$COLOR_BOLD"
+    ui_line '' ''
+    ui_line "$COLOR_BOLD$COLOR_GREEN" "$(icon_label "$ICON_CONTINUE" '[c] Continue (default)')"
+    ui_line "$COLOR_RED" "$(icon_label "$ICON_QUIT" '[q] Quit and do nothing')"
+    ui_show_error
+    ui_end
+    ui_read_key
+    case $UI_KEY in
+      '' | c) return 0 ;;
+      q) exit 0 ;;
+      *) UI_ERROR="Unknown choice '$UI_KEY'. Press c, Enter, or q." ;;
+    esac
+  done
+}
+
+ui_menu() {
+  title=$1
+  question=$2
+  default_key=$3
+  options=$4
+  UI_ERROR=
+
+  while :; do
+    ui_clear
+    ui_begin "$(icon_label "$ICON_WIZARD" "$title")"
+    ui_text "$question" "$COLOR_YELLOW$COLOR_BOLD"
+    ui_line '' ''
+    printf '%s\n' "$options" |
+      while IFS='|' read -r key _value label || [ -n "$key" ]; do
+        if [ "$key" = "$default_key" ]; then
+          ui_line "$COLOR_BOLD$COLOR_GREEN" "$(icon_label "$ICON_SELECTED" "[$key] $label (default)")"
+        else
+          ui_line '' "$(icon_label "$ICON_OPTION" "[$key] $label")"
+        fi
+      done
+    ui_line '' ''
+    ui_line "$COLOR_RED" "$(icon_label "$ICON_QUIT" '[q] Quit and do nothing')"
+    ui_show_error
+    ui_end
+    ui_read_key
+    key=$UI_KEY
+    [ -n "$key" ] || key=$default_key
+    [ "$key" = q ] && exit 0
+    MENU_VALUE=$(printf '%s\n' "$options" | awk -F '|' -v wanted="$key" '$1 == wanted { print $2; exit }')
+    if [ -n "$MENU_VALUE" ]; then
+      return 0
+    fi
+    UI_ERROR="Unknown choice '$key'. Select one of the displayed options."
+  done
 }
 
 have() {
   command -v "$1" >/dev/null 2>&1
+}
+
+zsh_prerequisite_error() {
+  reason=$1
+
+  case $(uname -s) in
+    Darwin)
+      zsh_install_steps='Install Zsh with Homebrew:
+  brew install -y zsh'
+      ;;
+    Linux)
+      zsh_install_steps='Install Zsh with APT:
+  sudo apt-get update
+  sudo apt-get install -y zsh'
+      ;;
+    *)
+      zsh_install_steps='Install Zsh with your operating system package manager.'
+      ;;
+  esac
+
+  zsh_activate_steps="Make Zsh your login shell:
+  chsh -s \"\$(command -v zsh)\""
+
+  if have zsh; then
+    zsh_setup_steps=$zsh_activate_steps
+  else
+    zsh_setup_steps="$zsh_install_steps
+
+$zsh_activate_steps"
+  fi
+
+  log_box_error "$COLOR_RED" "$(icon_label "$ICON_ERROR" 'ZSH SETUP REQUIRED')" "$reason
+
+$zsh_setup_steps
+
+Sign out and sign back in, then rerun this installer."
+  exit 1
 }
 
 run_as_root() {
@@ -59,45 +400,6 @@ run_apt_get() {
   else
     run_as_root apt-get "$@"
   fi
-}
-
-confirm() {
-  prompt=$1
-
-  if [ ! -r /dev/tty ]; then
-    info "No terminal available: skipping optional component '$prompt'."
-    return 1
-  fi
-
-  while :; do
-    printf 'Install %s? [y/N] ' "$prompt" >/dev/tty
-    IFS= read -r answer </dev/tty || return 1
-    case $answer in
-      y | Y | yes | YES | Yes) return 0 ;;
-      '' | n | N | no | NO | No) return 1 ;;
-      *) printf 'Please answer y or n.\n' >/dev/tty ;;
-    esac
-  done
-}
-
-ask_choice() {
-  prompt=$1
-  default=$2
-  choices=$3
-
-  if [ ! -r /dev/tty ]; then
-    die "A terminal is required to configure $prompt."
-  fi
-
-  while :; do
-    printf '%s [%s] (%s) ' "$prompt" "$default" "$choices" >/dev/tty
-    IFS= read -r answer </dev/tty || die "Could not read the value for $prompt."
-    answer=${answer:-$default}
-    case " $choices " in
-      *" $answer "*) printf '%s\n' "$answer"; return 0 ;;
-      *) printf 'Please choose one of: %s.\n' "$choices" >/dev/tty ;;
-    esac
-  done
 }
 
 backup_if_needed() {
@@ -128,39 +430,40 @@ link_path() {
 
 check_prerequisites() {
   [ -n "${HOME:-}" ] || die 'HOME is not set.'
-  have zsh || die 'Zsh must already be installed.'
+  have zsh || zsh_prerequisite_error 'Zsh was not found.'
 
   login_shell=${SHELL:-}
   [ "${login_shell##*/}" = zsh ] ||
-    die "Zsh must be the login shell for the current user (current: ${login_shell:-unknown})."
+    zsh_prerequisite_error "Zsh is installed, but it is not the login shell for the current user (current: ${login_shell:-unknown})."
 
   have curl || die 'curl is required.'
 
 }
 
-setup_platform() {
+check_interactive_terminal() {
+  have stty || die 'stty is required for interactive mode.'
+  have dd || die 'dd is required for interactive mode.'
+  have fold || die 'fold is required for interactive mode.'
+  have awk || die 'awk is required for interactive mode.'
+  have tr || die 'tr is required for interactive mode.'
+
+  if { exec 4</dev/tty 3>/dev/tty; } 2>/dev/null && stty -g <&4 >/dev/null 2>&1; then
+    :
+  elif [ -t 0 ] && [ -t 1 ]; then
+    exec 4<&0 3>&1
+    stty -g <&4 >/dev/null 2>&1 ||
+      die 'Interactive mode could not access the terminal.'
+  else
+    die 'Interactive mode could not access the terminal.'
+  fi
+  UI_FDS_OPEN=true
+}
+
+detect_platform() {
   case $(uname -s) in
     Darwin)
       PLATFORM=macos
-      if ! have brew; then
-        info 'Installing Homebrew'
-        have bash || die 'bash is required to install Homebrew.'
-        if is_non_interactive; then
-          NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-        else
-          /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-        fi
-      fi
-
-      if ! have brew; then
-        if [ -x /opt/homebrew/bin/brew ]; then
-          eval "$(/opt/homebrew/bin/brew shellenv)"
-        elif [ -x /usr/local/bin/brew ]; then
-          eval "$(/usr/local/bin/brew shellenv)"
-        else
-          die 'Homebrew was installed but cannot be found.'
-        fi
-      fi
+      have brew || have bash || die 'bash is required to install Homebrew.'
       ;;
     Linux)
       PLATFORM=linux
@@ -175,12 +478,31 @@ setup_platform() {
   esac
 }
 
+setup_platform() {
+  [ "$PLATFORM" = macos ] || return 0
+
+  if ! have brew; then
+    info 'Installing Homebrew'
+    NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  fi
+
+  if ! have brew; then
+    if [ -x /opt/homebrew/bin/brew ]; then
+      eval "$(/opt/homebrew/bin/brew shellenv)"
+    elif [ -x /usr/local/bin/brew ]; then
+      eval "$(/usr/local/bin/brew shellenv)"
+    else
+      die 'Homebrew was installed but cannot be found.'
+    fi
+  fi
+}
+
 install_git() {
   have git && return 0
 
   info 'Installing Git'
   if [ "$PLATFORM" = macos ]; then
-    brew install git
+    brew install -y git
   else
     run_apt_get update
     run_apt_get install -y git
@@ -210,8 +532,8 @@ clone_repository() {
 install_required_packages() {
   info 'Installing required packages'
   if [ "$PLATFORM" = macos ]; then
-    brew install coreutils bat eza fd git-delta htop ripgrep stow tmux tree wget git chafa mediainfo poppler file bind
-    brew install --cask font-fira-code-nerd-font
+    brew install -y coreutils bat eza fd git-delta htop ripgrep stow tmux tree wget git chafa mediainfo poppler file bind
+    brew install -y --cask font-fira-code-nerd-font
   else
     run_apt_get update
     run_apt_get install -y \
@@ -225,10 +547,14 @@ install_required_packages() {
   fi
 }
 
-install_required_packages_once() {
+set_base_packages_marker() {
   state_home=${XDG_STATE_HOME:-"$HOME/.local/state"}
   marker_dir="$state_home/dotfiles-next"
   base_packages_marker="$marker_dir/base-packages-v${BASE_PACKAGES_MARKER_VERSION}-${PLATFORM}.done"
+}
+
+install_required_packages_once() {
+  set_base_packages_marker
 
   if [ -f "$base_packages_marker" ]; then
     info "Required packages already installed; found $base_packages_marker"
@@ -250,30 +576,391 @@ install_base_links() {
 
   link_path "$zshenv_source" "$HOME/.zshenv"
   link_path "$DOTFILES_DIR/ssh/config" "$HOME/.ssh/config"
+  link_path "$DOTFILES_DIR/git" "$HOME/.config/git"
   link_path "$DOTFILES_DIR/tmux" "$HOME/.config/tmux"
   link_path "$DOTFILES_DIR/ripgrep" "$HOME/.config/ripgrep"
 }
 
-configure_zshenv() {
-  info 'Configuring Zsh preferences'
-  prompt=$(ask_choice 'Prompt' 'powerlevel10k' 'powerlevel10k ohmyposh')
-  editor=$(ask_choice 'Default editor' 'micro' 'vim nano fresh micro')
-  show_fastfetch=$(ask_choice 'Show Fastfetch' 'false' 'false true')
-  use_fzf_tab=$(ask_choice 'Use fzf-tab' 'true' 'true false')
-  enable_auto_gencomp=$(ask_choice 'Enable automatic completions' 'true' 'true false')
-  enable_oh_my_zsh=$(ask_choice 'Enable Oh My Zsh' 'true' 'true false')
-  load_ssh_key=$(ask_choice 'Load SSH keys' 'true' 'true false')
+set_interactive_defaults() {
+  prompt=powerlevel10k
+  editor=micro
+  show_fastfetch=false
+  use_fzf_tab=true
+  enable_auto_gencomp=true
+  enable_oh_my_zsh=true
+  load_ssh_key=true
+  show_ssh_key=true
+  askpass_require=false
+}
+
+ask_boolean_menu() {
+  menu_title=$1
+  menu_question=$2
+  menu_default=$3
+  ui_menu "$menu_title" "$menu_question" "$menu_default" 'y|true|Yes
+n|false|No'
+}
+
+collect_interactive_choices() {
+  ui_menu 'Prompt' 'Select the prompt renderer.' p 'p|powerlevel10k|Powerlevel10k
+o|ohmyposh|Oh My Posh'
+  prompt=$MENU_VALUE
+
+  ui_menu 'Default editor' 'Select the editor exported through EDITOR and VISUAL.' m 'm|micro|Micro
+f|fresh|Fresh
+v|vim|Vim
+n|nano|Nano'
+  editor=$MENU_VALUE
+
+  ui_menu 'Fastfetch' 'Show the visual system overview when Zsh starts? The first-terminal option counts all active macOS ttys and Linux pts sessions, including SSH, IDEs, and other terminal applications.' n 'n|false|No
+y|true|Yes
+f|first|Yes, but only at the first terminal prompt'
+  show_fastfetch=$MENU_VALUE
+
+  ask_boolean_menu 'fzf-tab' 'Enable fuzzy completion, previews, history search, and suggestions?' y
+  use_fzf_tab=$MENU_VALUE
+
+  ask_boolean_menu 'Completion generator' 'Enable explicit Shift-Tab completion generation and caching?' y
+  enable_auto_gencomp=$MENU_VALUE
+
+  ask_boolean_menu 'Oh My Zsh helpers' 'Enable the selected Oh My Zsh libraries and helper plugins?' y
+  enable_oh_my_zsh=$MENU_VALUE
+
+  ask_boolean_menu 'SSH keys' 'Load SSH keys automatically when Zsh starts?' y
+  load_ssh_key=$MENU_VALUE
 
   if [ "$load_ssh_key" = true ]; then
-    show_ssh_key=$(ask_choice 'Show SSH keys' 'true' 'true false')
-    askpass_require=$(ask_choice 'Require SSH askpass' 'false' 'false true')
+    ask_boolean_menu 'SSH key list' 'Show the SSH keys loaded in the agent?' y
+    show_ssh_key=$MENU_VALUE
+    ask_boolean_menu 'SSH askpass' 'Require the graphical SSH askpass helper?' n
+    askpass_require=$MENU_VALUE
   else
     show_ssh_key=true
     askpass_require=false
   fi
+}
+
+human_boolean() {
+  case $1 in
+    true) printf 'Yes' ;;
+    false) printf 'No' ;;
+    first) printf 'Yes, but only at the first terminal prompt' ;;
+    *) printf '%s' "$1" ;;
+  esac
+}
+
+inspect_installation_state() {
+  case $REPO_URL in
+    '' | REPLACE_WITH_REPOSITORY_URL)
+      die 'Set DEFAULT_REPO_URL in install.sh after creating the repository.'
+      ;;
+  esac
+
+  if [ -d "$DOTFILES_DIR/.git" ]; then
+    repository_action="Reuse existing checkout at $DOTFILES_DIR"
+  elif [ -e "$DOTFILES_DIR" ]; then
+    die "$DOTFILES_DIR already exists and is not a Git repository."
+  else
+    repository_action="Clone $REPO_URL into $DOTFILES_DIR"
+  fi
+
+  if [ "$PLATFORM" = macos ]; then
+    if have brew; then
+      package_manager_action='Reuse Homebrew'
+    else
+      package_manager_action='Install Homebrew non-interactively'
+    fi
+  else
+    package_manager_action='Use APT'
+  fi
+
+  if have git; then
+    git_action='Reuse installed Git'
+  else
+    git_action='Install Git'
+  fi
+
+  set_base_packages_marker
+  if [ -f "$base_packages_marker" ]; then
+    base_packages_action="Skip; marker found at $base_packages_marker"
+  else
+    base_packages_action='Install required packages and fonts'
+  fi
+}
+
+ui_summary_line() {
+  summary_label=$1
+  summary_value=$2
+  summary_length=$((${#summary_label} + ${#summary_value} + 2))
+
+  if [ "$summary_length" -le "$UI_INNER_WIDTH" ]; then
+    summary_padding=$((UI_INNER_WIDTH - summary_length + 1))
+    {
+      printf '%s%s%s ' "$COLOR_CYAN" "$FRAME_VERTICAL" "$COLOR_RESET"
+      printf '%s%s%s: %s' "$COLOR_BOLD$COLOR_CYAN" "$summary_label" "$COLOR_RESET" "$summary_value"
+      print_spaces "$summary_padding"
+      printf '%s%s%s\n' "$COLOR_CYAN" "$FRAME_VERTICAL" "$COLOR_RESET"
+    } >&3
+  else
+    ui_line "$COLOR_BOLD$COLOR_CYAN" "$summary_label:"
+    ui_text "  $summary_value"
+  fi
+}
+
+ui_section() {
+  ui_line "$COLOR_BOLD$COLOR_YELLOW" "$(icon_label "$ICON_SECTION" "$1")"
+}
+
+tool_executable_available() {
+  case $1 in
+    */*) [ -x "$1" ] ;;
+    *) have "$1" ;;
+  esac
+}
+
+report_tool_version() {
+  tool_label=$1
+  tool_executable=$2
+  tool_version_line=$3
+  shift 3
+
+  if ! tool_executable_available "$tool_executable"; then
+    ui_summary_line "$tool_label" 'not found'
+    return 0
+  fi
+
+  tool_version=$(
+    "$tool_executable" "$@" 2>&1 |
+      awk -v wanted="$tool_version_line" '
+        NF {
+          ++seen
+          if (seen == wanted) {
+            sub(/\r$/, "")
+            print
+            exit
+          }
+        }
+      '
+  ) || tool_version=
+  [ -n "$tool_version" ] || tool_version='version unavailable'
+  ui_summary_line "$tool_label" "$tool_version"
+}
+
+report_homebrew_tool_version() {
+  homebrew_tool_label=$1
+  homebrew_formula=$2
+  homebrew_executable=$3
+  homebrew_version_line=$4
+  shift 4
+
+  if [ -z "${homebrew_prefix:-}" ]; then
+    ui_summary_line "$homebrew_tool_label" 'not found'
+    return 0
+  fi
+
+  report_tool_version \
+    "$homebrew_tool_label" \
+    "$homebrew_prefix/opt/$homebrew_formula/bin/$homebrew_executable" \
+    "$homebrew_version_line" \
+    "$@"
+}
+
+report_z4h_versions() {
+  z4h_root=${Z4H:-${XDG_CACHE_HOME:-$HOME/.cache}/zsh4humans/v5}
+  z4h_revision=
+
+  if [ -r "$z4h_root/zsh4humans/main.zsh" ] && [ -r "$z4h_root/zsh4humans/version" ]; then
+    z4h_revision=$(tr -d '\r\n' <"$z4h_root/zsh4humans/version") || z4h_revision=
+    case $z4h_revision in
+      '' | *[!0-9]*) z4h_revision= ;;
+    esac
+  fi
+
+  if [ -n "$z4h_revision" ]; then
+    ui_summary_line 'Zsh for Humans' "v5 (revision $z4h_revision)"
+  else
+    ui_summary_line 'Zsh for Humans' 'v5 (pending first Zsh startup)'
+  fi
+
+  z4h_fzf="$z4h_root/fzf/bin/fzf"
+  if [ -x "$z4h_fzf" ]; then
+    report_tool_version 'fzf (z4h)' "$z4h_fzf" 1 --version
+  else
+    ui_summary_line 'fzf (z4h)' 'pending first Zsh startup'
+  fi
+}
+
+show_installed_tool_versions() {
+  is_non_interactive && return 0
+
+  printf '\n' >&3
+  ui_begin "$(icon_label "$ICON_SUCCESS" 'Installed tool versions')"
+
+  ui_section 'Zsh for Humans'
+  report_z4h_versions
+
+  if [ "$PLATFORM" = macos ]; then
+    homebrew_prefix=$(brew --prefix 2>/dev/null || true)
+    ui_line '' ''
+    ui_section 'Package manager'
+    report_tool_version 'Homebrew' brew 1 --version
+  fi
+
+  ui_line '' ''
+  ui_section 'Base command-line tools'
+  if [ "$PLATFORM" = macos ]; then
+    report_homebrew_tool_version 'Git' git git 1 --version
+    report_homebrew_tool_version 'GNU coreutils' coreutils gdate 1 --version
+    report_homebrew_tool_version 'bat' bat bat 1 --version
+    report_homebrew_tool_version 'eza' eza eza 2 --version
+    report_homebrew_tool_version 'fd' fd fd 1 --version
+    report_homebrew_tool_version 'delta' git-delta delta 1 --version
+    report_homebrew_tool_version 'htop' htop htop 1 --version
+    report_homebrew_tool_version 'ripgrep' ripgrep rg 1 --version
+    report_homebrew_tool_version 'GNU Stow' stow stow 1 --version
+    report_homebrew_tool_version 'tmux' tmux tmux 1 -V
+    report_homebrew_tool_version 'tree' tree tree 1 --version
+    report_homebrew_tool_version 'Wget' wget wget 1 --version
+    report_homebrew_tool_version 'Chafa' chafa chafa 1 --version
+    report_homebrew_tool_version 'MediaInfo' mediainfo mediainfo 2 --Version
+    report_homebrew_tool_version 'Poppler' poppler pdftotext 1 -v
+    report_homebrew_tool_version 'file' file file 1 --version
+    report_homebrew_tool_version 'DNS tools' bind dig 1 -v
+  else
+    report_tool_version 'Git' git 1 --version
+    report_tool_version 'bat' batcat 1 --version
+    report_tool_version 'eza' eza 2 --version
+    report_tool_version 'fd' fdfind 1 --version
+    report_tool_version 'delta' delta 1 --version
+    report_tool_version 'htop' htop 1 --version
+    report_tool_version 'ripgrep' rg 1 --version
+    report_tool_version 'GNU Stow' stow 1 --version
+    report_tool_version 'tmux' tmux 1 -V
+    report_tool_version 'tree' tree 1 --version
+    report_tool_version 'Wget' wget 1 --version
+    report_tool_version 'Chafa' chafa 1 --version
+    report_tool_version 'MediaInfo' mediainfo 2 --Version
+    report_tool_version 'Poppler' pdftotext 1 -v
+    report_tool_version 'file' file 1 --version
+    report_tool_version 'DNS tools' dig 1 -v
+    report_tool_version 'grc' grc 1 --version
+    report_tool_version 'pip' python3 1 -m pip --version
+    report_tool_version 'command-not-found package' dpkg-query 1 -W "-f=\${Version}\n" command-not-found
+  fi
+
+  ui_line '' ''
+  ui_section 'Interactive selections'
+  case $editor in
+    vim)
+      if [ "$PLATFORM" = macos ]; then
+        report_homebrew_tool_version 'Vim' vim vim 1 --version
+      else
+        report_tool_version 'Vim' vim 1 --version
+      fi
+      ;;
+    nano)
+      if [ "$PLATFORM" = macos ]; then
+        report_homebrew_tool_version 'Nano' nano nano 1 --version
+      else
+        report_tool_version 'Nano' nano 1 --version
+      fi
+      ;;
+    fresh)
+      if [ "$PLATFORM" = macos ]; then
+        report_homebrew_tool_version 'Fresh' fresh-editor fresh 1 --version
+      else
+        report_tool_version 'Fresh' fresh 1 --version
+      fi
+      ;;
+    micro)
+      if [ "$PLATFORM" = macos ]; then
+        report_homebrew_tool_version 'Micro' micro micro 1 --version
+      else
+        report_tool_version 'Micro' micro 1 --version
+      fi
+      ;;
+  esac
+
+  if [ "$PLATFORM" = macos ]; then
+    report_homebrew_tool_version 'Mise' mise mise 1 --version
+  else
+    mise_executable="$HOME/.local/bin/mise"
+    report_tool_version 'Mise' "$mise_executable" 1 --version
+  fi
+
+  case $show_fastfetch in
+    true | first)
+      if [ "$PLATFORM" = macos ]; then
+        report_homebrew_tool_version 'Fastfetch' fastfetch fastfetch 1 --version
+      else
+        report_tool_version 'Fastfetch' fastfetch 1 --version
+      fi
+      ;;
+  esac
+
+  if [ "$prompt" = ohmyposh ]; then
+    if [ "$PLATFORM" = macos ]; then
+      report_homebrew_tool_version 'Oh My Posh' oh-my-posh oh-my-posh 1 --version
+    else
+      oh_my_posh_executable="$HOME/.local/bin/oh-my-posh"
+      report_tool_version 'Oh My Posh' "$oh_my_posh_executable" 1 --version
+    fi
+  fi
+
+  ui_end
+}
+
+ui_summary() {
+  UI_ERROR=
+  while :; do
+    ui_clear
+    ui_begin "$(icon_label "$ICON_WIZARD" 'Review installation plan')"
+    ui_section 'System and operations'
+    ui_summary_line 'Platform' "$PLATFORM"
+    ui_summary_line 'Package manager' "$package_manager_action"
+    ui_summary_line 'Git' "$git_action"
+    ui_summary_line 'Repository' "$repository_action"
+    ui_summary_line 'Base packages' "$base_packages_action"
+    ui_summary_line 'Mise' 'Install and prepare shell caches'
+    ui_line '' ''
+    ui_section 'Zsh preferences'
+    ui_summary_line 'Prompt' "$prompt"
+    ui_summary_line 'Editor' "$editor"
+    ui_summary_line 'Fastfetch' "$(human_boolean "$show_fastfetch")"
+    ui_summary_line 'fzf-tab' "$(human_boolean "$use_fzf_tab")"
+    ui_summary_line 'Completion generator' "$(human_boolean "$enable_auto_gencomp")"
+    ui_summary_line 'Oh My Zsh helpers' "$(human_boolean "$enable_oh_my_zsh")"
+    ui_summary_line 'Load SSH keys' "$(human_boolean "$load_ssh_key")"
+    if [ "$load_ssh_key" = true ]; then
+      ui_summary_line 'Show SSH keys' "$(human_boolean "$show_ssh_key")"
+      ui_summary_line 'Require SSH askpass' "$(human_boolean "$askpass_require")"
+    else
+      ui_summary_line 'Show SSH keys' 'Not applicable'
+      ui_summary_line 'Require SSH askpass' 'Not applicable'
+    fi
+    ui_line '' ''
+    ui_text "$(icon_label "$ICON_SUCCESS" 'No installation operation has been performed yet.')" "$COLOR_GREEN$COLOR_BOLD"
+    ui_line '' ''
+    ui_line "$COLOR_BOLD$COLOR_GREEN" "$(icon_label "$ICON_CONTINUE" '[a] Apply this plan (default)')"
+    ui_line "$COLOR_YELLOW" "$(icon_label "$ICON_RESTART" '[r] Restart the wizard')"
+    ui_line "$COLOR_RED" "$(icon_label "$ICON_QUIT" '[q] Quit and do nothing')"
+    ui_show_error
+    ui_end
+    ui_read_key
+    case $UI_KEY in
+      '' | a) return 0 ;;
+      r) return 1 ;;
+      q) exit 0 ;;
+      *) UI_ERROR="Unknown choice '$UI_KEY'. Press a, Enter, r, or q." ;;
+    esac
+  done
+}
+
+write_interactive_configuration() {
+  info 'Configuring Zsh preferences'
 
   source_file="$DOTFILES_DIR/zsh/.zshenv.init"
-  generated_file="$DOTFILES_DIR/zsh/.zshenv"
+  generated_file="$DOTFILES_DIR/zsh/home/.zshenv"
   [ -f "$source_file" ] || die "Missing Zsh template: $source_file"
 
   awk \
@@ -310,7 +997,7 @@ configure_non_interactive() {
   esac
 
   case $show_fastfetch in
-    true | false) ;;
+    true | false | first) ;;
     *) die "Unsupported Z4H_SHOW_FASTFETCH value: $show_fastfetch" ;;
   esac
 
@@ -327,14 +1014,14 @@ install_editor() {
   case $editor in
     vim)
       if [ "$PLATFORM" = macos ]; then
-        brew install vim
+        brew install -y vim
       else
         run_apt_get install -y vim
       fi
       ;;
     nano)
       if [ "$PLATFORM" = macos ]; then
-        brew install nano
+        brew install -y nano
       else
         run_apt_get install -y nano
       fi
@@ -346,7 +1033,7 @@ install_editor() {
 
 install_micro() {
   if [ "$PLATFORM" = macos ]; then
-    brew install micro
+    brew install -y micro
   else
     run_apt_get install -y micro
   fi
@@ -355,7 +1042,7 @@ install_micro() {
 
 install_fresh() {
   if [ "$PLATFORM" = macos ]; then
-    brew install fresh-editor
+    brew install -y fresh-editor
   else
     architecture=$(dpkg --print-architecture)
     download_url=$(
@@ -367,28 +1054,30 @@ install_fresh() {
     ) || true
     [ -n "$download_url" ] || die "No Fresh package found for $architecture."
     package_file="${TMPDIR:-/tmp}/fresh-editor.$$.deb"
-    trap 'rm -f "${package_file:-}"' EXIT HUP INT TERM
+    TEMP_PACKAGE_FILE=$package_file
     curl -fsSL "$download_url" -o "$package_file"
     run_apt_get install -y "$package_file"
     rm -f "$package_file"
-    trap - EXIT HUP INT TERM
+    TEMP_PACKAGE_FILE=
   fi
   link_path "$DOTFILES_DIR/fresh" "$HOME/.config/fresh"
 }
 
 install_mise() {
   if [ "$PLATFORM" = macos ]; then
-    brew install mise
+    brew install -y mise
   else
     mkdir -p "$HOME/.local/bin"
     curl -fsSL https://mise.run | sh
   fi
   link_path "$DOTFILES_DIR/mise" "$HOME/.config/mise"
+  info 'Preparing Mise shell caches'
+  sh "$DOTFILES_DIR/zsh/prepare-mise-cache.sh"
 }
 
 install_fastfetch() {
   if [ "$PLATFORM" = macos ]; then
-    brew install fastfetch
+    brew install -y fastfetch
   else
     run_apt_get install -y fastfetch
   fi
@@ -405,32 +1094,63 @@ install_oh_my_posh() {
   link_path "$DOTFILES_DIR/oh-my-posh" "$HOME/.config/oh-my-posh"
 }
 
-main() {
-  parse_arguments "$@"
-  check_prerequisites
+apply_installation() {
   setup_platform
   install_git
   clone_repository
   install_required_packages_once
 
   if is_non_interactive; then
-    configure_non_interactive
     zshenv_source="$DOTFILES_DIR/zsh/.zshenv.init"
   else
-    configure_zshenv
-    zshenv_source="$DOTFILES_DIR/zsh/.zshenv"
+    write_interactive_configuration
+    zshenv_source="$DOTFILES_DIR/zsh/home/.zshenv"
   fi
 
   install_base_links "$zshenv_source"
   install_editor
 
-  if ! is_non_interactive && confirm 'Mise'; then
+  if ! is_non_interactive; then
     install_mise
   fi
-  [ "$show_fastfetch" = true ] && install_fastfetch
+  case $show_fastfetch in
+    true | first) install_fastfetch ;;
+  esac
   [ "$prompt" = ohmyposh ] && install_oh_my_posh
+  return 0
+}
 
-  info 'Installation complete. Start a new Zsh login session to load the configuration.'
+main() {
+  parse_arguments "$@"
+
+  if is_non_interactive; then
+    check_prerequisites
+    detect_platform
+    configure_non_interactive
+  else
+    check_interactive_terminal
+    ui_intro
+    check_prerequisites
+    detect_platform
+    inspect_installation_state
+
+    while :; do
+      set_interactive_defaults
+      collect_interactive_choices
+      ui_summary && break
+    done
+
+    ui_clear
+    info 'Applying the approved installation plan'
+  fi
+
+  apply_installation
+
+  if ! is_non_interactive; then
+    show_installed_tool_versions
+  fi
+
+  success 'Installation complete. Start a new Zsh login session to load the configuration.'
 }
 
 main "$@"

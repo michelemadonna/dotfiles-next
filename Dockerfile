@@ -147,7 +147,10 @@ RUN mkdir -p \
     && ln -sfnT /home/demo/.dotfiles/fresh /home/demo/.config/fresh \
     && ln -sfnT /home/demo/.dotfiles/mise /home/demo/.config/mise \
     && ln -sfnT /home/demo/.dotfiles/fastfetch /home/demo/.config/fastfetch \
-    && ln -sfnT /home/demo/.dotfiles/oh-my-posh /home/demo/.config/oh-my-posh
+    && ln -sfnT /home/demo/.dotfiles/oh-my-posh /home/demo/.config/oh-my-posh \
+    && if [ "$DOTFILES_SOURCE_MODE" = local ]; then \
+      sh /home/demo/.dotfiles/zsh/prepare-mise-cache.sh; \
+    fi
 
 RUN cd /home/demo \
     && mise use -g java@system \
@@ -160,4 +163,4 @@ RUN cd /home/demo \
     && cd /home/demo/Developer/personal@github/python-helloworld \
     && mise use python@3.13.6
 
-CMD ["sh", "-c", "if [ \"$DOTFILES_SOURCE_MODE\" = remote ]; then cd /home/demo/.dotfiles && sh ./install.sh; fi; exec zsh -l"]
+CMD ["sh", "-c", "if [ \"$DOTFILES_SOURCE_MODE\" = remote ]; then cd /home/demo/.dotfiles && sh ./install.sh; fi; printf '\\n\\033[1;33m+----------------------------------------------------------+\\n| KNOWN DOCKER PREVIEW BUG                                 |\\n| Press Ctrl-P twice to cycle the preview layout.          |\\n+----------------------------------------------------------+\\033[0m\\n\\n'; exec zsh -l"]

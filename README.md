@@ -18,9 +18,21 @@ The host installer supports:
 - `sudo` access on Ubuntu 26.04 when installation is not run as root.
 - `bash` on macOS if Homebrew must be installed automatically.
 
-Check the active login shell before running the installer:
+If Zsh is missing, install it with the platform package manager:
 
 ```sh
+# macOS
+brew install zsh
+
+# Ubuntu 26.04
+sudo apt-get update
+sudo apt-get install -y zsh
+```
+
+Check that Zsh is available and is the active login shell before running the installer:
+
+```sh
+command -v zsh
 printf '%s\n' "$SHELL"
 ```
 
@@ -30,9 +42,26 @@ If necessary, set Zsh as the login shell and start a new login session:
 chsh -s "$(command -v zsh)"
 ```
 
+Sign out and back in after `chsh`. If Zsh is missing or is not the current
+user's login shell, the installer stops before changing the system and displays
+these platform-specific setup instructions.
+
 A terminal with Nerd Font support is strongly recommended because the prompts, tmux status line, and file icons use additional glyphs. The installer installs Fira Code Nerd Font on macOS and the bundled fonts on Ubuntu 26.04.
 
 To use the demo image, install Docker Desktop or Docker Engine with BuildKit. Building the image requires internet access and considerably more time and disk space than the host installation.
+
+For a minimal disposable Ubuntu 26.04 shell intended only for manual installer
+testing, build [`Dockerfile.test`](Dockerfile.test) and open its default Zsh
+session:
+
+```sh
+docker build -f Dockerfile.test -t dotfiles-next-test-shell .
+docker run --rm -it dotfiles-next-test-shell
+```
+
+The container runs as the passwordless-sudo `demo` user. It includes only Zsh,
+sudo, curl, and HTTPS certificates, leaving Git and the dotfiles packages for
+the installer under test.
 
 ## 🧰 Components
 
@@ -66,9 +95,11 @@ Package names differ slightly by platform. Ubuntu 26.04 uses `poppler-utils`, `d
 | Oh My Zsh helpers | Optional, enabled by default | Loads selected libraries and plugins such as `sudo`, `command-not-found`, and the macOS/Homebrew helpers without sourcing the complete `oh-my-zsh.sh`. |
 | fzf-tab stack | Optional, enabled by default | Adds fuzzy completion, previews, syntax highlighting, history search, and suggestions. |
 | Completion generator | Optional, enabled by default | Generates and caches getopt-style completion for the current command when explicitly requested with `Shift-Tab`. |
-| Fastfetch | Optional | Displays the configured system summary once per interactive shell session. |
-| Mise | Host interactive option | Installs and activates language/tool runtimes and maintains compatibility with `.tool-versions`. It is also preinstalled in the Docker demo. |
+| Fastfetch | Optional | Displays a visual overview of the operating system, hardware, memory, disks, shell, terminal, and other system details. It can run at every interactive Zsh startup or only at the first active terminal prompt. |
+| Mise | Host interactive installation | Installed automatically in interactive mode, activates language/tool runtimes, and maintains compatibility with `.tool-versions`. It is also preinstalled in the Docker demo. |
 | Micro, Fresh, Vim, or Nano | Select one | Configures the requested default editor; Micro is the default. Repository configurations are linked for Micro and Fresh. |
+
+Powerlevel10k shows detected Mise/ASDF project runtimes in the right prompt. When several runtimes are active, each tool keeps its own light capsule and starts with a white left-pointing chevron; Zsh hides the right prompt when it cannot fit beside the left prompt.
 
 The repository also contains configurations for Git, Ghostty, iTerm2, Fastfetch, Mise, SSH, ripgrep, tmux, Micro, and Fresh. Some are reference configurations and are not all linked by the host installer.
 
@@ -78,11 +109,11 @@ The project-specific plugins live in [`zsh/z4h.custom.plugins`](zsh/z4h.custom.p
 
 | Plugin | What it does |
 | --- | --- |
-| `z4h-fzf` | Extends fzf-tab, `Ctrl-T`, and `Alt-C` with shared hidden-file state, persistent preview layout, contextual previews, and command-specific views for Git, Docker, package managers, SSH, processes, manuals, and systemd. |
+| `z4h-fzf` | Extends fzf-tab, `Ctrl-T`, and `Alt-C` with shared hidden-file state, persistent preview layout, contextual previews, grouped Git refs and recent commits, and command-specific views for Git, Docker, package managers, SSH, processes, manuals, and systemd. |
 | `z4h-containers` | Adds Docker and kubectl aliases, caches CLI-generated completion, improves Docker completion contexts, and supplies JSON/YAML kubectl helpers when the required tools are available. |
 | `z4h-eza` | Replaces common `ls` forms with an icon-aware `eza` configuration and falls back to `exa` when necessary. Provides `ll` and `lls`. |
 | `z4h-gencomp-lazy` | Generates completion from a command's help output on explicit `Shift-Tab`, caches it, loads it immediately, and remembers failed attempts for the current session. It also provides the manual `gencomp` command. |
-| `z4h-mise` | Caches Mise activation and completion, avoids duplicate directory hooks, provides `asdf` compatibility, enhances `mise use`, and synchronizes selections to `.tool-versions`. |
+| `z4h-mise` | Caches Mise activation and completion, avoids duplicate hooks, refreshes immediately after directory changes and successful `mise` commands, throttles unchanged prompts, provides `asdf` compatibility, and synchronizes `mise use` selections to `.tool-versions`. |
 | `z4h-oh-my-posh` | Loads Oh My Posh only when selected and caches the generated Zsh initialization until the binary, theme, or plugin changes. |
 | `z4h-misc` | Provides compatibility aliases, the optional allafine behavior, and a searchable `Ctrl-K` keybinding reference for Zsh, fzf, tmux, and Micro. |
 
@@ -107,15 +138,47 @@ You can also clone the repository yourself and run:
 
 ### Interactive mode
 
-With no arguments, the installer asks for:
+With no arguments, the installer opens a Powerlevel10k-style full-screen
+wizard. The first screen introduces the repository and explains the operations
+the script can perform. Every question is shown in a colored frame and uses a
+single-key menu: press the displayed letter immediately, or press `Enter` to
+accept the option marked `(default)`. Press `q` on any question to quit without
+changing the system.
+
+The wizard asks for:
 
 - Prompt: `powerlevel10k` or `ohmyposh`.
 - Editor: `vim`, `nano`, `fresh`, or `micro`.
-- Fastfetch, fzf-tab, generated completion, and selected Oh My Zsh helpers.
+- Fastfetch (disabled, shown at every interactive Zsh startup, or shown only at the first active terminal prompt), fzf-tab, generated completion, and selected Oh My Zsh helpers.
 - SSH key loading, key display, and forced askpass behavior.
-- Mise installation.
 
-The answers are written to `zsh/.zshenv`, and `~/.zshenv` points to that generated file. Only the selected editor is installed. Fastfetch and Oh My Posh are installed only when enabled.
+The wizard does not ask whether packages should be installed. After the plan is
+approved, the interactive installer installs Mise automatically and prepares
+its activation/completion caches and ASDF compatibility data, keeping this work
+out of the first Zsh startup.
+
+After the questions, the installer clears the screen and shows the detected
+platform, repository and package operations together with every selected
+preference. No package, repository, file, backup, or symbolic link is changed
+before this summary is accepted. Press `a` or `Enter` to apply the plan, `r` to
+restart the wizard, or `q` to quit without changes.
+
+The answers are written to `zsh/.zshenv`, and `~/.zshenv` points to that generated file. Of the available editors, only the selected editor is installed. Mise is always installed in interactive mode, while Fastfetch and Oh My Posh are installed only when enabled.
+At the end, interactive mode shows a framed version report for the installed
+base tools, the selected editor, Mise, and any enabled optional binaries. It
+also reports the configured z4h v5 channel and checks only the fzf binary
+managed by z4h; it never installs or reports a separate system fzf. On a clean
+installation, z4h and fzf are marked as pending until the first Zsh startup
+downloads them. This report is not displayed in non-interactive mode.
+The Fastfetch `first` mode counts distinct active `ttys*` devices on macOS and
+`pts/*` devices on Linux. This is a deliberately global and simple check: SSH
+sessions, IDE terminals, and terminals opened by other applications contribute
+to the count, so they can prevent Fastfetch from being displayed.
+The wizard and installer-owned progress messages always use ANSI colors and
+framed output; `NO_COLOR` is intentionally ignored. UTF-8 terminals also get
+Unicode borders, status icons, highlighted defaults, and emphasized section
+labels, while other locales receive an ASCII fallback. External
+package-manager output is passed through unchanged.
 
 ### Non-interactive mode
 
@@ -126,13 +189,16 @@ Both spellings are supported:
 ./install.sh --non-interactive
 ```
 
-This mode never asks questions. It reads its installation choices from the environment:
+This mode never reads from `/dev/tty`, changes terminal input settings, clears
+the screen, opens menus, shows a review screen, or asks questions. It reads its
+installation choices from the environment. Installer-owned status messages
+still use the same colored frames as interactive mode:
 
 | Variable | Accepted values | Default |
 | --- | --- | --- |
 | `EDITOR` | `vim`, `nano`, `fresh`, `micro` | `micro`; unsupported values also fall back to `micro` |
 | `Z4H_PROMPT` | `powerlevel10k`, `ohmyposh` | `powerlevel10k` |
-| `Z4H_SHOW_FASTFETCH` | `true`, `false` | `false` |
+| `Z4H_SHOW_FASTFETCH` | `true`, `false`, `first` | `false` |
 
 Example:
 
@@ -162,10 +228,32 @@ ${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles-next/base-packages-v1-<platform>.
 
 The marker is created only after the base installation succeeds. Later executions skip that step. Git remains a separate idempotent prerequisite check, while optional components are evaluated on every run.
 
+To remove every cache and persistent state file created by this environment,
+run:
+
+```zsh
+zqs-reset-zsh-cache
+```
+
+The function lists its targets and asks for confirmation. It removes the z4h
+runtime and plugins, Zsh/Mise/Oh My Posh/completion caches, compiled `.zwc`
+files in the checkout, fzf state and temporary markers, shell history, the
+saved SSH agent environment, and the `dotfiles-next` installer marker. It does
+not remove configuration, backups, Mise/ASDF data, `.tool-versions`, or stop a
+running SSH agent. Close other Zsh sessions first so they cannot recreate
+history or state after the cleanup.
+
+Use `--dry-run` to inspect the exact paths, `--yes` to skip confirmation, or
+`--no-restart` to leave the current shell running. Normally the function
+restarts Zsh; that startup requires network access to download z4h again.
+Because the installer marker is removed, the next installer run executes the
+base-package step again.
+
 Existing regular files or directories at managed destinations are moved to a timestamped `.backup.YYYYMMDDhhmmss` path before linking. Existing symbolic links are replaced. The base installer manages:
 
 - `~/.zshenv`
-- `~/.ssh/config`
+- `~/.ssh/config` → `~/.dotfiles/ssh/config`
+- `~/.config/git` → `~/.dotfiles/git`
 - `~/.config/tmux`
 - `~/.config/ripgrep`
 - The selected editor's configuration when using Micro or Fresh
@@ -193,7 +281,8 @@ the resulting image does not depend on uncommitted files in the current director
 For the default remote source, `docker run -it` starts the repository's
 **interactive** installer before entering Zsh. The container therefore requires
 a TTY and asks for the prompt, editor, Fastfetch, fzf-tab, completion, Oh My Zsh,
-SSH, and Mise preferences on every new container.
+and SSH preferences on every new container. Mise is installed automatically
+after the plan is approved.
 
 To test the files from the current directory instead, select the local source
 explicitly. This mode runs `install.sh non-interactive` during the build and
@@ -202,6 +291,10 @@ starts Zsh directly when the container runs:
 ```sh
 ./docker-demo.sh local
 ```
+
+In both source modes, immediately before Zsh starts, the container displays a
+MOTD for a known Docker preview bug: press `Ctrl-P` twice to cycle the preview
+layout.
 
 The script accepts `remote` (the default) or `local`, builds
 `dotfiles-next-demo`, and launches it with an interactive TTY. Set
@@ -222,6 +315,8 @@ docker build \
 The container runs as the unprivileged `demo` user with Zsh as its login shell. The image prepares the base-package marker because all required packages are already installed in the cacheable base stage. It also:
 
 - Runs the remote checkout's interactive installer at container startup, or the local checkout's non-interactive installer during the build.
+- Prepares Mise activation/completion caches during a local build; a remote
+  container prepares them through the interactive installer.
 - Installs Fresh, Micro, Mise, Fastfetch, and Oh My Posh.
 - Links the Zsh, Git, SSH, tmux, ripgrep, editor, prompt, and runtime configurations.
 - Clones Java/Maven, Node.js, Python, and image repositories under `/home/demo/Developer` for testing completions and previews.
@@ -251,7 +346,7 @@ The default prompt inside the image remains Powerlevel10k because the Docker set
 | `Tab` | Open normal or fzf-tab completion. |
 | `Shift-Tab` | Generate completion for the current command from its help output, then open it. |
 | `Ctrl-H` | Toggle hidden files in fzf-tab, `Ctrl-T`, and `Alt-C`. |
-| `Ctrl-P` | Cycle the fzf-tab preview between right, bottom, and hidden layouts. |
+| `Ctrl-P` | Cycle the shared fzf-tab, `Ctrl-T`, and `Alt-C` preview between right, bottom, and hidden layouts. |
 | `Ctrl-T` | Select files with fzf and insert them into the command line. |
 | `Alt-C` | Select a directory with fzf and change into it. |
 | `Ctrl-K` | Open the searchable custom keybinding reference. |
@@ -262,6 +357,8 @@ The default prompt inside the image remains Powerlevel10k because the Docker set
 The main defaults live in [`zsh/.zshenv.init`](zsh/.zshenv.init), while interactive installations generate `zsh/.zshenv`. The primary shell configuration is [`zsh/home/.zshrc`](zsh/home/.zshrc).
 
 Store machine-specific shell values in `~/.env.zsh`; it is sourced automatically when present. Git include templates are available in [`git/examples`](git/examples), and tmux loads `~/.tmux.conf.local` when that file exists.
+
+`Z4H_MISE_REFRESH_SECONDS` controls Mise's periodic safety refresh (default: `5`). Directory changes, `PATH` changes, and successful `mise` commands still refresh immediately. Set it to `0` to run Mise's refresh hook before every prompt.
 
 ## 📜 License
 

@@ -5,7 +5,7 @@ fi
 
 if [ -n "${ZSH_VERSION-}" ]; then
   export Z4H_PROMPT=${Z4H_PROMPT:="powerlevel10k"} # powerlevel10k/ohmyposh
-  export Z4H_SHOW_FASTFETCH=${Z4H_SHOW_FASTFETCH:=false} #false/true
+  export Z4H_SHOW_FASTFETCH=${Z4H_SHOW_FASTFETCH:=first} #false/true/first
   export Z4H_ENABLE_ALLAFINE=false
   export Z4H_USE_FZF_TAB=${Z4H_USE_FZF_TAB:=true} #true/false
   export Z4H_ENABLE_AUTO_GENCOMP=${Z4H_ENABLE_AUTO_GENCOMP:=true} #true/false
@@ -13,7 +13,7 @@ if [ -n "${ZSH_VERSION-}" ]; then
   export Z4H_SSH_LOAD_KEY=${Z4H_SSH_LOAD_KEY:=true} #false/true
   export Z4H_SSH_SHOW_KEY=${Z4H_SSH_SHOW_KEY:=true} #false/true
   export Z4H_SSH_ASKPASS_REQUIRE=${Z4H_SSH_ASKPASS_REQUIRE:=false} #false/true
-
+  export Z4H_MISE_REFRESH_SECONDS=${Z4H_MISE_REFRESH_SECONDS:=5} #0 checks every prompt
   export DOTFILES_DIR="$HOME/.dotfiles" #${DOTFILES_DIR:="$HOME/.dotfiles"} 
   export ZDOTDIR="$DOTFILES_DIR/zsh/home"
 
@@ -77,7 +77,7 @@ if [ -n "${ZSH_VERSION-}" ]; then
   export POWERLEVEL9K_CONFIG_FILE="$DOTFILES_DIR/powerlevel10k/.p10k.zsh" 
   export Z4H_OH_MY_POSH_CONFIG="$DOTFILES_DIR/oh-my-posh/custom.omp.json"
   
-  . ${ZDOTDIR}/.zshenv
+  . ${ZDOTDIR}/.zshenv_z4h
 
   : ${ZDOTDIR:=~}
 fi

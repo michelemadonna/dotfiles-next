@@ -605,7 +605,7 @@
   #
   # Note: If this parameter is set to true, it won't hide tools.
   # Tip: Override this parameter for ${TOOL} with POWERLEVEL9K_ASDF_${TOOL}_SHOW_SYSTEM.
-  typeset -g POWERLEVEL9K_ASDF_SHOW_SYSTEM=true
+  typeset -g POWERLEVEL9K_ASDF_SHOW_SYSTEM=false
 
   # If set to non-empty value, hide tools unless there is a file matching the specified file pattern
   # in the current directory, or its parent directory, or its grandparent directory, and so on.
@@ -1812,9 +1812,9 @@
   typeset -g POWERLEVEL9K_DISABLE_HOT_RELOAD=true
 
   # Match oh-my-posh/custom.omp.json while keeping Powerlevel10k's native
-  # segment detection. Oh My Posh draws adjacent diamonds as two chevrons of
-  # the same orientation: the first closes the old background and the second
-  # opens the new one.
+  # segment detection. Separate diamonds use two chevrons: the first closes
+  # the old background and the second opens the new one. Same-background ASDF
+  # subsegments explicitly reopen with a light chevron below.
   typeset -g POWERLEVEL9K_LEFT_PROMPT_FIRST_SEGMENT_START_SYMBOL='\uE0B6'
   typeset -g POWERLEVEL9K_LEFT_PROMPT_LAST_SEGMENT_END_SYMBOL='\uE0B4'
   typeset -g POWERLEVEL9K_RIGHT_PROMPT_FIRST_SEGMENT_START_SYMBOL='\uE0B6'
@@ -1910,14 +1910,20 @@
 
   # Runtime segments share the same light capsule used by Oh My Posh.
   local omp_runtime_segment
-  for omp_runtime_segment in asdf virtualenv anaconda pyenv goenv nodenv nvm nodeenv \
-      rbenv rvm fvm luaenv jenv plenv perlbrew phpenv scalaenv haskell_stack; do
+  #for omp_runtime_segment in asdf virtualenv anaconda pyenv goenv nodenv nvm nodeenv \
+  #    rbenv rvm fvm luaenv jenv plenv perlbrew phpenv scalaenv haskell_stack; do
+  for omp_runtime_segment in asdf ; do
     typeset -g "POWERLEVEL9K_${(U)omp_runtime_segment}_FOREGROUND=#D81E5B"
     typeset -g "POWERLEVEL9K_${(U)omp_runtime_segment}_BACKGROUND=#E8E8E8"
     typeset -g "POWERLEVEL9K_${(U)omp_runtime_segment}_ICON_BEFORE_CONTENT=true"
     typeset -g "POWERLEVEL9K_${(U)omp_runtime_segment}_RIGHT_LEFT_WHITESPACE="
     typeset -g "POWERLEVEL9K_${(U)omp_runtime_segment}_RIGHT_RIGHT_WHITESPACE= %k%F{#E8E8E8}%S\uE0B2%s"
   done
+
+  # Every ASDF tool closes itself through RIGHT_RIGHT_WHITESPACE. Reopen the
+  # following tool with a light left-pointing chevron instead of inheriting
+  # the runtime foreground color.
+  typeset -g POWERLEVEL9K_ASDF_RIGHT_SUBSEGMENT_SEPARATOR='%k%F{#E8E8E8}\uE0B2'
 
   # ASDF has per-plugin colors that take precedence over the generic ASDF
   # values, so every runtime needs the same Oh My Posh palette explicitly.

@@ -1,0 +1,27 @@
+FROM ubuntu:26.04
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+      ca-certificates \
+      curl \
+      sudo \
+      zsh \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN useradd --create-home --shell /bin/zsh demo \
+    && printf 'demo ALL=(ALL) NOPASSWD:ALL\n' >/etc/sudoers.d/demo \
+    && chmod 0440 /etc/sudoers.d/demo \
+    && touch /home/demo/.zshrc \
+    && chown demo:demo /home/demo/.zshrc
+
+ENV HOME=/home/demo \
+    SHELL=/bin/zsh \
+    TERM=xterm-256color \
+    USER=demo
+
+USER demo
+WORKDIR /home/demo
+
+CMD ["/bin/zsh", "-l"]

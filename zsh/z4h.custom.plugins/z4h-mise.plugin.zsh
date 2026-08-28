@@ -19,20 +19,6 @@ fi
 #this is needed by powerlevel10k to show the mise segment using asdf segment configuration
 export ASDF_DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/asdf"
 
-mise-bootstrap-asdf-data() {
-  [[ -d "$ASDF_DATA_DIR" ]] && return 0
-  mkdir -p "$ASDF_DATA_DIR"
-  command git clone https://github.com/asdf-vm/asdf-plugins.git "$ASDF_DATA_DIR" > /dev/null 2>&1 || return
-
-  local file dir_name
-  for file in "$ASDF_DATA_DIR/plugins"/*(N); do
-    dir_name="${file##*/}"
-    command rm "$file"
-    mkdir -p "$ASDF_DATA_DIR/plugins/$dir_name"
-  done
-}
-mise-bootstrap-asdf-data
-
 # Cache mise's static activation script. The sourced script still installs the
 # normal precmd/chpwd hook, so hook-env keeps running when the environment may
 # have changed.
@@ -41,6 +27,7 @@ local mise_cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/zsh"
 local mise_activate_cache="$mise_cache_dir/${__mise}-activate-lazy.zsh"
 local mise_activate_tmp="$mise_activate_cache.${$}.tmp"
 local mise_activate_raw_tmp="$mise_activate_cache.${$}.raw"
+local mise_initial_hook_deferred=0
 
 if [[ ! -s $mise_activate_cache || $mise_binary -nt $mise_activate_cache ]]; then
   [[ -d $mise_cache_dir ]] || command mkdir -p "$mise_cache_dir"
@@ -61,42 +48,90 @@ fi
 
 if [[ -s $mise_activate_cache ]]; then
   source "$mise_activate_cache"
+  mise_initial_hook_deferred=1
 else
   eval "$(command "$mise_binary" --quiet activate zsh)"
 fi
 
-# Mise registers the same hook for both chpwd and precmd. After `cd`, Zsh runs
-# chpwd immediately and then precmd for the next prompt, causing two identical
-# hook-env calls. Keep the immediate chpwd update, but consume its result once
-# at the following prompt when the working directory has not changed again.
-_zqs_mise_chpwd_hook() {
-  _mise_hook || return
-  typeset -g _ZQS_MISE_CHPWD_PWD=$PWD
-  typeset -gi _ZQS_MISE_SKIP_NEXT_PRECMD=1
-}
-
-_zqs_mise_precmd_hook() {
-  if (( ${_ZQS_MISE_SKIP_NEXT_PRECMD:-0} )) &&
-      [[ ${_ZQS_MISE_CHPWD_PWD:-} == $PWD ]]; then
-    unset _ZQS_MISE_SKIP_NEXT_PRECMD _ZQS_MISE_CHPWD_PWD
-    return 0
-  fi
-
-  unset _ZQS_MISE_SKIP_NEXT_PRECMD _ZQS_MISE_CHPWD_PWD
-  _mise_hook
-}
-
 typeset -ga precmd_functions chpwd_functions
-precmd_functions=(
-  _zqs_mise_precmd_hook
-  ${precmd_functions:#_mise_hook}
-)
-chpwd_functions=(
-  _zqs_mise_chpwd_hook
-  ${chpwd_functions:#_mise_hook}
-)
+if (( $+functions[_mise_hook_precmd] && $+functions[_mise_hook_chpwd] )); then
+  # Current Mise already prevents chpwd from being followed by a duplicate
+  # precmd refresh. Use its hooks directly instead of adding a second pair.
+  precmd_functions=(${precmd_functions:#_zqs_mise_precmd_hook})
+  chpwd_functions=(${chpwd_functions:#_zqs_mise_chpwd_hook})
+  unfunction _zqs_mise_precmd_hook _zqs_mise_chpwd_hook 2>/dev/null
+
+  # The cached activation omits Mise's initial hook-env call. Its generated
+  # first-prompt fast path assumes that call already happened, so bypass that
+  # fast path once and let the native hook initialize the environment.
+  (( mise_initial_hook_deferred )) && typeset -gx __MISE_ZSH_PRECMD_RUN=1
+
+  # Avoid starting Mise for every prompt when nothing relevant changed. Keep
+  # chpwd immediate, refresh after every Mise command, detect PATH changes,
+  # and retain a short periodic check for externally edited configs or env.
+  zmodload zsh/datetime
+  local mise_refresh_seconds=${Z4H_MISE_REFRESH_SECONDS:-5}
+  [[ $mise_refresh_seconds == <-> ]] || mise_refresh_seconds=5
+  typeset -gi _ZQS_MISE_REFRESH_SECONDS=$mise_refresh_seconds
+  typeset -gi _ZQS_MISE_REFRESH_REQUIRED=$mise_initial_hook_deferred
+  typeset -gF _ZQS_MISE_LAST_REFRESH=$EPOCHREALTIME
+  typeset -g _ZQS_MISE_LAST_PATH=$PATH
+
+  _zqs_mise_precmd_hook() {
+    emulate -L zsh
+    local -F now=$EPOCHREALTIME
+
+    if [[ ${__MISE_ZSH_CHPWD_RAN:-0} == 1 ]]; then
+      # Let Mise consume its chpwd marker without invoking hook-env twice.
+      _mise_hook_precmd || return
+    elif (( ! ${_ZQS_MISE_REFRESH_REQUIRED:-0} &&
+            ${_ZQS_MISE_REFRESH_SECONDS:-5} > 0 &&
+            now - ${_ZQS_MISE_LAST_REFRESH:-0} <
+              ${_ZQS_MISE_REFRESH_SECONDS:-5} )) &&
+        [[ $PATH == ${_ZQS_MISE_LAST_PATH:-} ]]; then
+      return 0
+    else
+      _mise_hook_precmd || return
+    fi
+
+    typeset -g _ZQS_MISE_LAST_PATH=$PATH
+    typeset -gF _ZQS_MISE_LAST_REFRESH=$EPOCHREALTIME
+    typeset -gi _ZQS_MISE_REFRESH_REQUIRED=0
+  }
+
+  precmd_functions=(${precmd_functions/_mise_hook_precmd/_zqs_mise_precmd_hook})
+else
+  # Compatibility fallback for older activation scripts that register the
+  # same `_mise_hook` function for chpwd and precmd.
+  _zqs_mise_chpwd_hook() {
+    _mise_hook || return
+    typeset -g _ZQS_MISE_CHPWD_PWD=$PWD
+    typeset -gi _ZQS_MISE_SKIP_NEXT_PRECMD=1
+  }
+
+  _zqs_mise_precmd_hook() {
+    if (( ${_ZQS_MISE_SKIP_NEXT_PRECMD:-0} )) &&
+        [[ ${_ZQS_MISE_CHPWD_PWD:-} == $PWD ]]; then
+      unset _ZQS_MISE_SKIP_NEXT_PRECMD _ZQS_MISE_CHPWD_PWD
+      return 0
+    fi
+
+    unset _ZQS_MISE_SKIP_NEXT_PRECMD _ZQS_MISE_CHPWD_PWD
+    _mise_hook
+  }
+
+  precmd_functions=(
+    _zqs_mise_precmd_hook
+    ${precmd_functions:#_mise_hook}
+  )
+  chpwd_functions=(
+    _zqs_mise_chpwd_hook
+    ${chpwd_functions:#_mise_hook}
+  )
+fi
 
 unset mise_binary mise_cache_dir mise_activate_cache mise_activate_tmp mise_activate_raw_tmp
+unset mise_initial_hook_deferred mise_refresh_seconds
 
 asdf() {
   command mise --quiet "$@"
@@ -269,12 +304,19 @@ mise () {
     if [[ -n "$runtime_spec" ]]; then
       _mise_runtime_to_asdf "$runtime_spec" "$global_flag"
     fi
+    typeset -gi _ZQS_MISE_REFRESH_REQUIRED=1
   elif [[ "$1" == "install" ]]; then
     export MISE_QUIET=0
-    mise_orig "$@"|| return "$?"
+    mise_orig "$@"
+    local mise_status=$?
     export MISE_QUIET=1
+    (( mise_status == 0 )) && typeset -gi _ZQS_MISE_REFRESH_REQUIRED=1
+    return $mise_status
   else
     mise_orig "$@"
+    local mise_status=$?
+    (( mise_status == 0 )) && typeset -gi _ZQS_MISE_REFRESH_REQUIRED=1
+    return $mise_status
   fi
 }
 

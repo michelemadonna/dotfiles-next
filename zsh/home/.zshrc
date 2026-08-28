@@ -60,14 +60,6 @@ zstyle ':z4h:direnv:success' notify 'yes'
 zstyle ':completion:*' list-colors ${(s.:.)LS_COLORS}
 zstyle ':completion:*:descriptions' format '[%d]'
 zstyle ':completion:*:git-checkout:*' sort false
-## Restore the complete Git candidate set exposed by Quickstart. z4h normally
-## hides symbolic heads, recent branches and commit objects.
-#zstyle -d ':completion:*:git-*:argument-rest:heads' ignored-patterns
-#zstyle -d ':completion:*:git-*:argument-rest:heads-local' ignored-patterns
-#zstyle -d ':completion:*:git-*:argument-rest:heads-remote' ignored-patterns
-#zstyle -d ':completion:*:git-*:argument-rest:commits' ignored-patterns
-#zstyle -d ':completion:*:git-*:argument-rest:commit-objects' ignored-patterns
-#zstyle -d ':completion:*:git-*:argument-rest:recent-branches' ignored-patterns
 
 
 if [[ ${Z4H_USE_FZF_TAB} = true ]]; then
@@ -138,18 +130,6 @@ if (( $+commands[brew] )); then
 	unset _z4h_brew_prefix
 fi
 
-# Install or update core components (fzf, zsh-autosuggestions, etc.) and
-# initialize Zsh. After this point console I/O is unavailable until Zsh
-# is fully initialized. Everything that requires user interaction or can
-# perform network I/O must be done above. Everything else is best done below.
-z4h init || return
-
-# Extend PATH.
-path=(~/local/bin $path)
-
-# Export environment variables.
-export GPG_TTY=$TTY
-
 # Start or reuse an SSH agent and load local private keys. Homebrew keychain is
 # optional; when it isn't installed, keep the agent environment in ~/.ssh.
 function load-our-ssh-keys() {
@@ -157,20 +137,25 @@ function load-our-ssh-keys() {
 	setopt local_options no_unset
 
 	local agent_file=$HOME/.ssh/ssh-agent
-	local agent_status key fingerprint fingerprint_line
+	local agent_status agent_keys key fingerprint fingerprint_line
 	local -a keys
+	typeset -g _ZQS_SSH_KEYS=
+	typeset -gi _ZQS_SSH_KEYS_STATUS=2
+	typeset -gi _ZQS_SSH_KEYS_VALID=0
 
 	if (( $+commands[keychain] )); then
 		eval "$(keychain -q --eval)" || return
+		agent_keys=$(ssh-add -l 2>/dev/null)
+		agent_status=$?
 	else
 		mkdir -p -- "$HOME/.ssh" || return
 		chmod 700 -- "$HOME/.ssh" 2>/dev/null
 
-		ssh-add -l >/dev/null 2>&1
+		agent_keys=$(ssh-add -l 2>/dev/null)
 		agent_status=$?
 		if (( agent_status == 2 )) && [[ -r $agent_file ]]; then
 			source "$agent_file"
-			ssh-add -l >/dev/null 2>&1
+			agent_keys=$(ssh-add -l 2>/dev/null)
 			agent_status=$?
 		fi
 
@@ -181,12 +166,15 @@ function load-our-ssh-keys() {
 				print -r -- "export SSH_AGENT_PID=${(q)SSH_AGENT_PID}"
 			} >| "$agent_file"
 			chmod 600 -- "$agent_file" 2>/dev/null
+			agent_keys=
+			agent_status=1
 		fi
 	fi
 
-	ssh-add -l >/dev/null 2>&1
-	agent_status=$?
 	(( agent_status == 2 )) && return 1
+	_ZQS_SSH_KEYS=$agent_keys
+	_ZQS_SSH_KEYS_STATUS=$agent_status
+	(( agent_status == 0 )) && _ZQS_SSH_KEYS_VALID=1
 
 	if (( agent_status == 1 )); then
 		if [[ $OSTYPE == darwin* ]]; then
@@ -195,6 +183,11 @@ function load-our-ssh-keys() {
 			else
 				ssh-add -qA >/dev/null 2>&1
 			fi
+			agent_keys=$(ssh-add -l 2>/dev/null)
+			agent_status=$?
+			_ZQS_SSH_KEYS=$agent_keys
+			_ZQS_SSH_KEYS_STATUS=$agent_status
+			(( agent_status == 0 )) && _ZQS_SSH_KEYS_VALID=1
 		fi
 
 		keys=(~/.ssh/**/*id_(rsa|dsa|ecdsa|ed25519)(N.))
@@ -202,8 +195,10 @@ function load-our-ssh-keys() {
 			fingerprint_line=$(ssh-keygen -l -f "$key" 2>/dev/null) || continue
 			fingerprint=${${(z)fingerprint_line}[2]}
 			[[ -n $fingerprint ]] || continue
-			ssh-add -l 2>/dev/null | command grep -Fq -- "$fingerprint" ||
-				ssh-add -q -- "$key"
+			if [[ $agent_keys != *"$fingerprint"* ]] && ssh-add -q -- "$key"; then
+				agent_keys+=$'\n'$fingerprint
+				_ZQS_SSH_KEYS_VALID=0
+			fi
 		done
 	fi
 }
@@ -215,13 +210,106 @@ if [[ -o interactive && -z ${SSH_CLIENT-} && -z ${SSH_CONNECTION-} &&
 	fi
 	load-our-ssh-keys
 fi
+# deal with screen, if we're using it - courtesy MacOSXHints.com
+# Login greeting ------------------
+if [ "$TERM" = "screen" -a ! "$SHOWED_SCREEN_MESSAGE" = "true" ]; then
+	detached_screens=$(screen -list | grep Detached)
+	if [ ! -z "$detached_screens" ]; then
+		echo "+---------------------------------------+"
+		echo "| Detached screens are available:       |"
+		echo "$detached_screens"
+		echo "+---------------------------------------+"
+	fi
+fi
+
+
+print -n $'\e[9999;1H'
+
+if [[ -o interactive && ${Z4H_SHOW_FASTFETCH:-false} != false && -z ${Z4H_FASTFETCH_SHOWN:-} ]]; then
+	# Exported markers are inherited by nested shells and tmux children, so
+	# Fastfetch is displayed only once for the terminal/session.
+	export Z4H_FASTFETCH_SHOWN=1
+	show_fastfetch=true
+
+	
+
+	if [[ $Z4H_SHOW_FASTFETCH == first ]]; then
+		active_terminals=$(ps -axo tty= 2>/dev/null | awk '
+			$1 ~ /^ttys[0-9]+$/ || $1 ~ /^pts\/[0-9]+$/ { seen[$1] = 1 }
+			END { for (tty in seen) count++; print count + 0 }
+		')
+
+		#echo "+---------------------------------------+"
+		#echo "| ttys*/pts*: count of active terminals: $active_terminals |"
+		#echo "| Z4H_SHOW_FASTFETCH=$Z4H_SHOW_FASTFETCH |"
+		#echo "| show_fastfetch=$show_fastfetch |"
+		#echo "+---------------------------------------+"
+
+		(( active_terminals <= 1 )) || show_fastfetch=false
+	fi
+	if [[ $show_fastfetch == true ]] && (( $+commands[fastfetch] )); then
+		parent_cmd=$(ps -o comm= -p $PPID 2>/dev/null)
+		case "${parent_cmd:l}" in
+			*zed*|*code*|*micro*|*nvim*|*vim*|*idea*|*clion*|*goland*|*phpstorm*|*pycharm*|*tmux*|*fresh*|*helix*|*terminal*) ;;
+			*) fastfetch --pipe false ;;
+		esac
+		unset parent_cmd
+	elif [[ $show_fastfetch == true ]]; then
+		print -u2 "fastfetch not found. See $DOTFILES_DIR/Readme.md"
+	fi
+	unset active_terminals show_fastfetch
+fi
 
 if [[ ${Z4H_SSH_SHOW_KEY:-false} == true ]]; then
 	print
 	print 'Current SSH Keys:'
-	ssh-add -l
+	if (( ${_ZQS_SSH_KEYS_VALID:-0} )) && (( ${_ZQS_SSH_KEYS_STATUS:-2} == 0 )); then
+		print -r -- "$_ZQS_SSH_KEYS"
+	else
+		ssh-add -l
+	fi
 	print
 fi
+unset _ZQS_SSH_KEYS _ZQS_SSH_KEYS_STATUS _ZQS_SSH_KEYS_VALID
+
+# Install or update core components (zsh-autosuggestions, etc.) and
+# initialize Zsh. After this point console I/O is unavailable until Zsh
+# is fully initialized. Everything that requires user interaction or can
+# perform network I/O must be done above. Everything else is best done below.
+z4h init || return
+
+if (( $+commands[git] )); then
+	# Homebrew's _git delegates to Bash completion and drops the grouped refs,
+	# recent commits and descriptions provided by macOS's native Zsh completion.
+	if [[ $OSTYPE == darwin* ]]; then
+		typeset _z4h_native_git_completion=/usr/share/zsh/$ZSH_VERSION/functions/_git
+		if [[ -r $_z4h_native_git_completion ]]; then
+			unfunction _git 2>/dev/null
+			autoload -Uz -R "$_z4h_native_git_completion"
+			compdef _git git gitk
+		fi
+		unset _z4h_native_git_completion
+	fi
+
+	# z4h hides these expensive groups by default. Restore the complete Git
+	# candidate set after z4h init so fzf-tab receives them.
+	zstyle -d ':completion:*:git-*:argument-rest:heads' ignored-patterns
+	zstyle -d ':completion:*:git-*:argument-rest:heads-local' ignored-patterns
+	zstyle -d ':completion:*:git-*:argument-rest:heads-remote' ignored-patterns
+	zstyle -d ':completion:*:git-*:argument-rest:commits' ignored-patterns
+	zstyle -d ':completion:*:git-*:argument-rest:commit-objects' ignored-patterns
+	zstyle -d ':completion:*:git-*:argument-rest:recent-branches' ignored-patterns
+fi
+
+# Extend PATH.
+path=(~/local/bin $path)
+
+# Export environment variables.
+export GPG_TTY=$TTY
+
+
+
+
 
 # Source additional local files if they exist.
 z4h source ~/.env.zsh
@@ -366,36 +454,11 @@ REPORTTIME=${REPORTTIME:-2}
 
 TIMEFMT="%U user %S system %P cpu %*Es total"
 
-# deal with screen, if we're using it - courtesy MacOSXHints.com
-# Login greeting ------------------
-if [ "$TERM" = "screen" -a ! "$SHOWED_SCREEN_MESSAGE" = "true" ]; then
-	detached_screens=$(screen -list | grep Detached)
-	if [ ! -z "$detached_screens" ]; then
-		echo "+---------------------------------------+"
-		echo "| Detached screens are available:       |"
-		echo "$detached_screens"
-		echo "+---------------------------------------+"
-	fi
-fi
+# Fix bracketed paste issue
+# Closes #73
+ZSH_AUTOSUGGEST_CLEAR_WIDGETS+=(bracketed-paste)
 
 
-print -n $'\e[9999;1H'
-
-if [[ -o interactive && ${Z4H_SHOW_FASTFETCH:-false} == true && -z ${Z4H_FASTFETCH_SHOWN:-} ]]; then
-	# Exported markers are inherited by nested shells and tmux children, so
-	# Fastfetch is displayed only once for the terminal/session.
-	export Z4H_FASTFETCH_SHOWN=1
-	if (( $+commands[fastfetch] )); then
-		parent_cmd=$(ps -o comm= -p $PPID 2>/dev/null)
-		case "${parent_cmd:l}" in
-			*zed*|*code*|*micro*|*nvim*|*vim*|*idea*|*clion*|*goland*|*phpstorm*|*pycharm*|*tmux*|*fresh*|*helix*|*terminal*) ;;
-			*) fastfetch --pipe false ;;
-		esac
-		unset parent_cmd
-	else
-		print -u2 "fastfetch not found. See $DOTFILES_DIR/Readme.md"
-	fi
-fi
 
 if [[ -f ${HOME}/.z4h-zprof-enabled ]]; then
   zprof

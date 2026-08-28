@@ -65,6 +65,11 @@ Do not use non-interactive shell startup as proof of ZLE, fzf, prompt, or
 terminal behavior. Exercise the exact keys in a real PTY, preferably in the
 Docker demo when the issue is Docker-specific.
 
+For temporary macOS shell validation, use
+`/Users/michele/Developer/z4u-next/fhome.sh` in a real PTY. This is Michele's
+test HOME and launcher; do not use or recreate a repository-local `fhome.sh`
+as a substitute.
+
 ## Validation
 
 Choose checks proportionate to the modified area:
@@ -74,7 +79,23 @@ Choose checks proportionate to the modified area:
   installer branches with a disposable HOME and stubbed package managers
   rather than changing the host.
 - Zsh sources: `/bin/zsh -n` on every modified Zsh file. For bindings,
-  completion, previews, prompts, or widgets, also test in a real PTY.
+  completion, previews, prompts, or widgets, also test in a real PTY through
+  `/Users/michele/Developer/z4u-next/fhome.sh`.
+
+For fzf binding validation, capture the output of these commands in that real
+PTY:
+
+```zsh
+bindkey '^T'
+bindkey '^[c'
+print -r -- "$FZF_CTRL_T_OPTS"
+print -r -- "$FZF_ALT_C_OPTS"
+```
+
+The reported widget names and option values must be consistent with the
+bindings and fzf behavior defined by the repository sources; non-empty output
+alone is not sufficient evidence.
+
 - Dockerfile: `docker build --check .`, followed by the affected build mode:
   default remote build or `--build-arg DOTFILES_SOURCE=local`. Use a container
   smoke test when runtime behavior changes.
