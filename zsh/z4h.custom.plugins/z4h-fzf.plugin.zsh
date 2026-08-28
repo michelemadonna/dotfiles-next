@@ -245,7 +245,7 @@ _fzf_height() {
     local height=''
     [[ -r $FZF_TAB_HEIGHT_STATE_FILE ]] && height=$(<"$FZF_TAB_HEIGHT_STATE_FILE")
     case $height in
-        33%|50%|66%|100%) reply=($height) ;;
+        33%|50%|66%|-1) reply=($height) ;;
         *) reply=(33%) ; print -r -- 33% >| "$FZF_TAB_HEIGHT_STATE_FILE" ;;
     esac
 }
@@ -306,7 +306,7 @@ _fzf_widget_refresh_flags() {
     local fzf_height=$reply[1]
 
     export FZF_CTRL_T_OPTS="--height=${fzf_height} --header='TAB/SHIFT-TAB move  ·  CTRL-SPACE select  ·  CTRL-A mark all  ·  CTRL-J/K preview scroll  ·  CTRL-P preview  ·  CTRL-H hidden  ·  ENTER insert  ·  ESC close' --preview '$FZF_TAB_PREVIEW_COMMAND {}' --preview-window=${preview_window} --bind='ctrl-a:toggle-all,ctrl-j:preview-down,ctrl-k:preview-up,ctrl-p:execute-silent(${state_command_q} ${state_helper_q} cycle-preview ${preview_state_q})+change-preview-window(${preview_cycle}),ctrl-h:execute-silent(${toggle_hidden_command})+reload(${list_files_command})'"
-    export FZF_ALT_C_OPTS="--height=${fzf_height} --header='TAB/SHIFT-TAB move  ·  CTRL-J/K preview scroll  ·  CTRL-P preview  ·  CTRL-H hidden  ·  ENTER cd  ·  ESC close' --preview '$FZF_TAB_PREVIEW_COMMAND {}' --preview-window=${preview_window} --bind='ctrl-j:preview-down,ctrl-k:preview-up,ctrl-p:execute-silent(${state_command_q} ${state_helper_q} cycle-preview ${preview_state_q})+change-preview-window(${preview_cycle}),ctrl-h:execute-silent(${toggle_hidden_command})+reload(${list_directories_command})'"
+    export FZF_ALT_C_OPTS="--height=${fzf_height} --header='TAB/SHIFT-TAB move  ·  CTRL-J/K preview scroll  ·  CTRL-P preview  ·  CTRL-H hidden  ·  ENTER cd  ·  ESC close' --preview '$FZF_TAB_PREVIEW_COMMAND {}' --preview-window=${preview_window} --bind='ctrl-j:preview-down,ctrl-k:preview-up,ctrl-p:execute-silent(${state_command_q} ${state_helper_q} cycle-preview ${preview_cycle})+change-preview-window(${preview_cycle}),ctrl-h:execute-silent(${toggle_hidden_command})+reload(${list_directories_command})'"
 }
 
 _z4h_fzf_file_widget() {
@@ -331,7 +331,7 @@ _fzf_cycle_height() {
     case $reply[1] in
         33%) reply=(50%) ;;
         50%) reply=(66%) ;;
-        66%) reply=(100%) ;;
+        66%) reply=(-1) ;;
         *) reply=(33%) ;;
     esac
     print -r -- "$reply[1]" >| "$FZF_TAB_HEIGHT_STATE_FILE"
@@ -421,6 +421,14 @@ bindkey -M emacs \
 bindkey -M viins \
     '^I' \
     _fzf_tab_complete_with_dots
+
+bindkey -M emacs \
+    '^H' \
+    _fzf_tab_toggle_hidden
+
+bindkey -M viins \
+    '^H' \
+    _fzf_tab_toggle_hidden
 
 bindkey -M emacs \
     '^H' \

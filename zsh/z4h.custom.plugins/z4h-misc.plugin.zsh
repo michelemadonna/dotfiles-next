@@ -167,6 +167,7 @@ if (( $+commands[fzf] )); then
 🐚 Zsh
 ----------------------------------------------------------------------------------
 Ctrl+R                        │ Search history (fzf)
+Ctrl+K                        │ Open the searchable keybinding reference
 Esc Esc                       │ Insert sudo before the last command
 Ctrl+T                        │ Fuzzy file path completion (fzf)
 Alt+C / Esc+C                 │ cd into a selected subdirectory (fzf)
@@ -182,7 +183,7 @@ Ctrl+Space                    │ Mark / unmark item
 Ctrl+A                        │ Toggle all marked / unmarked
 Enter                         │ Select current item(s)
 Ctrl+P                        │ Toggle / move preview window
-Ctrl+F                        │ Cycle fzf height: 33%, 50%, 66%, 100%
+Ctrl+F                        │ Cycle fzf height: 33%, 50%, 66%, prompt-safe full height
 Ctrl+J / K                    │ Scroll preview down / up
 < / >                         │ Switch group (fzf-tab)
 Ctrl+G then ?                 │ Show all available fzf-git shortcuts
