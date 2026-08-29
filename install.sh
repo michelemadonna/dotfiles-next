@@ -623,7 +623,7 @@ f|first|Yes, but only at the first terminal prompt'
   use_fzf_tab=$MENU_VALUE
 
   ui_menu 'fzf binary' 'Select the fzf binary used by the shell.' z 'z|true|Use the z4h-native fzf
-l|false|Use the latest local Git build'
+l|false|Use the latest release from a local Git checkout'
   use_fzf_from_z4h=$MENU_VALUE
 
   ask_boolean_menu 'Mise' 'Install Mise and prepare its shell caches?' y
@@ -939,7 +939,7 @@ ui_summary() {
     ui_summary_line 'Editor' "$editor"
     ui_summary_line 'Fastfetch' "$(human_boolean "$show_fastfetch")"
     ui_summary_line 'fzf-tab' "$(human_boolean "$use_fzf_tab")"
-    ui_summary_line 'fzf binary' "$(if [ "$use_fzf_from_z4h" = true ]; then printf 'z4h native'; else printf 'latest local Git build'; fi)"
+    ui_summary_line 'fzf binary' "$(if [ "$use_fzf_from_z4h" = true ]; then printf 'z4h native'; else printf 'latest release from a local Git checkout'; fi)"
     ui_summary_line 'Completion generator' "$(human_boolean "$enable_auto_gencomp")"
     ui_summary_line 'Oh My Zsh helpers' "$(human_boolean "$enable_oh_my_zsh")"
     ui_summary_line 'Load SSH keys' "$(human_boolean "$load_ssh_key")"
@@ -968,12 +968,22 @@ ui_summary() {
   done
 }
 
-write_interactive_configuration() {
+generate_zshenv() {
   info 'Configuring Zsh preferences'
 
   source_file="$DOTFILES_DIR/zsh/.zshenv.init"
   generated_file="$DOTFILES_DIR/zsh/home/.zshenv"
+  if is_non_interactive && [ -f "$generated_file" ]; then
+    source_file="$generated_file"
+  fi
   [ -f "$source_file" ] || die "Missing Zsh template: $source_file"
+
+  mkdir -p "$(dirname "$generated_file")"
+
+  if is_non_interactive; then
+    [ "$source_file" = "$generated_file" ] || cp "$source_file" "$generated_file"
+    return 0
+  fi
 
   awk \
     -v prompt="$prompt" \
@@ -1003,38 +1013,47 @@ write_interactive_configuration() {
 }
 
 configure_non_interactive() {
-  prompt=${Z4H_PROMPT:-powerlevel10k}
-  show_fastfetch=${Z4H_SHOW_FASTFETCH:-false}
-  use_fzf_from_z4h=${Z4H_USE_FZF_FROM_Z4H:-true}
-  use_mise=${Z4H_USE_MISE:-true}
-  editor=${EDITOR:-micro}
+  # Keep package selection aligned with the defaults in zsh/.zshenv.init.
+  prompt=powerlevel10k
+  editor=micro
+  show_fastfetch=first
+  use_fzf_tab=true
+  use_fzf_from_z4h=false
+  use_mise=true
+  enable_auto_gencomp=true
+  enable_oh_my_zsh=true
+  load_ssh_key=true
+  show_ssh_key=true
+  askpass_require=false
+}
 
-  case $use_fzf_from_z4h in
-    true | false) ;;
-    *) use_fzf_from_z4h=true ;;
-  esac
-  case $use_mise in
-    true | false) ;;
-    *) use_mise=true ;;
-  esac
+load_non_interactive_choices() {
+  choices_file="$DOTFILES_DIR/zsh/home/.zshenv"
+  [ -f "$choices_file" ] || return 0
 
-  case $prompt in
-    powerlevel10k | ohmyposh) ;;
-    *) die "Unsupported Z4H_PROMPT value: $prompt" ;;
-  esac
+  value_from_choices() {
+    awk -v variable="$1" '
+      $0 ~ "^  export " variable "=" {
+        sub("^  export " variable "=", "")
+        sub(/[[:space:]]+#.*/, "")
+        gsub(/^"|"$/, "")
+        print
+        exit
+      }
+    ' "$choices_file"
+  }
 
-  case $show_fastfetch in
-    true | false | first) ;;
-    *) die "Unsupported Z4H_SHOW_FASTFETCH value: $show_fastfetch" ;;
-  esac
-
-  case $editor in
-    vim | nano | fresh | micro) ;;
-    *)
-      info "Unsupported EDITOR value '$editor'; using micro."
-      editor=micro
-      ;;
-  esac
+  for choice in \
+    'prompt Z4H_PROMPT' 'editor EDITOR' 'show_fastfetch Z4H_SHOW_FASTFETCH' \
+    'use_fzf_tab Z4H_USE_FZF_TAB' 'use_fzf_from_z4h Z4H_USE_FZF_FROM_Z4H' \
+    'use_mise Z4H_USE_MISE' 'enable_auto_gencomp Z4H_ENABLE_AUTO_GENCOMP' \
+    'enable_oh_my_zsh Z4H_ENABLE_OH_MY_ZSH' 'load_ssh_key Z4H_SSH_LOAD_KEY' \
+    'show_ssh_key Z4H_SSH_SHOW_KEY' 'askpass_require Z4H_SSH_ASKPASS_REQUIRE'; do
+    choice_name=${choice%% *}
+    choice_variable=${choice#* }
+    choice_value=$(value_from_choices "$choice_variable")
+    [ -n "$choice_value" ] && eval "$choice_name=\$choice_value"
+  done
 }
 
 install_editor() {
@@ -1133,11 +1152,11 @@ apply_installation() {
   install_required_packages_once
 
   if is_non_interactive; then
-    zshenv_source="$DOTFILES_DIR/zsh/.zshenv.init"
-  else
-    write_interactive_configuration
-    zshenv_source="$DOTFILES_DIR/zsh/home/.zshenv"
+    load_non_interactive_choices
   fi
+
+  generate_zshenv
+  zshenv_source="$DOTFILES_DIR/zsh/home/.zshenv"
 
   install_base_links "$zshenv_source"
   install_editor

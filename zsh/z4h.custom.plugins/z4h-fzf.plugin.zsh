@@ -6,6 +6,10 @@
 # ============================================================
 # fzf-tab configuration
 # ============================================================
+
+if [[ ${Z4H_USE_FZF_FROM_Z4H:-true} == false && -x ${FZF_LOCAL_BIN:-$HOME/.local/bin/fzf} ]]; then
+    zstyle ':fzf-tab:*' fzf-command "${FZF_LOCAL_BIN:-$HOME/.local/bin/fzf}"
+fi
 #
 # Dependencies
 # ============================================================

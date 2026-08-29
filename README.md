@@ -167,11 +167,12 @@ preference. No package, repository, file, backup, or symbolic link is changed
 before this summary is accepted. Press `a` or `Enter` to apply the plan, `r` to
 restart the wizard, or `q` to quit without changes.
 
-The answers are written to `zsh/.zshenv`, and `~/.zshenv` points to that generated file. The interactive wizard also asks whether the shell should use z4h's native fzf or the latest local Git build in `~/.local/share/fzf`, with its binary in `~/.local/bin/fzf`, and whether to install Mise. When enabled, Mise uses Homebrew on macOS and `curl https://mise.run | sh` on Ubuntu/Linux; Linux installs the binary at `~/.local/bin/mise` and keeps its data under `~/.local/share/mise`. Of the available editors, only the selected editor is installed. Mise is installed only when enabled, while Fastfetch and Oh My Posh are installed only when enabled.
+The answers are written to the generated `zsh/home/.zshenv`, and `~/.zshenv` always points to that file. The interactive wizard also asks whether the shell should use z4h's native fzf or the latest release installed from a local Git checkout in `~/.local/share/fzf`, with its binary in `~/.local/bin/fzf`, and whether to install Mise. When enabled, Mise uses Homebrew on macOS and `curl https://mise.run | sh` on Ubuntu/Linux; Linux installs the binary at `~/.local/bin/mise` and keeps its data under `~/.local/share/mise`. Of the available editors, only the selected editor is installed. Mise is installed only when enabled, while Fastfetch and Oh My Posh are installed only when enabled.
+Selected optional tools are installed by the installer. Zsh startup helpers also install a missing selected tool when an interactive shell starts, so changing the generated preferences later takes effect on the next startup.
 At the end, interactive mode shows a framed version report for the installed
 base tools, the selected editor, Mise, and any enabled optional binaries. It
 also reports the configured z4h v5 channel and checks the selected fzf source.
-When the local Git build is selected, it uses the repository in
+When the local Git checkout is selected, its official installer downloads the release binary into the repository in
 `~/.local/share/fzf` and its binary in `~/.local/bin/fzf`. On a clean
 installation, z4h and fzf are marked as pending until the first Zsh startup
 downloads them. This report is not displayed in non-interactive mode.
@@ -205,16 +206,10 @@ still use the same colored frames as interactive mode:
 | `Z4H_PROMPT` | `powerlevel10k`, `ohmyposh` | `powerlevel10k` |
 | `Z4H_SHOW_FASTFETCH` | `true`, `false`, `first` | `false` |
 
-Example:
+Non-interactive installation uses the template defaults directly; the
+environment variables above do not override those choices in this mode.
 
-```sh
-EDITOR=fresh \
-Z4H_PROMPT=ohmyposh \
-Z4H_SHOW_FASTFETCH=true \
-./install.sh non-interactive
-```
-
-Non-interactive mode uses non-prompting package-manager options, including `sudo -n` on Ubuntu 26.04, and fails if credentials are required. Mise follows `Z4H_USE_MISE` (default `true`) and is installed when enabled; it does not generate `zsh/.zshenv`, and `~/.zshenv` points directly to `zsh/.zshenv.init`.
+Non-interactive mode uses non-prompting package-manager options, including `sudo -n` on Ubuntu 26.04, and fails if credentials are required. It uses an existing `zsh/home/.zshenv` as the choices template when present; otherwise it uses the defaults defined in [`zsh/.zshenv.init`](zsh/.zshenv.init). It then links `~/.zshenv` to the selected/generated file.
 
 ### Paths, state, and repeat runs
 
@@ -237,16 +232,16 @@ To remove every cache and persistent state file created by this environment,
 run:
 
 ```zsh
-zqs-reset-zsh-cache
+z4h-reset-zsh-cache
 ```
 
 The function lists its targets and asks for confirmation. It removes the z4h
 runtime and plugins, Zsh/Mise/Oh My Posh/completion caches, compiled `.zwc`
-files in the checkout, fzf state and temporary markers, shell history, the
+files in the checkout, fzf state and temporary markers, the
 saved SSH agent environment, and the `dotfiles-next` installer marker. It does
-not remove configuration, backups, Mise/ASDF data, `.tool-versions`, or stop a
-running SSH agent. Close other Zsh sessions first so they cannot recreate
-history or state after the cleanup.
+not remove shell history, configuration, backups, Mise/ASDF data,
+`.tool-versions`, or stop a running SSH agent. Close other Zsh sessions first
+so they cannot recreate state after the cleanup.
 
 Use `--dry-run` to inspect the exact paths, `--yes` to skip confirmation, or
 `--no-restart` to leave the current shell running. Normally the function

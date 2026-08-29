@@ -5,7 +5,7 @@ fi
 
 if [ -n "${ZSH_VERSION-}" ]; then
   export Z4H_PROMPT=${Z4H_PROMPT:="powerlevel10k"} # powerlevel10k/ohmyposh/minimal
-  export Z4H_SHOW_FASTFETCH=${Z4H_SHOW_FASTFETCH:=true} #false/true/first
+  export Z4H_SHOW_FASTFETCH=${Z4H_SHOW_FASTFETCH:=first} #false/true/first
   export Z4H_ENABLE_ALLAFINE=false
   export Z4H_USE_FZF_TAB=${Z4H_USE_FZF_TAB:=true} #true/false
   export Z4H_ENABLE_AUTO_GENCOMP=${Z4H_ENABLE_AUTO_GENCOMP:=true} #true/false
@@ -15,7 +15,7 @@ if [ -n "${ZSH_VERSION-}" ]; then
   export Z4H_SSH_ASKPASS_REQUIRE=${Z4H_SSH_ASKPASS_REQUIRE:=false} #false/true
   export Z4H_MISE_REFRESH_SECONDS=${Z4H_MISE_REFRESH_SECONDS:=5} #0 checks every prompt
   export Z4H_USE_MISE=${Z4H_USE_MISE:=true} #true/false
-  export Z4H_USE_FZF_FROM_Z4H=${Z4H_USE_FZF_FROM_Z4H:=true} #true/false use fzf from z4h or from local build
+  export Z4H_USE_FZF_FROM_Z4H=${Z4H_USE_FZF_FROM_Z4H:=false} #true/false use fzf from z4h or from local build
   export DOTFILES_DIR="$HOME/.dotfiles" #${DOTFILES_DIR:="$HOME/.dotfiles"} 
   export ZDOTDIR="$DOTFILES_DIR/zsh/home"
 
@@ -30,11 +30,6 @@ if [ -n "${ZSH_VERSION-}" ]; then
 
   path=("$HOME/.local/bin" $path)
 
-  source "$DOTFILES_DIR/zsh/helpers/mise-bootstrap.zsh"
-  install-mise-bootstrap
-  source "$DOTFILES_DIR/zsh/helpers/fzf-bootstrap.zsh"
-  install-fzf-bootstrap
-
   export ZSH_COMPDUMP=${ZSH_COMPDUMP:="$XDG_CACHE_HOME/zsh/.zcompdump-${HOST}-${ZSH_VERSION}"}
   
 
@@ -44,6 +39,8 @@ if [ -n "${ZSH_VERSION-}" ]; then
   esac
   export EDITOR=${EDITOR:="micro"}
   export VISUAL="$EDITOR"
+
+  source "$DOTFILES_DIR/zsh/helpers/tool-bootstrap.zsh"
 
   ## Yes, these are a pain to customize. Fortunately, Geoff Greer made an online
   ## tool that makes it easy to customize your color scheme and keep them in sync

@@ -138,23 +138,7 @@ if [ "$TERM" = "screen" -a ! "$SHOWED_SCREEN_MESSAGE" = "true" ]; then
 	fi
 fi
 
-
-print -n $'\e[9999;1H'
 source "$DOTFILES_DIR/zsh/helpers/fastfetch.zsh"
-run-fastfetch
-
-
-if [[ ${Z4H_SSH_SHOW_KEY:-false} == true ]]; then
-	print
-	print 'Current SSH Keys:'
-	if (( ${_ZQS_SSH_KEYS_VALID:-0} )) && (( ${_ZQS_SSH_KEYS_STATUS:-2} == 0 )); then
-		print -r -- "$_ZQS_SSH_KEYS"
-	else
-		ssh-add -l
-	fi
-	print
-fi
-unset _ZQS_SSH_KEYS _ZQS_SSH_KEYS_STATUS _ZQS_SSH_KEYS_VALID
 
 # Install or update core components (zsh-autosuggestions, etc.) and
 # initialize Zsh. After this point console I/O is unavailable until Zsh
@@ -329,6 +313,22 @@ TIMEFMT="%U user %S system %P cpu %*Es total"
 # Fix bracketed paste issue
 # Closes #73
 ZSH_AUTOSUGGEST_CLEAR_WIDGETS+=(bracketed-paste)
+
+print -n $'\e[9999;1H'
+run-fastfetch
+
+if [[ ${Z4H_SSH_SHOW_KEY:-false} == true ]]; then
+	print
+	print 'Current SSH Keys:'
+	if (( ${_ZQS_SSH_KEYS_VALID:-0} )) && (( ${_ZQS_SSH_KEYS_STATUS:-2} == 0 )); then
+		print -r -- "$_ZQS_SSH_KEYS"
+	else
+		ssh-add -l
+	fi
+	print
+fi
+unset _ZQS_SSH_KEYS _ZQS_SSH_KEYS_STATUS _ZQS_SSH_KEYS_VALID
+
 
 if [[ -f ${HOME}/.z4h-zprof-enabled ]]; then
   zprof

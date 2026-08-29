@@ -3,7 +3,7 @@
 alias _dig=dogggo _ping=gping _hex=hexyl _curl=http _ps=procs _top=btop
 alias _ls='command ls' nodejs='command node'
 
-zqs-reset-zsh-cache() {
+z4h-reset-zsh-cache() {
   emulate -L zsh
   setopt extended_glob
 
@@ -16,18 +16,18 @@ zqs-reset-zsh-cache() {
       -y|--yes) assume_yes=true ;;
       --no-restart) restart=false ;;
       -h|--help)
-        print -r -- 'Usage: zqs-reset-zsh-cache [--dry-run] [--yes] [--no-restart]'
+        print -r -- 'Usage: z4h-reset-zsh-cache [--dry-run] [--yes] [--no-restart]'
         return 0
         ;;
       *)
-        print -u2 -r -- "zqs-reset-zsh-cache: unknown option: $argument"
+        print -u2 -r -- "z4h-reset-zsh-cache: unknown option: $argument"
         return 2
         ;;
     esac
   done
 
   if [[ -z ${HOME:-} || $HOME != /* ]]; then
-    print -u2 -r -- 'zqs-reset-zsh-cache: refusing to use an empty or relative HOME'
+    print -u2 -r -- 'z4h-reset-zsh-cache: refusing to use an empty or relative HOME'
     return 1
   fi
 
@@ -37,7 +37,7 @@ zqs-reset-zsh-cache() {
   local temporary_dir=${TMPDIR:-/tmp}
 
   if [[ $cache_home != /* || $state_home != /* ]]; then
-    print -u2 -r -- 'zqs-reset-zsh-cache: XDG cache and state paths must be absolute'
+    print -u2 -r -- 'z4h-reset-zsh-cache: XDG cache and state paths must be absolute'
     return 1
   fi
 
@@ -47,21 +47,21 @@ zqs-reset-zsh-cache() {
 
   if [[ $cache_home == / || $state_home == / ||
         $cache_home == $home_dir || $state_home == $home_dir ]]; then
-    print -u2 -r -- 'zqs-reset-zsh-cache: refusing an unsafe cache or state root'
+    print -u2 -r -- 'z4h-reset-zsh-cache: refusing an unsafe cache or state root'
     return 1
   fi
 
   local expected_z4h_root="$cache_home/zsh4humans/v5"
   local z4h_root=${Z4H:-$expected_z4h_root}
   if [[ ${z4h_root:A} != ${expected_z4h_root:A} ]]; then
-    print -u2 -r -- "zqs-reset-zsh-cache: refusing unexpected Z4H path: $z4h_root"
+    print -u2 -r -- "z4h-reset-zsh-cache: refusing unexpected Z4H path: $z4h_root"
     return 1
   fi
 
   local dotfiles_dir=${DOTFILES_DIR:-$home_dir/.dotfiles}
   if [[ $dotfiles_dir != /* || ${dotfiles_dir:A} == / ||
         ! -r ${dotfiles_dir:A}/zsh/z4h.custom.plugins/z4h-misc.plugin.zsh ]]; then
-    print -u2 -r -- "zqs-reset-zsh-cache: refusing unexpected dotfiles path: $dotfiles_dir"
+    print -u2 -r -- "z4h-reset-zsh-cache: refusing unexpected dotfiles path: $dotfiles_dir"
     return 1
   fi
   dotfiles_dir=${dotfiles_dir:A}
@@ -71,7 +71,7 @@ zqs-reset-zsh-cache() {
   directory_targets=(
     "$cache_home/zsh"
     "$expected_z4h_root"
-    "$state_home/zsh"
+    "$state_home/zsh/fzf-tab"
     "$state_home/dotfiles-next"
   )
 
@@ -82,7 +82,6 @@ zqs-reset-zsh-cache() {
   targets+=(
     "$home_dir"/.zcompdump*(N.)
     "$home_dir/.ssh/ssh-agent"(N.)
-    "$dotfiles_dir/zsh/home/.zsh_history"(N.)
     "$dotfiles_dir"/**/*.zwc(N.)
     "$dotfiles_dir"/**/.*.zwc(N.)
     "$temporary_dir"/fzf-tab-hidden-*(N.U)
@@ -97,7 +96,7 @@ zqs-reset-zsh-cache() {
     print -r -- '  - no files currently exist'
   fi
 
-  print -u2 -r -- 'This removes shell history and the installer package marker.'
+  print -u2 -r -- 'This preserves shell history and removes the installer package marker.'
   print -u2 -r -- 'The next Zsh startup needs network access to download z4h again.'
   print -u2 -r -- 'The saved SSH agent environment is removed; the running agent is not stopped.'
 
@@ -125,9 +124,6 @@ zqs-reset-zsh-cache() {
     fi
   done
   (( failed )) && return 1
-
-  # Prevent this shell from writing the deleted history back on exit.
-  [[ -o interactive ]] && fc -p
 
   if [[ $restart == true ]]; then
     print -r -- 'Cleanup complete; restarting Zsh...'
