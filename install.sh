@@ -540,6 +540,10 @@ install_required_packages() {
       bat eza chafa mediainfo poppler-utils tree file dnsutils fd-find wget \
       stow grc ripgrep python3-pip command-not-found git-delta tmux htop
 
+    mkdir -p "$HOME/.local/bin"
+    fdfind_path=$(command -v fdfind || true)
+    [ -z "$fdfind_path" ] || ln -sfn "$fdfind_path" "$HOME/.local/bin/fd"
+
     mkdir -p "$HOME/.fonts"
     cp "$DOTFILES_DIR"/fonts/* "$HOME/.fonts/"
     have fc-cache || die 'fc-cache is required to install the bundled fonts.'

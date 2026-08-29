@@ -132,8 +132,6 @@ _fzf_tab_apply_hidden_state() {
         setopt globdots
         zstyle ':completion:*' \
             file-patterns \
-            './.*(D):hidden-files' \
-            '.*(D):hidden-files' \
             '*(D):all-files'
         zstyle ':completion:*:cd:*' \
             file-patterns \
@@ -144,7 +142,6 @@ _fzf_tab_apply_hidden_state() {
         zstyle ':completion:*' \
             file-patterns \
             '*(-^-/):all-files' \
-            './.*(D):hidden-files' \
             '.*(D):hidden-files'
         zstyle -d ':completion:*:cd:*' \
             file-patterns
@@ -179,7 +176,7 @@ _fzf_tab_cd() {
     [[ -r $FZF_TAB_HIDDEN_STATE_FILE ]] &&
         hidden_state=$(<"$FZF_TAB_HIDDEN_STATE_FILE")
 
-    if [[ $hidden_state == on && CURRENT -eq 2 && $PREFIX != */* ]] &&
+    if [[ $hidden_state == on && ( CURRENT -eq 1 || CURRENT -eq 2 ) && $PREFIX != */* ]] &&
         (( $+commands[fd] )); then
         hidden_directories=(
             "${(@f)$(command fd \
@@ -204,6 +201,18 @@ _fzf_tab_cd() {
 }
 
 compdef _fzf_tab_cd cd
+
+_fzf_tab_autocd() {
+    _command_names
+    local completion_status=$?
+
+    if [[ -o autocd ]]; then
+        _fzf_tab_cd
+        (( $? == 0 )) && completion_status=0
+    fi
+
+    return completion_status
+}
 
 if [[ -n "${LS_COLORS:-}" ]]; then
 
@@ -240,16 +249,19 @@ _fzf_preview_layout() {
 
     case $preview_position in
         right)
-            reply=('right:60%:wrap:nohidden' 'down:50%:wrap:nohidden|hidden|right:60%:wrap:nohidden')
+            reply=('right:50%:wrap:nohidden' 'down:50%:wrap:nohidden|down:90%:wrap:nohidden|hidden|right:50%:wrap:nohidden')
             ;;
         down)
-            reply=('down:50%:wrap:nohidden' 'hidden|right:60%:wrap:nohidden|down:50%:wrap:nohidden')
+            reply=('down:50%:wrap:nohidden' 'down:90%:wrap:nohidden|hidden|right:50%:wrap:nohidden|down:50%:wrap:nohidden')
+            ;;
+        down90)
+            reply=('down:90%:wrap:nohidden' 'hidden|right:50%:wrap:nohidden|down:50%:wrap:nohidden|down:90%:wrap:nohidden')
             ;;
         hidden)
-            reply=('hidden' 'right:60%:wrap:nohidden|down:50%:wrap:nohidden|hidden')
+            reply=('hidden' 'right:50%:wrap:nohidden|down:50%:wrap:nohidden|down:90%:wrap:nohidden|hidden')
             ;;
         *)
-            reply=('right:60%:wrap:nohidden' 'down:50%:wrap:nohidden|hidden|right:60%:wrap:nohidden')
+            reply=('right:50%:wrap:nohidden' 'down:50%:wrap:nohidden|down:90%:wrap:nohidden|hidden|right:50%:wrap:nohidden')
             print -r -- right >| "$FZF_TAB_PREVIEW_STATE_FILE"
             ;;
     esac
@@ -288,7 +300,7 @@ _fzf_tab_refresh_flags() {
             "--header=TAB/SHIFT-TAB move  ·  </> group  ·  CTRL-A mark all  ·  CTRL-J/K preview scroll  ·  CTRL-P preview  ·  CTRL-H hidden  ·  ENTER select  ·  ESC close" \
             "--preview-window=${preview_window}" \
             --bind=ctrl-a:toggle-all,ctrl-j:preview-down,ctrl-k:preview-up \
-            "--bind=ctrl-p:execute-silent(${state_command_q} ${state_helper_q} cycle-preview ${preview_state_q})+change-preview-window(${preview_cycle})" \
+            "--bind=ctrl-p:execute-silent(${state_command_q} ${state_helper_q} cycle-preview ${preview_state_q})+change-preview-window(${preview_cycle})+refresh-preview" \
             "--bind=ctrl-h:execute-silent(${state_command_q} ${state_helper_q} toggle-hidden ${hidden_state_q} ${hidden_marker_q})+abort"
 }
 
@@ -320,8 +332,8 @@ _fzf_widget_refresh_flags() {
     _fzf_height
     local fzf_height=$reply[1]
 
-    export FZF_CTRL_T_OPTS="--height=${fzf_height} --header='TAB/SHIFT-TAB move  ·  CTRL-SPACE select  ·  CTRL-A mark all  ·  CTRL-J/K preview scroll  ·  CTRL-P preview  ·  CTRL-H hidden  ·  ENTER insert  ·  ESC close' --preview '$FZF_TAB_PREVIEW_COMMAND {}' --preview-window=${preview_window} --bind='ctrl-a:toggle-all,ctrl-j:preview-down,ctrl-k:preview-up,ctrl-p:execute-silent(${state_command_q} ${state_helper_q} cycle-preview ${preview_state_q})+change-preview-window(${preview_cycle}),ctrl-h:execute-silent(${toggle_hidden_command})+reload(${list_files_command})'"
-    export FZF_ALT_C_OPTS="--height=${fzf_height} --header='TAB/SHIFT-TAB move  ·  CTRL-J/K preview scroll  ·  CTRL-P preview  ·  CTRL-H hidden  ·  ENTER cd  ·  ESC close' --preview '$FZF_TAB_PREVIEW_COMMAND {}' --preview-window=${preview_window} --bind='ctrl-j:preview-down,ctrl-k:preview-up,ctrl-p:execute-silent(${state_command_q} ${state_helper_q} cycle-preview ${preview_cycle})+change-preview-window(${preview_cycle}),ctrl-h:execute-silent(${toggle_hidden_command})+reload(${list_directories_command})'"
+    export FZF_CTRL_T_OPTS="--no-sort --height=${fzf_height} --header='TAB/SHIFT-TAB move  ·  CTRL-SPACE select  ·  CTRL-A mark all  ·  CTRL-J/K preview scroll  ·  CTRL-P preview  ·  CTRL-H hidden  ·  ENTER insert  ·  ESC close' --preview '$FZF_TAB_PREVIEW_COMMAND {}' --preview-window=${preview_window} --bind='ctrl-a:toggle-all,ctrl-j:preview-down,ctrl-k:preview-up,ctrl-p:execute-silent(${state_command_q} ${state_helper_q} cycle-preview ${preview_state_q})+change-preview-window(${preview_cycle})+refresh-preview,ctrl-h:execute-silent(${toggle_hidden_command})+reload(${list_files_command})'"
+    export FZF_ALT_C_OPTS="--no-sort --height=${fzf_height} --header='TAB/SHIFT-TAB move  ·  CTRL-J/K preview scroll  ·  CTRL-P preview  ·  CTRL-H hidden  ·  ENTER cd  ·  ESC close' --preview '$FZF_TAB_PREVIEW_COMMAND {}' --preview-window=${preview_window} --bind='ctrl-j:preview-down,ctrl-k:preview-up,ctrl-p:execute-silent(${state_command_q} ${state_helper_q} cycle-preview ${preview_cycle})+change-preview-window(${preview_cycle})+refresh-preview,ctrl-h:execute-silent(${toggle_hidden_command})+reload(${list_directories_command})'"
 }
 
 _z4h_fzf_file_widget() {
@@ -391,7 +403,54 @@ unset _fzf_toggle_hidden_command _fzf_list_files_command _fzf_list_directories_c
 
 _fzf_tab_complete_with_dots() {
 
+    local autocd_enabled=${options[autocd]}
     emulate -L zsh
+
+    # Match z4h's native AUTO_CD behavior before fzf-tab takes over command
+    # completion. Complete a unique local directory prefix directly, including
+    # an explicitly typed dot-directory prefix.
+    if [[ $autocd_enabled == on && -z $RBUFFER && -n $LBUFFER &&
+          $LBUFFER != *[[:space:]]* && $LBUFFER != */* ]]; then
+        local directory_pattern="${(q)LBUFFER}*"
+        local -a autocd_directories=( ${~directory_pattern}(-/N:t) )
+        if (( $#autocd_directories == 1 )); then
+            LBUFFER="${autocd_directories[1]}/"
+            zle redisplay
+            return 0
+        elif (( $#autocd_directories > 1 )); then
+            local selected_directory
+            selected_directory=$(
+                print -rl -- "${autocd_directories[@]}" |
+                    FZF_DEFAULT_OPTS= command fzf \
+                        --height=33% \
+                        --layout=reverse \
+                        --border \
+                        --cycle \
+                        --prompt='Directory > ' \
+                        --header='TAB/SHIFT-TAB move  ·  ENTER select  ·  ESC close' \
+                        --bind=tab:down,btab:up \
+                        --query="$LBUFFER"
+            )
+            if (( $? != 0 )); then
+                zle reset-prompt
+                zle redisplay
+                return 0
+            fi
+            if [[ -n $selected_directory ]]; then
+                LBUFFER="${selected_directory}/"
+            fi
+            zle reset-prompt
+            zle redisplay
+            return 0
+        fi
+    fi
+
+    # z4h initializes compsys lazily. Complete that initialization before
+    # registering the native AUTO_CD completer for command position.
+    if [[ -v _z4h_compinit_fd ]]; then
+        -z4h-compinit || true
+    fi
+    _comps[-command-]=_fzf_tab_autocd
 
     rm -f -- "$FZF_TAB_HIDDEN_MARKER"
     _fzf_tab_apply_hidden_state
@@ -715,7 +774,8 @@ if (( $+commands[git] )); then
                 fi
 
                 if [[ -r "$FZF_TAB_PREVIEW_STATE_FILE" ]] &&
-                    [[ "$(<"$FZF_TAB_PREVIEW_STATE_FILE")" == down ]] &&
+                    [[ "$(<"$FZF_TAB_PREVIEW_STATE_FILE")" == down ||
+                       "$(<"$FZF_TAB_PREVIEW_STATE_FILE")" == down90 ]] &&
                     (( $+commands[delta] )); then
                     print -r -- "$diff_output" |
                         delta \
@@ -741,7 +801,8 @@ if (( $+commands[git] )); then
     zstyle ':fzf-tab:complete:git-(diff|restore):*' \
         fzf-preview '
             if [[ -r "$FZF_TAB_PREVIEW_STATE_FILE" ]] &&
-                [[ "$(<"$FZF_TAB_PREVIEW_STATE_FILE")" == down ]] &&
+                [[ "$(<"$FZF_TAB_PREVIEW_STATE_FILE")" == down ||
+                   "$(<"$FZF_TAB_PREVIEW_STATE_FILE")" == down90 ]] &&
                 (( $+commands[delta] )); then
                 git diff \
                     --color=always \

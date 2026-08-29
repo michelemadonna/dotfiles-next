@@ -109,7 +109,7 @@ The project-specific plugins live in [`zsh/z4h.custom.plugins`](zsh/z4h.custom.p
 
 | Plugin | What it does |
 | --- | --- |
-| `z4h-fzf` | Extends fzf-tab, `Ctrl-T`, and `Alt-C` with shared hidden-file state, persistent preview layout, contextual previews, grouped Git refs and recent commits, and command-specific views for Git, Docker, package managers, SSH, processes, manuals, and systemd. |
+| `z4h-fzf` | Extends fzf-tab, `Ctrl-T`, and `Alt-C` with shared hidden-file state, alphabetically ordered filesystem candidates, persistent preview layout, contextual previews, grouped Git refs and recent commits, and command-specific views for Git, Docker, package managers, SSH, processes, manuals, and systemd. |
 | `z4h-containers` | Adds Docker and kubectl aliases, caches CLI-generated completion, improves Docker completion contexts, and supplies JSON/YAML kubectl helpers when the required tools are available. |
 | `z4h-eza` | Replaces common `ls` forms with an icon-aware `eza` configuration and falls back to `exa` when necessary. Provides `ll` and `lls`. |
 | `z4h-gencomp-lazy` | Generates completion from a command's help output on explicit `Shift-Tab`, caches it, loads it immediately, and remembers failed attempts for the current session. It also provides the manual `gencomp` command. |
@@ -343,10 +343,10 @@ The default prompt inside the image remains Powerlevel10k because the Docker set
 
 | Key | Action |
 | --- | --- |
-| `Tab` | Open normal or fzf-tab completion. |
+| `Tab` | Open normal or fzf-tab completion; with `AUTO_CD`, visible and hidden local directory prefixes also complete in command position without typing `cd`. |
 | `Shift-Tab` | Generate completion for the current command from its help output, then open it. |
-| `Ctrl-H` | Toggle hidden files in fzf-tab, `Ctrl-T`, and `Alt-C`; hidden files are shown by default. |
-| `Ctrl-P` | Cycle the shared fzf-tab, `Ctrl-T`, and `Alt-C` preview between right, bottom, and hidden layouts. |
+| `Ctrl-H` | Toggle hidden files in fzf-tab, `Ctrl-T`, and `Alt-C`; AUTO_CD directory completion is independent of this state. |
+| `Ctrl-P` | Cycle the shared fzf-tab, `Ctrl-T`, and `Alt-C` preview through right 50% (default), bottom 50%, bottom 90%, and hidden; bottom Git previews use a side-by-side diff. |
 | `Ctrl-F` | Cycle the persistent fzf height: 33%, 50%, 66%, and 99%, keeping the current prompt visible. |
 | `Ctrl-T` | Select files with fzf and insert them into the command line. |
 | `Alt-C` | Select a directory with fzf and change into it. |

@@ -65,6 +65,28 @@ install-z4h-tool() {
 install-z4h-selected-tools() {
   [[ -o interactive ]] || return 0
 
+  if (( ! $+commands[fd] )); then
+    tool-bootstrap-info 'Installing fd'
+    if [[ $OSTYPE == darwin* && $+commands[brew] -eq 1 ]]; then
+      command brew install -y fd >/dev/null 2>&1 || true
+    elif [[ $OSTYPE == linux* ]]; then
+      if (( ! $+commands[fdfind] )) && (( $+commands[apt-get] )); then
+        command sudo -n apt-get install -y fd-find >/dev/null 2>&1 || true
+        rehash
+      fi
+      if (( $+commands[fdfind] )); then
+        command mkdir -p "$HOME/.local/bin"
+        command ln -sfn "${commands[fdfind]}" "$HOME/.local/bin/fd"
+      fi
+    fi
+    rehash
+    if (( $+commands[fd] )); then
+      tool-bootstrap-success 'fd installed'
+    else
+      tool-bootstrap-error 'fd installation failed'
+    fi
+  fi
+
   if [[ ${Z4H_USE_MISE:-true} == true ]] && (( ! $+commands[mise] )); then
     tool-bootstrap-info 'Installing Mise'
     command mkdir -p -- "$HOME/.local/bin" "$XDG_DATA_HOME" 2>/dev/null || true
