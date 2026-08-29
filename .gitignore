@@ -30,5 +30,8 @@ micro/buffers
 micro/backups
 *.zwc
 local
-zsh/home/.zsh_history
 
+git/*pgp*
+*.local
+local.*
+gitconfig*
