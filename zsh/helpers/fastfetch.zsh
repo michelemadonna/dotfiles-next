@@ -1,5 +1,4 @@
 run-fastfetch() {
-	print -n $'\e[9999;1H'
 
 	if [[ -o interactive && ${Z4H_SHOW_FASTFETCH:-false} != false && -z ${Z4H_FASTFETCH_SHOWN:-} ]]; then
 	export Z4H_FASTFETCH_SHOWN=1

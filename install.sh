@@ -1061,6 +1061,11 @@ load_non_interactive_choices() {
 }
 
 install_editor() {
+  if command -v "$editor" >/dev/null 2>&1 || [ -x "$HOME/.local/bin/$editor" ]; then
+    info "$editor already installed; skipping installation"
+    link_editor_config
+    return 0
+  fi
   case $editor in
     vim)
       if [ "$PLATFORM" = macos ]; then
@@ -1079,6 +1084,12 @@ install_editor() {
     fresh) install_fresh ;;
     micro) install_micro ;;
   esac
+  link_editor_config
+}
+
+link_editor_config() {
+  editor_config="$DOTFILES_DIR/$editor"
+  [ -e "$editor_config" ] && link_path "$editor_config" "$HOME/.config/$editor"
 }
 
 install_micro() {
@@ -1087,7 +1098,7 @@ install_micro() {
   else
     run_apt_get install -y micro
   fi
-  link_path "$DOTFILES_DIR/micro" "$HOME/.config/micro"
+  link_editor_config
 }
 
 install_fresh() {
@@ -1110,7 +1121,7 @@ install_fresh() {
     rm -f "$package_file"
     TEMP_PACKAGE_FILE=
   fi
-  link_path "$DOTFILES_DIR/fresh" "$HOME/.config/fresh"
+  link_editor_config
 }
 
 install_mise() {
@@ -1131,6 +1142,11 @@ install_mise() {
 }
 
 install_fastfetch() {
+  if command -v fastfetch >/dev/null 2>&1 || [ -x "$HOME/.local/bin/fastfetch" ]; then
+    info 'Fastfetch already installed; skipping installation'
+    link_path "$DOTFILES_DIR/fastfetch" "$HOME/.config/fastfetch"
+    return 0
+  fi
   if [ "$PLATFORM" = macos ]; then
     brew install -y fastfetch
   else
@@ -1140,6 +1156,11 @@ install_fastfetch() {
 }
 
 install_oh_my_posh() {
+  if command -v oh-my-posh >/dev/null 2>&1 || [ -x "$HOME/.local/bin/oh-my-posh" ]; then
+    info 'Oh My Posh already installed; skipping installation'
+    link_path "$DOTFILES_DIR/oh-my-posh" "$HOME/.config/oh-my-posh"
+    return 0
+  fi
   if [ "$PLATFORM" = macos ]; then
     brew install oh-my-posh
   else
@@ -1149,8 +1170,27 @@ install_oh_my_posh() {
   link_path "$DOTFILES_DIR/oh-my-posh" "$HOME/.config/oh-my-posh"
 }
 
+install_fzf_local() {
+  fzf_repo="$HOME/.local/share/fzf"
+  fzf_bin="$HOME/.local/bin/fzf"
+  if [ -d "$fzf_repo/.git" ] && [ -x "$fzf_bin" ]; then
+    info 'Local fzf already installed; skipping installation'
+    return 0
+  fi
+  mkdir -p "$HOME/.local/share" "$HOME/.local/bin"
+  if [ ! -d "$fzf_repo/.git" ]; then
+    rm -rf "$fzf_repo"
+    git clone --depth=1 https://github.com/junegunn/fzf.git "$fzf_repo"
+  fi
+  bash "$fzf_repo/install" --bin
+  [ -x "$fzf_repo/bin/fzf" ] || die 'Local fzf installation failed.'
+  cp "$fzf_repo/bin/fzf" "$fzf_bin"
+}
+
 apply_installation() {
+  info 'Starting installation'
   setup_platform
+  info "Detected platform: $PLATFORM"
   install_git
   clone_repository
   install_required_packages_once
@@ -1161,17 +1201,38 @@ apply_installation() {
 
   generate_zshenv
   zshenv_source="$DOTFILES_DIR/zsh/home/.zshenv"
+  success 'Generated Zsh preferences'
 
   install_base_links "$zshenv_source"
+  success 'Created base configuration links'
+  info "Installing selected editor: $editor"
   install_editor
+  success "Editor ready: $editor"
+
+  if [ "$use_fzf_from_z4h" = false ]; then
+    info 'Installing local fzf from the latest Git checkout'
+    install_fzf_local
+    success 'Local fzf ready'
+  fi
 
   if [ "$use_mise" = true ]; then
+    info 'Installing and preparing Mise'
     install_mise
+    success 'Mise, shell cache, and asdf compatibility layer ready'
   fi
   case $show_fastfetch in
-    true | first) install_fastfetch ;;
+    true | first)
+      info 'Installing Fastfetch'
+      install_fastfetch
+      success 'Fastfetch ready'
+      ;;
   esac
-  [ "$prompt" = ohmyposh ] && install_oh_my_posh
+  if [ "$prompt" = ohmyposh ]; then
+    info 'Installing Oh My Posh'
+    install_oh_my_posh
+    success 'Oh My Posh ready'
+  fi
+  success 'Selected tools and configurations are ready'
   return 0
 }
 
@@ -1179,8 +1240,10 @@ main() {
   parse_arguments "$@"
 
   if is_non_interactive; then
+    info 'Starting non-interactive mode'
     check_prerequisites
     detect_platform
+    info "Detected platform: $PLATFORM"
     configure_non_interactive
   else
     check_interactive_terminal

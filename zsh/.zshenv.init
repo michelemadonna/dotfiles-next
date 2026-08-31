@@ -22,15 +22,9 @@ if [ -n "${ZSH_VERSION-}" ]; then
   export XDG_CONFIG_HOME=${XDG_CONFIG_HOME:="$HOME/.config"}
   export XDG_DATA_HOME=${XDG_DATA_HOME:="$HOME/.local/share"} 
   export ZDOTDIR="$DOTFILES_DIR/zsh/home"
-  export HISTFILE=${HISTFILE:="$HOME/.local/state/zsh/history"}
+  export HISTFILE=${$HOME/.local/state/zsh/history}
   export HISTORY_IGNORE="(cd ..|l[s]#( *)#|pwd *|exit *|date *|* --help)"
   export ZSH_COMPDUMP=${ZSH_COMPDUMP:="$XDG_CACHE_HOME/zsh/.zcompdump-${HOST}-${ZSH_VERSION}"}
-
-  #mkdir -p "$HOME/.cache/zsh" "$HOME/.local/state/zsh" "$HOME/.ssh" "$HOME/.local/bin" "$HOME/.config" "$HOME/.local/share"
-  #ln -sfn "$DOTFILES_DIR"/{micro,git,fastfetch,mise,fresh,oh-my-posh,ghostty} "$HOME/.config/"
-  #ln -sfn "$DOTFILES_DIR"/ssh/config "$HOME/.ssh/config"
-
-  
 
   # macOS may start Zsh without loading the user's login profile.
   # Keep Homebrew available before the interactive tool bootstrap runs.
@@ -53,8 +47,7 @@ if [ -n "${ZSH_VERSION-}" ]; then
 
   source "$DOTFILES_DIR/zsh/helpers/tool-bootstrap.zsh"
 
-  ## Yes, these are a pain to customize. Fortunately, Geoff Greer made an online
-  ## tool that makes it easy to customize your color scheme and keep them in sync
+  ## customize your color scheme and keep them in sync
   ## across Linux and OS X/*BSD at http://geoff.greer.fm/lscolors/
   #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   if [[ -z ${LSCOLORS-} ]]; then
@@ -79,11 +72,8 @@ if [ -n "${ZSH_VERSION-}" ]; then
   fi
 
   if (( $+commands[bat] )); then
-    # Export theme for http://github.com/sharkdp/bat.
     export BAT_THEME="Solarized (dark)"
   fi
-  
- 
   
   export FZF_COMPLETION_TRIGGER='**' # change ** to whatever you like 
   

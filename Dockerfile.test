@@ -4,12 +4,12 @@ ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-      ca-certificates \
-      curl \
-      sudo \
-      zsh \
-    && rm -rf /var/lib/apt/lists/*
-
+        ca-certificates \
+        curl \
+        git \
+        sudo \
+        zsh
+        
 RUN useradd --create-home --shell /bin/zsh demo \
     && printf 'demo ALL=(ALL) NOPASSWD:ALL\n' >/etc/sudoers.d/demo \
     && chmod 0440 /etc/sudoers.d/demo \
