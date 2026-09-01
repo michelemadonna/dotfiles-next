@@ -130,9 +130,9 @@ include "/usr/share/nano/*.nanorc"
 include "/usr/share/nano/extra/*.nanorc"
 
 # macOS Apple Silicon Homebrew:
-# include "/opt/homebrew/share/nano/*.nanorc"
-# include "/opt/homebrew/share/nano/extra/*.nanorc"
+include "/opt/homebrew/share/nano/*.nanorc"
+include "/opt/homebrew/share/nano/extra/*.nanorc"
 
 # macOS Intel Homebrew:
-# include "/usr/local/share/nano/*.nanorc"
-# include "/usr/local/share/nano/extra/*.nanorc"
+include "/usr/local/share/nano/*.nanorc"
+include "/usr/local/share/nano/extra/*.nanorc"
