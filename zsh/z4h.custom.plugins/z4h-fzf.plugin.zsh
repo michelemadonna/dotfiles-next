@@ -135,7 +135,7 @@ _fzf_tab_apply_hidden_state() {
             '*(D):all-files'
         zstyle ':completion:*:cd:*' \
             file-patterns \
-            '*(-/):directories .*(-/):hidden-directories'
+            '*(N-/):directories .*(N-/):hidden-directories'
     else
         FZF_TAB_SHOW_HIDDEN=0
         unsetopt globdots
@@ -150,8 +150,8 @@ _fzf_tab_apply_hidden_state() {
         # directories, while keeping hidden entries out of the normal list.
         zstyle ':completion:*:cd:*' \
             file-patterns \
-            '*(-/):directories' \
-            '.*(D-/):hidden-directories'
+            '*(N-/):directories' \
+            '.*(N-/):hidden-directories'
     fi
 }
 
@@ -405,6 +405,22 @@ _fzf_tab_complete_with_dots() {
 
     local autocd_enabled=${options[autocd]}
     emulate -L zsh
+    setopt local_options extended_glob
+
+    # A unique directory completion leaves a trailing slash in LBUFFER.
+    # Do not re-enter fzf-tab when that directory has no child directories:
+    # an empty file-pattern group can otherwise be inserted as a literal glob.
+    if [[ $LBUFFER == 'cd '* && $LBUFFER == */ && -z $RBUFFER ]]; then
+        local cd_directory=${LBUFFER#cd }
+        local -a cd_child_directories=(
+            ${~cd_directory}/*(N-/)
+            ${~cd_directory}/.[^.]##(N-/)
+        )
+        if [[ -d ${~cd_directory} && $#cd_child_directories -eq 0 ]]; then
+            zle redisplay
+            return 0
+        fi
+    fi
 
     # Match z4h's native AUTO_CD behavior before fzf-tab takes over command
     # completion. Complete a unique local directory prefix directly, including
