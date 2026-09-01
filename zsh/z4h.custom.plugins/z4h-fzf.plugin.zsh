@@ -60,12 +60,12 @@ fi
 # ============================================================
 
 typeset -g FZF_TAB_PREVIEW_COMMAND="$DOTFILES_DIR/zsh/helpers/fzf-tab-preview-helper"
-typeset -g FZF_TAB_STATE_COMMAND="${commands[zsh]:-/bin/zsh}"
-typeset -g FZF_TAB_STATE_HELPER="$DOTFILES_DIR/zsh/helpers/fzf-tab-state-helper"
+typeset -gx FZF_TAB_STATE_COMMAND="${commands[zsh]:-/bin/zsh}"
+typeset -gx FZF_TAB_STATE_HELPER="$DOTFILES_DIR/zsh/helpers/fzf-tab-state-helper"
 typeset -g FZF_TAB_STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/zsh/fzf-tab"
 typeset -gx FZF_TAB_PREVIEW_STATE_FILE="$FZF_TAB_STATE_DIR/preview-position"
 typeset -gx FZF_TAB_HEIGHT_STATE_FILE="$FZF_TAB_STATE_DIR/height"
-typeset -g FZF_TAB_HIDDEN_STATE_FILE="$FZF_TAB_STATE_DIR/show-hidden"
+typeset -gx FZF_TAB_HIDDEN_STATE_FILE="$FZF_TAB_STATE_DIR/show-hidden"
 typeset -g FZF_TAB_HIDDEN_MARKER="${TMPDIR:-/tmp}/fzf-tab-hidden-${$}"
 
 mkdir -p -- "$FZF_TAB_STATE_DIR" 2>/dev/null || return
@@ -333,7 +333,7 @@ _fzf_widget_refresh_flags() {
     local fzf_height=$reply[1]
 
     export FZF_CTRL_T_OPTS="--no-sort --height=${fzf_height} --header='TAB/SHIFT-TAB move  ·  CTRL-SPACE select  ·  CTRL-A mark all  ·  CTRL-J/K preview scroll  ·  CTRL-P preview  ·  CTRL-H hidden  ·  ENTER insert  ·  ESC close' --preview '$FZF_TAB_PREVIEW_COMMAND {}' --preview-window=${preview_window} --bind='ctrl-a:toggle-all,ctrl-j:preview-down,ctrl-k:preview-up,ctrl-p:execute-silent(${state_command_q} ${state_helper_q} cycle-preview ${preview_state_q})+change-preview-window(${preview_cycle})+refresh-preview,ctrl-h:execute-silent(${toggle_hidden_command})+reload(${list_files_command})'"
-    export FZF_ALT_C_OPTS="--no-sort --height=${fzf_height} --header='TAB/SHIFT-TAB move  ·  CTRL-J/K preview scroll  ·  CTRL-P preview  ·  CTRL-H hidden  ·  ENTER cd  ·  ESC close' --preview '$FZF_TAB_PREVIEW_COMMAND {}' --preview-window=${preview_window} --bind='ctrl-j:preview-down,ctrl-k:preview-up,ctrl-p:execute-silent(${state_command_q} ${state_helper_q} cycle-preview ${preview_cycle})+change-preview-window(${preview_cycle})+refresh-preview,ctrl-h:execute-silent(${toggle_hidden_command})+reload(${list_directories_command})'"
+    export FZF_ALT_C_OPTS="--no-sort --height=${fzf_height} --header='TAB/SHIFT-TAB move  ·  CTRL-J/K preview scroll  ·  CTRL-P preview  ·  CTRL-H hidden  ·  ENTER cd  ·  ESC close' --preview '$FZF_TAB_PREVIEW_COMMAND {}' --preview-window=${preview_window} --bind='ctrl-j:preview-down,ctrl-k:preview-up,ctrl-p:execute-silent(${state_command_q} ${state_helper_q} cycle-preview ${preview_state_q})+change-preview-window(${preview_cycle})+refresh-preview,ctrl-h:execute-silent(${toggle_hidden_command})+reload(${list_directories_command})'"
 }
 
 _z4h_fzf_file_widget() {
@@ -406,6 +406,12 @@ _fzf_tab_complete_with_dots() {
     local autocd_enabled=${options[autocd]}
     emulate -L zsh
     setopt local_options extended_glob
+
+    if [[ ${Z4H_FZF_GIT_UPSTREAM:-false} == true ]] &&
+        (( $+functions[_z4h_fzf_git_complete] )) &&
+        _z4h_fzf_git_complete; then
+        return 0
+    fi
 
     # A unique directory completion leaves a trailing slash in LBUFFER.
     # Do not re-enter fzf-tab when that directory has no child directories:
@@ -1032,9 +1038,3 @@ fi
 #  fzf-tab-complete
 #}
 #
-#fzf-git-update() {
-#  mkdir -p "$HOME/.fzf"
-#  command curl -fsSL https://raw.githubusercontent.com/junegunn/fzf-git.sh/master/fzf-git.sh \
-#    -o "$HOME/.fzf/fzf-git.sh"
-#}
-#[[ -r "$DOTF/.fzf/fzf-git.sh" ]] && source "$HOME/.fzf/fzf-git.sh"

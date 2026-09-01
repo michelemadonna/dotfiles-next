@@ -15,7 +15,7 @@ if [ -n "${ZSH_VERSION-}" ]; then
   export Z4H_SSH_ASKPASS_REQUIRE=${Z4H_SSH_ASKPASS_REQUIRE:=false} #false/true
   export Z4H_MISE_REFRESH_SECONDS=${Z4H_MISE_REFRESH_SECONDS:=5} #0 checks every prompt
   export Z4H_USE_MISE=${Z4H_USE_MISE:=true} #true/false
-  export Z4H_USE_FZF_FROM_Z4H=${Z4H_USE_FZF_FROM_Z4H:=true} #true/false use fzf from z4h or from local build
+  export Z4H_USE_FZF_FROM_Z4H=${Z4H_USE_FZF_FROM_Z4H:=false} #true/false use fzf from z4h or from local build
   
   export DOTFILES_DIR="$HOME/.dotfiles" #${DOTFILES_DIR:="$HOME/.dotfiles"}
   export XDG_CACHE_HOME=${XDG_CACHE_HOME:="$HOME/.cache"}

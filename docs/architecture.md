@@ -34,3 +34,23 @@ z4h supplies fzf and native `Ctrl-T`, `Ctrl-R`, and `Alt-C`. fzf-tab and native
 file widgets share hidden-file and preview state: `Ctrl-P` cycles preview
 layout and `Ctrl-H` toggles hidden files. Completion generation is explicitly
 requested with `Shift-Tab`.
+
+The vendored `fzf-git.sh` integration is loaded after fzf and fzf-tab, then the
+local adapter adds command-aware Git dispatch before the final `z4h-fzf`
+widget bindings. Upstream owns picker UI, previews, parsing, and `Ctrl-G`
+widgets. A documented vendor patch adds `become` transitions, while the adapter
+provides the foreground bridge used by every transition and by contextual TAB.
+The bridge writes the final typed selection as private NUL-delimited sidecar
+records and returns only a random token through upstream `cut`, `sed`, and
+`awk` pipelines. TAB and the upstream ZLE joiner resolve and immediately remove
+the sidecar, preserving the original ref type and command-specific quoting.
+The separate `fzf-git-action.zsh` helper gives terminal editors a dedicated
+PTY, materializes ref contents as temporary regular files, and renders Git
+preview input according to the current shared layout. It invokes side-by-side
+delta only for `down` and `down90`; right and hidden layouts retain unified
+output, including after an in-picker `Ctrl-P` refresh.
+Unknown contexts still delegate to fzf-tab. The pinned revision requires fzf
+0.66+; older versions use compatible single-mode pickers and fzf-tab fallback.
+The upstream executor reads the shared preview and height state at launch;
+`Ctrl-P` updates preview geometry in place, while `Ctrl-F` remains a ZLE action
+whose persisted height applies to the next picker.

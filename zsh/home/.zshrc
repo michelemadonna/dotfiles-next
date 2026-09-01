@@ -212,7 +212,12 @@ if [[ ${Z4H_USE_FZF_TAB} = true ]]; then
 	# fzf-tab must wrap the stock completion widget, not z4h-fzf-complete.
 	bindkey '^I' expand-or-complete
 	z4h load -c Aloxaf/fzf-tab
-	
+
+	if [[ ${Z4H_FZF_GIT_VENDOR_LOADED:-false} != true ]]; then
+		typeset -g Z4H_FZF_GIT_VENDOR_LOADED=true
+		z4h source "$DOTFILES_DIR/zsh/vendor/fzf-git.sh"
+	fi
+	z4h source "$DOTFILES_DIR/zsh/helpers/fzf-git.zsh"
 	z4h source "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-fzf.plugin.zsh"
 fi
 
@@ -333,4 +338,3 @@ unset _ZQS_SSH_KEYS _ZQS_SSH_KEYS_STATUS _ZQS_SSH_KEYS_VALID
 if [[ -f ${HOME}/.z4h-zprof-enabled ]]; then
   zprof
 fi
-

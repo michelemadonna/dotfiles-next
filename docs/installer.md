@@ -32,7 +32,12 @@ disabled, shown at every interactive startup, or shown only in the first
 active terminal. Mise and Oh My Posh are installed only when selected.
 
 When `Z4H_USE_FZF_FROM_Z4H=false`, the latest fzf checkout is kept in
-`~/.local/share/fzf` and its binary in `~/.local/bin/fzf`. Mise uses Homebrew on
+`~/.local/share/fzf`, fast-forwarded on subsequent installer runs, and its
+binary is copied to `~/.local/bin/fzf`. This path supplies the modern fzf
+actions used by the vendored fzf-git integration. Startup checks that this
+binary is at least fzf 0.66 and reruns the non-interactive updater when it is
+older; the z4h fzf remains a compatible fallback when explicitly selected.
+Mise uses Homebrew on
 macOS or the official installer on Linux, then prepares activation,
 completion, and ASDF compatibility data. The startup helper can invoke the
 installer once when a selected tool is missing.

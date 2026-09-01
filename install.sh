@@ -1190,18 +1190,29 @@ install_oh_my_posh() {
 install_fzf_local() {
   fzf_repo="$HOME/.local/share/fzf"
   fzf_bin="$HOME/.local/bin/fzf"
-  if [ -d "$fzf_repo/.git" ] && [ -x "$fzf_bin" ]; then
-    info 'Local fzf already installed; skipping installation'
-    return 0
-  fi
   mkdir -p "$HOME/.local/share" "$HOME/.local/bin"
-  if [ ! -d "$fzf_repo/.git" ]; then
+  if [ -d "$fzf_repo/.git" ]; then
+    info 'Updating local fzf checkout'
+    git -C "$fzf_repo" pull --ff-only
+  else
     rm -rf "$fzf_repo"
     git clone --depth=1 https://github.com/junegunn/fzf.git "$fzf_repo"
   fi
   bash "$fzf_repo/install" --bin
   [ -x "$fzf_repo/bin/fzf" ] || die 'Local fzf installation failed.'
   cp "$fzf_repo/bin/fzf" "$fzf_bin"
+  fzf_version=$($fzf_bin --version 2>/dev/null) || die 'Cannot determine the local fzf version.'
+  if ! awk -v version="${fzf_version%% *}" 'BEGIN {
+    split(version, have, ".")
+    split("0.66.0", want, ".")
+    for (i = 1; i <= 3; i++) {
+      if ((have[i] + 0) > (want[i] + 0)) exit 0
+      if ((have[i] + 0) < (want[i] + 0)) exit 1
+    }
+    exit 0
+  }'; then
+    die "Local fzf 0.66.0 or newer is required; found ${fzf_version%% *}."
+  fi
 }
 
 apply_installation() {

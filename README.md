@@ -206,7 +206,7 @@ The project-specific plugins live in [`zsh/z4h.custom.plugins`](zsh/z4h.custom.p
 
 | Plugin             | What it does                                                                                                                                                                                                                                                                                                 |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `z4h-fzf`          | Extends fzf-tab, `Ctrl-T`, and `Alt-C` with shared hidden-file state, alphabetically ordered filesystem candidates, persistent preview layout, contextual previews, grouped Git refs and recent commits, and command-specific views for Git, Docker, package managers, SSH, processes, manuals, and systemd. |
+| `z4h-fzf`          | Extends fzf-tab, `Ctrl-T`, and `Alt-C` with shared hidden-file state, alphabetically ordered filesystem candidates, persistent preview layout, contextual previews, grouped Git refs and recent commits, and command-specific views for Git, Docker, package managers, SSH, processes, manuals, and systemd. It also integrates the vendored `fzf-git.sh` pickers for files, branches, tags, remotes, commits, stashes, reflogs, worktrees, and refs. |
 | `z4h-containers`   | Adds Docker and kubectl aliases, caches CLI-generated completion, improves Docker completion contexts, and supplies JSON/YAML kubectl helpers when the required tools are available.                                                                                                                         |
 | `z4h-eza`          | Replaces common `ls` forms with an icon-aware `eza` configuration and falls back to `exa` when necessary. Provides `ll` and `lls`.                                                                                                                                                                           |
 | `z4h-gencomp-lazy` | Generates completion from a command's help output on explicit `Shift-Tab`, caches it, loads it immediately, and remembers failed attempts for the current session. It also provides the manual `gencomp` command.                                                                                            |
@@ -292,7 +292,7 @@ The envs defined into `zsh/home/.zshenv`:
 * `Z4H_SSH_SHOW_KEY` Controls whether the SSH keys currently loaded in the agent are displayed during shell startup.
 * `Z4H_SSH_ASKPASS_REQUIRE` Controls SSH passphrase prompting. When enabled, SSH is required to use an askpass mechanism whenever a private key needs to be unlocked.
 * `Z4H_USE_MISE` Enables Mise integration. When enabled, Mise is installed automatically if necessary and initialized for runtime management, activation, completions, and asdf-compatible plugins.
-* `Z4H_USE_FZF_FROM_Z4H` Selects the fzf binary used by the shell. Set it to `true` to use the fzf binary supplied by z4h, or `false` to install and use the latest fzf binary from a local Git checkout.
+* `Z4H_USE_FZF_FROM_Z4H` Selects the fzf binary used by the shell. The default is `false`, which installs and uses the latest fzf binary from a local Git checkout; set it to `true` to retain the fzf binary supplied by z4h and the compatible fallback pickers.
 * `Z4H_MISE_REFRESH_SECONDS` Controls the periodic safety refresh performed by Mise. The default is `5` seconds. Directory changes, `PATH` changes, and successful `mise` commands always trigger an immediate refresh. Set it to `0` to refresh Mise before
   every prompt.
 * `POWERLEVEL9K_CONFIG_FILE` the powerlevel10k's config file path.
@@ -399,6 +399,49 @@ docker build \
 | <kbd>Ctrl</kbd> + <kbd>J</kbd> / <kbd>K</kbd> | Scroll preview window down/up.                                                                                              |
 | <kbd>></kbd> / <kbd>></kbd>                   | Switch group (fzf-tab).                                                                                                     |
 | <kbd>Ctrl</kbd> + <kbd>K</kbd>                | Open the searchable custom keybinding reference.                                                                            |
+
+Inside a Git repository, `Ctrl-G` followed by `F`, `B`, `T`, `R`, `H`, `S`,
+`L`, `W`, or `E` opens the corresponding fzf-git picker for files, branches,
+tags, remotes, commit hashes, stashes, reflogs, worktrees, or refs. Git-aware
+TAB completion is also enabled for branch, checkout, switch, restore, add,
+diff, show, log, merge, rebase, cherry-pick, revert, reset, stash, worktree,
+remote, fetch, pull, and push. These are the original vendored fzf-git menus,
+including their upstream previews and mode-specific actions. Within the compatible files,
+commit-files, branches, tags, hashes, and each-ref menus, `Alt-B`, `Alt-T`,
+`Alt-H`, `Alt-E`, and `Alt-W` switch directly to branches, tags, hashes, every
+ref, and working-tree files. `Alt-F` opens working-tree files except in Hashes,
+where it retains the upstream files-of-selected-commits action. `Alt-V` opens
+the editor in Files and Each-ref. Existing actions such as `Alt-A`, `Alt-R`,
+`Ctrl-O`, and `Ctrl-D` remain available. TAB only advertises transitions valid
+for its current Git command; direct `Ctrl-G` pickers expose every mode.
+`Ctrl-G Ctrl-E` opens the upstream `for-each-ref` picker covering every ref.
+`Ctrl-G` is handled as an explicit prefix, so the second key is not constrained
+by z4h's normal multi-key `KEYTIMEOUT`.
+
+TAB starts Each-ref for ambiguous ref contexts such as branch start-points,
+checkout, switch, merge, rebase, worktree creation, restore sources, and
+refspecs after a remote; Hashes for show, log, reset, cherry-pick, and revert;
+and Files for pathspec
+contexts. Branch deletion, upstream and description operands use Branches;
+worktree removal, locking, unlocking, and moving use Worktrees. Plain
+`git branch TAB` and `git worktree TAB` still delegate to normal completion
+because Git expects a new branch name or a worktree subcommand there.
+
+fzf-git shares the persisted preview layout and height with the other pickers:
+`Ctrl-P` changes the preview while the picker is open, and the height selected
+with `Ctrl-F` is applied on the next launch (fzf cannot resize an open picker).
+`Ctrl-H` is not needed inside fzf-git: its file picker already includes tracked
+and untracked dotfiles from Git status/index data.
+
+The pinned upstream revision requires fzf 0.66 or newer. The default installer
+choice (`Z4H_USE_FZF_FROM_Z4H=false`) installs, verifies, and keeps the latest
+checkout under `~/.local/share/fzf`; older fzf versions retain separate
+compatible pickers and normal fzf-tab fallback. Git 2.42 or newer is required
+for the `for-each-ref` picker. Because upstream fzf-git uses newline-delimited
+selection output, filenames containing embedded newlines are not supported by
+its widgets. `Ctrl-G Ctrl-B` can conflict with a tmux `Ctrl-B` prefix,
+`Ctrl-G Ctrl-S` requires terminal flow control not to consume `Ctrl-S`, and
+very small `KEYTIMEOUT` values can make two-key sequences difficult to enter.
 
 ### 7.3. 🔀 tmux
 
