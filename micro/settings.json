@@ -2,8 +2,8 @@
     // Automatically use sudo when required
     "autosu": true,
 
-    // Set the colorscheme to "dracula-tc"
-    "colorscheme": "dracula-tc",
+    // Set the colorscheme to "astronaut"
+    "colorscheme": "astronaut",
 
     // Show a diff gutter in the editor
     "diffgutter": true,

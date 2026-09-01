@@ -1,0 +1,206 @@
+{
+  "name": "astronaut",
+
+  "editor": {
+    "bg": "Default",
+    "fg": "Default",
+    "cursor": "Red",
+    "inactive_cursor": "DarkGray",
+
+    "selection_bg": "Default",
+    "selection_modifier": ["reversed"],
+
+    "current_line_bg": "Default",
+
+    "line_number_fg": "DarkGray",
+    "line_number_bg": "Default",
+
+    "diff_add_bg": "Green",
+    "diff_remove_bg": "Red",
+    "diff_add_highlight_bg": "LightGreen",
+    "diff_remove_highlight_bg": "LightRed",
+    "diff_modify_bg": "Yellow",
+
+    "diff_add_collision_fg": "Black",
+    "diff_remove_collision_fg": "White",
+    "diff_modify_collision_fg": "Black",
+
+    "ruler_bg": "DarkGray",
+    "whitespace_indicator_fg": "DarkGray",
+
+    "indent_rainbow_1": "Cyan",
+    "indent_rainbow_2": "Green",
+    "indent_rainbow_3": "Yellow",
+    "indent_rainbow_4": "Magenta",
+    "indent_rainbow_5": "Blue",
+    "indent_rainbow_6": "LightBlue",
+
+    "after_eof_bg": "Default"
+  },
+
+  "ui": {
+    "tab_active_fg": [41, 44, 51],
+    "tab_active_bg": [245, 198, 67],
+
+    "tab_inactive_fg": "DarkGray",
+    "tab_inactive_bg": "Default",
+
+    "tab_separator_bg": "Default",
+
+    "tab_close_hover_fg": "LightRed",
+    "tab_hover_bg": "DarkGray",
+
+    "menu_bg": "Default",
+    "menu_fg": "Default",
+
+    "menu_active_bg": [245, 198, 67],
+    "menu_active_fg": [41, 44, 51],
+
+    "menu_dropdown_bg": "Default",
+    "menu_dropdown_fg": "Default",
+
+    "menu_highlight_bg": [245, 158, 11],
+    "menu_highlight_fg": [41, 44, 51],
+
+    "menu_border_fg": "DarkGray",
+    "menu_separator_fg": "DarkGray",
+
+    "menu_hover_bg": [245, 158, 11],
+    "menu_hover_fg": [41, 44, 51],
+
+    "menu_disabled_fg": "DarkGray",
+    "menu_disabled_bg": "Default",
+
+    "status_bar_fg": [41, 44, 51],
+    "status_bar_bg": [245, 198, 67],
+
+    "status_lsp_on_fg": [41, 44, 51],
+    "status_lsp_on_bg": [73, 163, 247],
+
+    "status_lsp_actionable_fg": [41, 44, 51],
+    "status_lsp_actionable_bg": [73, 163, 247],
+
+    "status_palette_fg": [41, 44, 51],
+    "status_palette_bg": [245, 158, 11],
+
+    "prompt_fg": "Default",
+    "prompt_bg": "Default",
+
+    "prompt_selection_fg": [41, 44, 51],
+    "prompt_selection_bg": [245, 198, 67],
+
+    "popup_border_fg": [245, 198, 67],
+    "popup_bg": "Default",
+
+    "popup_selection_bg": [245, 158, 11],
+    "popup_selection_fg": [41, 44, 51],
+
+    "popup_text_fg": "Default",
+
+    "text_input_selection_bg": [245, 198, 67],
+
+    "suggestion_bg": "Default",
+    "suggestion_selected_bg": [245, 158, 11],
+
+    "help_bg": "Default",
+    "help_fg": "Default",
+
+    "help_key_fg": [100, 218, 236],
+    "help_separator_fg": "DarkGray",
+
+    "help_indicator_fg": [245, 158, 11],
+    "help_indicator_bg": "Default",
+
+    "inline_code_bg": "DarkGray",
+
+    "split_separator_fg": "DarkGray",
+    "split_separator_hover_fg": [73, 163, 247],
+
+    "scrollbar_track_fg": "DarkGray",
+    "scrollbar_thumb_fg": "Gray",
+    "scrollbar_track_hover_fg": "Gray",
+    "scrollbar_thumb_hover_fg": "White",
+
+    "compose_margin_bg": "Default",
+
+    "blame_header_fg": "White",
+    "blame_header_bg": "DarkGray",
+
+    "semantic_highlight_bg": "Default",
+    "semantic_highlight_modifier": ["bold", "underlined"],
+
+    "tour_step_bg": "DarkGray",
+
+    "terminal_bg": "Default",
+    "terminal_fg": "Default",
+
+    "status_warning_indicator_bg": [248, 217, 106],
+    "status_warning_indicator_fg": [41, 44, 51],
+
+    "status_error_indicator_bg": [235, 82, 86],
+    "status_error_indicator_fg": [254, 254, 254],
+
+    "status_warning_indicator_hover_bg": [245, 158, 11],
+    "status_warning_indicator_hover_fg": [41, 44, 51],
+
+    "status_error_indicator_hover_bg": [235, 82, 86],
+    "status_error_indicator_hover_fg": [254, 254, 254],
+
+    "tab_drop_zone_bg": [73, 163, 247],
+    "tab_drop_zone_border": [245, 198, 67],
+
+    "settings_selected_bg": [245, 198, 67],
+    "settings_selected_fg": [41, 44, 51],
+
+    "file_status_added_fg": "Green",
+    "file_status_modified_fg": "Yellow",
+    "file_status_deleted_fg": "Red",
+    "file_status_renamed_fg": "Cyan",
+    "file_status_untracked_fg": "DarkGray",
+    "file_status_conflicted_fg": "Magenta"
+  },
+
+  "search": {
+    "match_bg": [245, 198, 67],
+    "match_fg": [41, 44, 51],
+
+    "label_bg": [245, 158, 11],
+    "label_fg": [41, 44, 51]
+  },
+
+  "diagnostic": {
+    "error_fg": "LightRed",
+    "error_bg": "Default",
+
+    "warning_fg": "LightYellow",
+    "warning_bg": "Default",
+
+    "info_fg": "LightBlue",
+    "info_bg": "Default",
+
+    "hint_fg": "DarkGray",
+    "hint_bg": "Default"
+  },
+
+  "syntax": {
+    "keyword": "Green",
+
+    "string": "Yellow",
+
+    "comment": "Cyan",
+
+    "function": "LightBlue",
+
+    "type": "LightCyan",
+
+    "variable": "Default",
+    "variable_builtin": "LightMagenta",
+
+    "constant": "LightMagenta",
+
+    "operator": "White",
+
+    "punctuation_bracket": "White",
+    "punctuation_delimiter": "White"
+  }
+}

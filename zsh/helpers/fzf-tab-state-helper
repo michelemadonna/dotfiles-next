@@ -19,25 +19,25 @@ if [[ $action == list-files || $action == list-directories ]]; then
         fd_args=(--follow --color=never --exclude .git --exclude node_modules)
         [[ $state == on ]] && fd_args+=(--hidden)
         [[ $action == list-files ]] && fd_args+=(--type f) || fd_args+=(--type d)
-        command fd "${fd_args[@]}" .
+        command fd "${fd_args[@]}" . | command sort -f
     elif [[ $action == list-files ]]; then
         if [[ $state == on ]]; then
             command find . \
                 \( -path '*/.git/*' -o -path '*/node_modules/*' \) -prune -o \
-                -type f -print
+                -type f -print | command sort -f
         else
             command find . \
                 \( -path '*/.*' -o -path '*/node_modules/*' \) -prune -o \
-                -type f -print
+                -type f -print | command sort -f
         fi
     elif [[ $state == on ]]; then
         command find . \
             \( -path '*/.git' -o -path '*/node_modules' \) -prune -o \
-            -type d -print
+            -type d -print | command sort -f
     else
         command find . \
             \( -path '*/.*' -o -path '*/node_modules' \) -prune -o \
-            -type d -print
+            -type d -print | command sort -f
     fi
     exit
 fi
@@ -48,7 +48,8 @@ case $action in
         [[ -r $state_file ]] && state=$(<"$state_file")
         case $state in
             right)  next=down ;;
-            down)   next=hidden ;;
+            down)   next=down90 ;;
+            down90) next=hidden ;;
             hidden) next=right ;;
             *)      next=right ;;
         esac

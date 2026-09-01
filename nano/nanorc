@@ -1,0 +1,138 @@
+#===============================================================================
+# Nano - Astronaut
+# Palette inherited from Ghostty ANSI colors
+#
+# Ghostty:
+#   red      #ea4029
+#   green    #aae046
+#   yellow   #f5c643
+#   blue     #479ff2
+#   magenta  #7b5caf
+#   cyan     #64daec
+#   white    #fefefe
+#
+# Bright:
+#   brightred      #eb5256
+#   brightgreen    #c0e27c
+#   brightyellow   #f8d96a
+#   brightblue     #49a3f7
+#   brightmagenta  #a47ce8
+#   brightcyan     #98f9f2
+#===============================================================================
+
+
+#===============================================================================
+# UI
+#===============================================================================
+
+set linenumbers
+set indicator
+set minibar
+set stateflags
+
+# Main bars
+set titlecolor bold,black,yellow
+set statuscolor bold,black,cyan
+
+# Interface elements
+set keycolor bold,yellow
+set functioncolor cyan
+set numbercolor brightblack
+set selectedcolor white,blue
+set stripecolor ,black
+set scrollercolor cyan
+set promptcolor bold,black,yellow
+set spotlightcolor black,brightyellow
+set errorcolor bold,white,red
+
+
+#===============================================================================
+# Editing
+#===============================================================================
+
+set autoindent
+set tabsize 4
+set tabstospaces
+set trimblanks
+set softwrap
+set breaklonglines
+set afterends
+set zap
+
+
+#===============================================================================
+# Search
+#===============================================================================
+
+set casesensitive
+set regexp
+
+
+#===============================================================================
+# Mouse
+#===============================================================================
+
+set mouse
+
+
+#===============================================================================
+# File handling
+#===============================================================================
+
+set locking
+set positionlog
+set backup
+set backupdir "~/.cache/nano/backups"
+
+
+#===============================================================================
+# UI toggles
+#===============================================================================
+
+# Alt-L : Line numbers
+bind M-L linenumbers main
+
+# Alt-W : Soft wrapping
+bind M-W softwrap main
+
+# Alt-M : Mouse
+bind M-M mouse main
+
+# Alt-I : Whitespace
+bind M-I whitespacedisplay main
+
+# Alt-R : Refresh/redraw
+bind M-R refresh main
+
+# Alt-C : Cursor position
+bind M-C location main
+
+# Alt-K : Word/line/character count
+bind M-K wordcount main
+
+# Alt-Y : Syntax highlighting on/off
+bind M-Y nosyntax main
+
+
+#===============================================================================
+# Help
+#===============================================================================
+
+bind F1 help all
+
+
+#===============================================================================
+# Standard syntax highlighting
+#===============================================================================
+
+# Debian / Ubuntu / Kali
+include "/usr/share/nano/*.nanorc"
+include "/usr/share/nano/extra/*.nanorc"
+
+# macOS Apple Silicon Homebrew:
+include "/opt/homebrew/share/nano/*.nanorc"
+include "/opt/homebrew/share/nano/extra/*.nanorc"
+
+# macOS Intel Homebrew:
+include "/usr/local/share/nano/*.nanorc"
+include "/usr/local/share/nano/extra/*.nanorc"

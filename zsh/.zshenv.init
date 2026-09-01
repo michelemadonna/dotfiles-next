@@ -4,7 +4,7 @@ if [[ -f ${HOME}/.z4h-zprof-enabled ]]; then
 fi
 
 if [ -n "${ZSH_VERSION-}" ]; then
-  export Z4H_PROMPT=${Z4H_PROMPT:="powerlevel10k"} # powerlevel10k/ohmyposh
+  export Z4H_PROMPT=${Z4H_PROMPT:="powerlevel10k"} # powerlevel10k/ohmyposh/minimal
   export Z4H_SHOW_FASTFETCH=${Z4H_SHOW_FASTFETCH:=first} #false/true/first
   export Z4H_ENABLE_ALLAFINE=false
   export Z4H_USE_FZF_TAB=${Z4H_USE_FZF_TAB:=true} #true/false
@@ -14,22 +14,28 @@ if [ -n "${ZSH_VERSION-}" ]; then
   export Z4H_SSH_SHOW_KEY=${Z4H_SSH_SHOW_KEY:=true} #false/true
   export Z4H_SSH_ASKPASS_REQUIRE=${Z4H_SSH_ASKPASS_REQUIRE:=false} #false/true
   export Z4H_MISE_REFRESH_SECONDS=${Z4H_MISE_REFRESH_SECONDS:=5} #0 checks every prompt
-  export DOTFILES_DIR="$HOME/.dotfiles" #${DOTFILES_DIR:="$HOME/.dotfiles"} 
-  export ZDOTDIR="$DOTFILES_DIR/zsh/home"
-
-
-  #mkdir -p "$HOME/.cache/zsh" "$HOME/.local/state/zsh" "$HOME/.ssh" "$HOME/.local/bin" "$HOME/.config" "$HOME/.local/share"
-  #ln -sfn "$DOTFILES_DIR"/{micro,git,fastfetch,mise,fresh,oh-my-posh,ghostty} "$HOME/.config/"
-  #ln -sfn "$DOTFILES_DIR"/ssh/config "$HOME/.ssh/config"
+  export Z4H_USE_MISE=${Z4H_USE_MISE:=true} #true/false
+  export Z4H_USE_FZF_FROM_Z4H=${Z4H_USE_FZF_FROM_Z4H:=true} #true/false use fzf from z4h or from local build
   
-  
- 
-
+  export DOTFILES_DIR="$HOME/.dotfiles" #${DOTFILES_DIR:="$HOME/.dotfiles"}
   export XDG_CACHE_HOME=${XDG_CACHE_HOME:="$HOME/.cache"}
   export XDG_CONFIG_HOME=${XDG_CONFIG_HOME:="$HOME/.config"}
-  export XDG_DATA_HOME=${XDG_DATA_HOME:="$HOME/.local/share"}
-
+  export XDG_DATA_HOME=${XDG_DATA_HOME:="$HOME/.local/share"} 
+  export ZDOTDIR="$DOTFILES_DIR/zsh/home"
+  export HISTFILE="$HOME/.local/state/zsh/history"
+  export HISTORY_IGNORE="(cd ..|l[s]#( *)#|pwd *|exit *|date *|* --help)"
   export ZSH_COMPDUMP=${ZSH_COMPDUMP:="$XDG_CACHE_HOME/zsh/.zcompdump-${HOST}-${ZSH_VERSION}"}
+
+  # macOS may start Zsh without loading the user's login profile.
+  # Keep Homebrew available before the interactive tool bootstrap runs.
+  if [[ $OSTYPE == darwin* ]]; then
+    path=(/opt/homebrew/bin /opt/homebrew/sbin /usr/local/bin /usr/local/sbin $path)
+  fi
+  path=("$HOME/.local/bin" $path)
+  typeset -gU path PATH
+  rehash
+
+  
   
 
   case ${EDITOR:-} in
@@ -39,8 +45,11 @@ if [ -n "${ZSH_VERSION-}" ]; then
   export EDITOR=${EDITOR:="micro"}
   export VISUAL="$EDITOR"
 
-  ## Yes, these are a pain to customize. Fortunately, Geoff Greer made an online
-  ## tool that makes it easy to customize your color scheme and keep them in sync
+  export VIMINIT='source ~/.config/vim/vimrc'
+
+  source "$DOTFILES_DIR/zsh/helpers/tool-bootstrap.zsh"
+
+  ## customize your color scheme and keep them in sync
   ## across Linux and OS X/*BSD at http://geoff.greer.fm/lscolors/
   #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   if [[ -z ${LSCOLORS-} ]]; then
@@ -65,12 +74,8 @@ if [ -n "${ZSH_VERSION-}" ]; then
   fi
 
   if (( $+commands[bat] )); then
-    # Export theme for http://github.com/sharkdp/bat.
     export BAT_THEME="Solarized (dark)"
   fi
-  
-  export HISTFILE=${HISTFILE:="$HOME/.local/state/zsh/history"}
-  export HISTORY_IGNORE="(cd ..|l[s]#( *)#|pwd *|exit *|date *|* --help)"
   
   export FZF_COMPLETION_TRIGGER='**' # change ** to whatever you like 
   

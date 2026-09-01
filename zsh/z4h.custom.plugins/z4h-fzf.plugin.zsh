@@ -6,6 +6,10 @@
 # ============================================================
 # fzf-tab configuration
 # ============================================================
+
+if [[ ${Z4H_USE_FZF_FROM_Z4H:-true} == false && -x ${FZF_LOCAL_BIN:-$HOME/.local/bin/fzf} ]]; then
+    zstyle ':fzf-tab:*' fzf-command "${FZF_LOCAL_BIN:-$HOME/.local/bin/fzf}"
+fi
 #
 # Dependencies
 # ============================================================
@@ -55,16 +59,24 @@
 # Paths
 # ============================================================
 
-typeset -g FZF_TAB_PREVIEW_COMMAND="$DOTFILES_DIR/zsh/fzf-tab-preview-helper"
+typeset -g FZF_TAB_PREVIEW_COMMAND="$DOTFILES_DIR/zsh/helpers/fzf-tab-preview-helper"
 typeset -g FZF_TAB_STATE_COMMAND="${commands[zsh]:-/bin/zsh}"
-typeset -g FZF_TAB_STATE_HELPER="$DOTFILES_DIR/zsh/fzf-tab-state-helper"
+typeset -g FZF_TAB_STATE_HELPER="$DOTFILES_DIR/zsh/helpers/fzf-tab-state-helper"
 typeset -g FZF_TAB_STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/zsh/fzf-tab"
 typeset -gx FZF_TAB_PREVIEW_STATE_FILE="$FZF_TAB_STATE_DIR/preview-position"
+typeset -gx FZF_TAB_HEIGHT_STATE_FILE="$FZF_TAB_STATE_DIR/height"
 typeset -g FZF_TAB_HIDDEN_STATE_FILE="$FZF_TAB_STATE_DIR/show-hidden"
 typeset -g FZF_TAB_HIDDEN_MARKER="${TMPDIR:-/tmp}/fzf-tab-hidden-${$}"
 
 mkdir -p -- "$FZF_TAB_STATE_DIR" 2>/dev/null || return
 rm -f -- "$FZF_TAB_HIDDEN_MARKER"
+
+# Hidden files are ON by default and the choice persists across sessions.
+if [[ ! -r $FZF_TAB_HIDDEN_STATE_FILE ]] ||
+    [[ $(<"$FZF_TAB_HIDDEN_STATE_FILE") != on &&
+       $(<"$FZF_TAB_HIDDEN_STATE_FILE") != off ]]; then
+    print -r -- on >| "$FZF_TAB_HIDDEN_STATE_FILE"
+fi
 
 __fzf_default_command() {
     emulate -L zsh
@@ -107,8 +119,8 @@ zstyle ':completion:*:descriptions' \
 zstyle ':completion:*' \
     menu no
 
-# Hidden files are OFF by default and persisted across shells.
-typeset -g FZF_TAB_SHOW_HIDDEN=0
+# Hidden files are ON by default and persisted across shells.
+typeset -g FZF_TAB_SHOW_HIDDEN=1
 
 _fzf_tab_apply_hidden_state() {
     local hidden_state=''
@@ -119,17 +131,18 @@ _fzf_tab_apply_hidden_state() {
         FZF_TAB_SHOW_HIDDEN=1
         setopt globdots
         zstyle ':completion:*' \
-            file-patterns '*(D):all-files'
+            file-patterns \
+            '*(D):all-files'
         zstyle ':completion:*:cd:*' \
             file-patterns \
-            '*(-/):directories .*(-/):hidden-directories'
+            '*(N-/):directories .*(N-/):hidden-directories'
     else
         FZF_TAB_SHOW_HIDDEN=0
         unsetopt globdots
-        [[ $hidden_state == off ]] ||
-            print -r -- off >| "$FZF_TAB_HIDDEN_STATE_FILE"
-        zstyle -d ':completion:*' \
-            file-patterns
+        zstyle ':completion:*' \
+            file-patterns \
+            '*(-^-/):all-files' \
+            '.*(D):hidden-files'
         zstyle -d ':completion:*:cd:*' \
             file-patterns
         # For cd, offer hidden directories only as a fallback. This lets
@@ -137,8 +150,8 @@ _fzf_tab_apply_hidden_state() {
         # directories, while keeping hidden entries out of the normal list.
         zstyle ':completion:*:cd:*' \
             file-patterns \
-            '*(-/):directories' \
-            '.*(D-/):hidden-directories'
+            '*(N-/):directories' \
+            '.*(N-/):hidden-directories'
     fi
 }
 
@@ -163,7 +176,7 @@ _fzf_tab_cd() {
     [[ -r $FZF_TAB_HIDDEN_STATE_FILE ]] &&
         hidden_state=$(<"$FZF_TAB_HIDDEN_STATE_FILE")
 
-    if [[ $hidden_state == on && CURRENT -eq 2 && $PREFIX != */* ]] &&
+    if [[ $hidden_state == on && ( CURRENT -eq 1 || CURRENT -eq 2 ) && $PREFIX != */* ]] &&
         (( $+commands[fd] )); then
         hidden_directories=(
             "${(@f)$(command fd \
@@ -188,6 +201,18 @@ _fzf_tab_cd() {
 }
 
 compdef _fzf_tab_cd cd
+
+_fzf_tab_autocd() {
+    _command_names
+    local completion_status=$?
+
+    if [[ -o autocd ]]; then
+        _fzf_tab_cd
+        (( $? == 0 )) && completion_status=0
+    fi
+
+    return completion_status
+}
 
 if [[ -n "${LS_COLORS:-}" ]]; then
 
@@ -224,18 +249,31 @@ _fzf_preview_layout() {
 
     case $preview_position in
         right)
-            reply=('right:60%:wrap:nohidden' 'down:50%:wrap:nohidden|hidden|right:60%:wrap:nohidden')
+            reply=('right:50%:wrap:nohidden' 'down:50%:wrap:nohidden|down:90%:wrap:nohidden|hidden|right:50%:wrap:nohidden')
             ;;
         down)
-            reply=('down:50%:wrap:nohidden' 'hidden|right:60%:wrap:nohidden|down:50%:wrap:nohidden')
+            reply=('down:50%:wrap:nohidden' 'down:90%:wrap:nohidden|hidden|right:50%:wrap:nohidden|down:50%:wrap:nohidden')
+            ;;
+        down90)
+            reply=('down:90%:wrap:nohidden' 'hidden|right:50%:wrap:nohidden|down:50%:wrap:nohidden|down:90%:wrap:nohidden')
             ;;
         hidden)
-            reply=('hidden' 'right:60%:wrap:nohidden|down:50%:wrap:nohidden|hidden')
+            reply=('hidden' 'right:50%:wrap:nohidden|down:50%:wrap:nohidden|down:90%:wrap:nohidden|hidden')
             ;;
         *)
-            reply=('right:60%:wrap:nohidden' 'down:50%:wrap:nohidden|hidden|right:60%:wrap:nohidden')
+            reply=('right:50%:wrap:nohidden' 'down:50%:wrap:nohidden|down:90%:wrap:nohidden|hidden|right:50%:wrap:nohidden')
             print -r -- right >| "$FZF_TAB_PREVIEW_STATE_FILE"
             ;;
+    esac
+}
+
+_fzf_height() {
+    emulate -L zsh
+    local height=''
+    [[ -r $FZF_TAB_HEIGHT_STATE_FILE ]] && height=$(<"$FZF_TAB_HEIGHT_STATE_FILE")
+    case $height in
+        33%|50%|66%|99%) reply=($height) ;;
+        *) reply=(33%) ; print -r -- 33% >| "$FZF_TAB_HEIGHT_STATE_FILE" ;;
     esac
 }
 
@@ -245,6 +283,8 @@ _fzf_tab_refresh_flags() {
     _fzf_preview_layout
     local preview_window=$reply[1]
     local preview_cycle=$reply[2]
+    _fzf_height
+    local fzf_height=$reply[1]
     local hidden_marker_q="${(q)FZF_TAB_HIDDEN_MARKER}"
     local hidden_state_q="${(q)FZF_TAB_HIDDEN_STATE_FILE}"
     local preview_state_q="${(q)FZF_TAB_PREVIEW_STATE_FILE}"
@@ -253,14 +293,14 @@ _fzf_tab_refresh_flags() {
 
     zstyle ':fzf-tab:*' \
         fzf-flags \
-            --height=33% \
+            "--height=${fzf_height}" \
             --layout=reverse \
             --border \
             --info=inline \
             "--header=TAB/SHIFT-TAB move  ·  </> group  ·  CTRL-A mark all  ·  CTRL-J/K preview scroll  ·  CTRL-P preview  ·  CTRL-H hidden  ·  ENTER select  ·  ESC close" \
             "--preview-window=${preview_window}" \
             --bind=ctrl-a:toggle-all,ctrl-j:preview-down,ctrl-k:preview-up \
-            "--bind=ctrl-p:execute-silent(${state_command_q} ${state_helper_q} cycle-preview ${preview_state_q})+change-preview-window(${preview_cycle})" \
+            "--bind=ctrl-p:execute-silent(${state_command_q} ${state_helper_q} cycle-preview ${preview_state_q})+change-preview-window(${preview_cycle})+refresh-preview" \
             "--bind=ctrl-h:execute-silent(${state_command_q} ${state_helper_q} toggle-hidden ${hidden_state_q} ${hidden_marker_q})+abort"
 }
 
@@ -289,9 +329,11 @@ _fzf_widget_refresh_flags() {
     local toggle_hidden_command="${state_command_q} ${state_helper_q} toggle-hidden ${hidden_state_q}"
     local list_files_command="${state_command_q} ${state_helper_q} list-files ${hidden_state_q}"
     local list_directories_command="${state_command_q} ${state_helper_q} list-directories ${hidden_state_q}"
+    _fzf_height
+    local fzf_height=$reply[1]
 
-    export FZF_CTRL_T_OPTS="--header='TAB/SHIFT-TAB move  ·  CTRL-SPACE select  ·  CTRL-A mark all  ·  CTRL-J/K preview scroll  ·  CTRL-P preview  ·  CTRL-H hidden  ·  ENTER insert  ·  ESC close' --preview '$FZF_TAB_PREVIEW_COMMAND {}' --preview-window=${preview_window} --bind='ctrl-a:toggle-all,ctrl-j:preview-down,ctrl-k:preview-up,ctrl-p:execute-silent(${state_command_q} ${state_helper_q} cycle-preview ${preview_state_q})+change-preview-window(${preview_cycle}),ctrl-h:execute-silent(${toggle_hidden_command})+reload(${list_files_command})'"
-    export FZF_ALT_C_OPTS="--header='TAB/SHIFT-TAB move  ·  CTRL-J/K preview scroll  ·  CTRL-P preview  ·  CTRL-H hidden  ·  ENTER cd  ·  ESC close' --preview '$FZF_TAB_PREVIEW_COMMAND {}' --preview-window=${preview_window} --bind='ctrl-j:preview-down,ctrl-k:preview-up,ctrl-p:execute-silent(${state_command_q} ${state_helper_q} cycle-preview ${preview_state_q})+change-preview-window(${preview_cycle}),ctrl-h:execute-silent(${toggle_hidden_command})+reload(${list_directories_command})'"
+    export FZF_CTRL_T_OPTS="--no-sort --height=${fzf_height} --header='TAB/SHIFT-TAB move  ·  CTRL-SPACE select  ·  CTRL-A mark all  ·  CTRL-J/K preview scroll  ·  CTRL-P preview  ·  CTRL-H hidden  ·  ENTER insert  ·  ESC close' --preview '$FZF_TAB_PREVIEW_COMMAND {}' --preview-window=${preview_window} --bind='ctrl-a:toggle-all,ctrl-j:preview-down,ctrl-k:preview-up,ctrl-p:execute-silent(${state_command_q} ${state_helper_q} cycle-preview ${preview_state_q})+change-preview-window(${preview_cycle})+refresh-preview,ctrl-h:execute-silent(${toggle_hidden_command})+reload(${list_files_command})'"
+    export FZF_ALT_C_OPTS="--no-sort --height=${fzf_height} --header='TAB/SHIFT-TAB move  ·  CTRL-J/K preview scroll  ·  CTRL-P preview  ·  CTRL-H hidden  ·  ENTER cd  ·  ESC close' --preview '$FZF_TAB_PREVIEW_COMMAND {}' --preview-window=${preview_window} --bind='ctrl-j:preview-down,ctrl-k:preview-up,ctrl-p:execute-silent(${state_command_q} ${state_helper_q} cycle-preview ${preview_cycle})+change-preview-window(${preview_cycle})+refresh-preview,ctrl-h:execute-silent(${toggle_hidden_command})+reload(${list_directories_command})'"
 }
 
 _z4h_fzf_file_widget() {
@@ -310,13 +352,38 @@ _z4h_fzf_cd_widget() {
     return widget_status
 }
 
+_fzf_cycle_height() {
+    emulate -L zsh
+    _fzf_height
+    case $reply[1] in
+        33%) reply=(50%) ;;
+        50%) reply=(66%) ;;
+        66%) reply=(99%) ;;
+        *) reply=(33%) ;;
+    esac
+    print -r -- "$reply[1]" >| "$FZF_TAB_HEIGHT_STATE_FILE"
+    _fzf_tab_refresh_flags
+    _fzf_widget_refresh_flags
+    local height_bar
+    case $reply[1] in
+        33%) height_bar='▰▰░░░' ;;
+        50%) height_bar='▰▰▰░░' ;;
+        66%) height_bar='▰▰▰▰░' ;;
+        99%) height_bar='▰▰▰▰▰' ;;
+    esac
+    zle -M "🔎 fzf ❯ height ${reply[1]} ${height_bar}"
+}
+
 _fzf_widget_refresh_flags
 zle -N _z4h_fzf_file_widget
 zle -N _z4h_fzf_cd_widget
+zle -N _fzf_cycle_height
 bindkey -M emacs '^T' _z4h_fzf_file_widget
 bindkey -M viins '^T' _z4h_fzf_file_widget
 bindkey -M emacs '^[c' _z4h_fzf_cd_widget
 bindkey -M viins '^[c' _z4h_fzf_cd_widget
+bindkey -M emacs '^F' _fzf_cycle_height
+bindkey -M viins '^F' _fzf_cycle_height
 
 unset _fzf_state_command_q _fzf_state_helper_q _fzf_hidden_state_file_q
 unset _fzf_toggle_hidden_command _fzf_list_files_command _fzf_list_directories_command
@@ -336,7 +403,70 @@ unset _fzf_toggle_hidden_command _fzf_list_files_command _fzf_list_directories_c
 
 _fzf_tab_complete_with_dots() {
 
+    local autocd_enabled=${options[autocd]}
     emulate -L zsh
+    setopt local_options extended_glob
+
+    # A unique directory completion leaves a trailing slash in LBUFFER.
+    # Do not re-enter fzf-tab when that directory has no child directories:
+    # an empty file-pattern group can otherwise be inserted as a literal glob.
+    if [[ $LBUFFER == 'cd '* && $LBUFFER == */ && -z $RBUFFER ]]; then
+        local cd_directory=${LBUFFER#cd }
+        local -a cd_child_directories=(
+            ${~cd_directory}/*(N-/)
+            ${~cd_directory}/.[^.]##(N-/)
+        )
+        if [[ -d ${~cd_directory} && $#cd_child_directories -eq 0 ]]; then
+            zle redisplay
+            return 0
+        fi
+    fi
+
+    # Match z4h's native AUTO_CD behavior before fzf-tab takes over command
+    # completion. Complete a unique local directory prefix directly, including
+    # an explicitly typed dot-directory prefix.
+    if [[ $autocd_enabled == on && -z $RBUFFER && -n $LBUFFER &&
+          $LBUFFER != *[[:space:]]* && $LBUFFER != */* ]]; then
+        local directory_pattern="${(q)LBUFFER}*"
+        local -a autocd_directories=( ${~directory_pattern}(-/N:t) )
+        if (( $#autocd_directories == 1 )); then
+            LBUFFER="${autocd_directories[1]}/"
+            zle redisplay
+            return 0
+        elif (( $#autocd_directories > 1 )); then
+            local selected_directory
+            selected_directory=$(
+                print -rl -- "${autocd_directories[@]}" |
+                    FZF_DEFAULT_OPTS= command fzf \
+                        --height=33% \
+                        --layout=reverse \
+                        --border \
+                        --cycle \
+                        --prompt='Directory > ' \
+                        --header='TAB/SHIFT-TAB move  ·  ENTER select  ·  ESC close' \
+                        --bind=tab:down,btab:up \
+                        --query="$LBUFFER"
+            )
+            if (( $? != 0 )); then
+                zle reset-prompt
+                zle redisplay
+                return 0
+            fi
+            if [[ -n $selected_directory ]]; then
+                LBUFFER="${selected_directory}/"
+            fi
+            zle reset-prompt
+            zle redisplay
+            return 0
+        fi
+    fi
+
+    # z4h initializes compsys lazily. Complete that initialization before
+    # registering the native AUTO_CD completer for command position.
+    if [[ -v _z4h_compinit_fd ]]; then
+        -z4h-compinit || true
+    fi
+    _comps[-command-]=_fzf_tab_autocd
 
     rm -f -- "$FZF_TAB_HIDDEN_MARKER"
     _fzf_tab_apply_hidden_state
@@ -369,9 +499,9 @@ _fzf_tab_toggle_hidden() {
     _fzf_tab_apply_hidden_state
     export FZF_DEFAULT_COMMAND="$(__fzf_default_command)"
     if (( FZF_TAB_SHOW_HIDDEN )); then
-        zle -M '🙉 Hidden files visible'
+        zle -M '🔎 fzf ❯ 🙉 show hidden ON'
     else
-        zle -M '🙈 Hidden files hidden'
+        zle -M '🔎 fzf ❯ 🙈 show hidden OFF'
     fi
 }
 
@@ -388,6 +518,14 @@ bindkey -M emacs \
 bindkey -M viins \
     '^I' \
     _fzf_tab_complete_with_dots
+
+bindkey -M emacs \
+    '^H' \
+    _fzf_tab_toggle_hidden
+
+bindkey -M viins \
+    '^H' \
+    _fzf_tab_toggle_hidden
 
 bindkey -M emacs \
     '^H' \
@@ -652,7 +790,8 @@ if (( $+commands[git] )); then
                 fi
 
                 if [[ -r "$FZF_TAB_PREVIEW_STATE_FILE" ]] &&
-                    [[ "$(<"$FZF_TAB_PREVIEW_STATE_FILE")" == down ]] &&
+                    [[ "$(<"$FZF_TAB_PREVIEW_STATE_FILE")" == down ||
+                       "$(<"$FZF_TAB_PREVIEW_STATE_FILE")" == down90 ]] &&
                     (( $+commands[delta] )); then
                     print -r -- "$diff_output" |
                         delta \
@@ -678,7 +817,8 @@ if (( $+commands[git] )); then
     zstyle ':fzf-tab:complete:git-(diff|restore):*' \
         fzf-preview '
             if [[ -r "$FZF_TAB_PREVIEW_STATE_FILE" ]] &&
-                [[ "$(<"$FZF_TAB_PREVIEW_STATE_FILE")" == down ]] &&
+                [[ "$(<"$FZF_TAB_PREVIEW_STATE_FILE")" == down ||
+                   "$(<"$FZF_TAB_PREVIEW_STATE_FILE")" == down90 ]] &&
                 (( $+commands[delta] )); then
                 git diff \
                     --color=always \

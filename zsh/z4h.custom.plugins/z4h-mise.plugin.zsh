@@ -2,10 +2,6 @@
 # mise plugin for zsh
 # this plugin integrates mise (https://github.com/mise/mise) into zsh shell
 
-if [[ -z ${DOTFILES_DIR:-} ]]; then
-  export DOTFILES_DIR="${0:A:h:h:h}"
-fi
-
 # TODO: 2024-01-03 remove rtx support
 local __mise=mise
 if (( ! $+commands[mise] )); then

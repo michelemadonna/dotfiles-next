@@ -1,0 +1,691 @@
+" ============================================================================
+" Vim 9.x - Astronaut
+" Classic Vim only - no Neovim
+" ============================================================================
+
+
+" ============================================================================
+" GENERAL COMPATIBILITY
+" ============================================================================
+
+set nocompatible
+
+
+" ============================================================================
+" XDG PATHS
+" ============================================================================
+
+let s:config    = expand('~/.config/vim')
+let s:data      = expand('~/.local/share/vim')
+let s:cache     = expand('~/.cache/vim')
+let s:plug_file = s:config . '/autoload/plug.vim'
+let s:plug_dir  = s:data . '/plugged'
+
+execute 'set runtimepath^=' . fnameescape(s:config)
+
+call mkdir(s:config . '/autoload', 'p')
+call mkdir(s:data, 'p')
+call mkdir(s:plug_dir, 'p')
+call mkdir(s:cache, 'p')
+call mkdir(s:cache . '/backup', 'p')
+call mkdir(s:cache . '/swap', 'p')
+call mkdir(s:cache . '/undo', 'p')
+
+
+" ============================================================================
+" VIM-PLUG BOOTSTRAP
+" ============================================================================
+
+let s:first_install = 0
+
+if empty(glob(s:plug_file))
+    echo 'Installing vim-plug...'
+
+    let s:plug_url =
+          \ 'https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim'
+
+    if executable('curl')
+        silent execute
+              \ '!curl -fsSLo ' . shellescape(s:plug_file)
+              \ . ' --create-dirs '
+              \ . shellescape(s:plug_url)
+
+    elseif executable('wget')
+        silent execute
+              \ '!wget -qO ' . shellescape(s:plug_file)
+              \ . ' '
+              \ . shellescape(s:plug_url)
+
+    else
+        echoerr 'vim-plug bootstrap requires curl or wget'
+    endif
+
+    if filereadable(s:plug_file)
+        let s:first_install = 1
+    else
+        echoerr 'Unable to install vim-plug'
+    endif
+endif
+
+
+" ============================================================================
+" LOAD VIM-PLUG
+" ============================================================================
+
+if filereadable(s:plug_file)
+    execute 'source ' . fnameescape(s:plug_file)
+endif
+
+
+" ============================================================================
+" PLUGINS
+" ============================================================================
+
+if exists('*plug#begin')
+
+    call plug#begin(s:plug_dir)
+
+    " ------------------------------------------------------------------------
+    " Status line
+    " ------------------------------------------------------------------------
+
+    Plug 'itchyny/lightline.vim'
+
+
+    " ------------------------------------------------------------------------
+    " Fuzzy finder
+    " ------------------------------------------------------------------------
+
+    Plug 'junegunn/fzf'
+    Plug 'junegunn/fzf.vim'
+
+
+    " ------------------------------------------------------------------------
+    " Git
+    " ------------------------------------------------------------------------
+
+    Plug 'tpope/vim-fugitive'
+    Plug 'airblade/vim-gitgutter'
+
+
+    " ------------------------------------------------------------------------
+    " File tree
+    " ------------------------------------------------------------------------
+
+    Plug 'preservim/nerdtree'
+
+
+    " ------------------------------------------------------------------------
+    " LSP
+    " ------------------------------------------------------------------------
+
+    Plug 'prabirshrestha/vim-lsp'
+
+
+    " ------------------------------------------------------------------------
+    " Completion
+    " ------------------------------------------------------------------------
+
+    Plug 'prabirshrestha/asyncomplete.vim'
+    Plug 'prabirshrestha/asyncomplete-lsp.vim'
+
+
+    " ------------------------------------------------------------------------
+    " Linting / Formatting
+    " ------------------------------------------------------------------------
+
+    Plug 'dense-analysis/ale'
+
+
+    " ------------------------------------------------------------------------
+    " Editing helpers
+    " ------------------------------------------------------------------------
+
+    Plug 'tpope/vim-commentary'
+    Plug 'tpope/vim-surround'
+    Plug 'tpope/vim-repeat'
+    Plug 'jiangmiao/auto-pairs'
+
+
+    " ------------------------------------------------------------------------
+    " Syntax support
+    " ------------------------------------------------------------------------
+
+    Plug 'sheerun/vim-polyglot'
+
+
+    call plug#end()
+
+endif
+
+
+" ============================================================================
+" AUTOMATIC PLUGIN INSTALLATION
+" ============================================================================
+
+function! s:InstallMissingPlugins() abort
+
+    if !exists(':PlugInstall')
+        return
+    endif
+
+    let l:missing = 0
+
+    if exists('g:plugs')
+        for l:plug in values(g:plugs)
+            if !isdirectory(l:plug.dir)
+                let l:missing = 1
+                break
+            endif
+        endfor
+    endif
+
+    if l:missing
+        echo 'Installing missing Vim plugins...'
+        PlugInstall --sync
+        source $MYVIMRC
+    endif
+
+endfunction
+
+
+if exists(':PlugInstall')
+    augroup vim_plug_bootstrap
+        autocmd!
+        autocmd VimEnter * ++once call <SID>InstallMissingPlugins()
+    augroup END
+endif
+
+
+" ============================================================================
+" FILETYPE / SYNTAX
+" ============================================================================
+
+filetype plugin indent on
+syntax enable
+
+
+" ============================================================================
+" GENERAL
+" ============================================================================
+
+set encoding=utf-8
+
+set number
+set cursorline
+
+set showcmd
+set showmode
+set ruler
+
+set hidden
+
+set wildmenu
+set wildmode=longest:full,full
+
+set backspace=indent,eol,start
+
+set confirm
+set autoread
+
+set mouse=a
+
+if has('clipboard')
+    set clipboard=unnamedplus
+endif
+
+set scrolloff=5
+set sidescrolloff=5
+
+set splitbelow
+set splitright
+
+set signcolumn=yes
+
+set cmdheight=1
+
+set updatetime=300
+set timeoutlen=500
+
+set shortmess+=c
+
+
+" ============================================================================
+" INDENTATION
+" ============================================================================
+
+set expandtab
+
+set tabstop=4
+set shiftwidth=4
+set softtabstop=4
+
+set autoindent
+set smartindent
+set shiftround
+
+
+" ============================================================================
+" SEARCH
+" ============================================================================
+
+set ignorecase
+set smartcase
+
+set incsearch
+set hlsearch
+
+set magic
+
+
+" ============================================================================
+" WRAPPING
+" ============================================================================
+
+set wrap
+set linebreak
+set breakindent
+
+
+" ============================================================================
+" WHITESPACE
+" ============================================================================
+
+set list
+set listchars=tab:→\ ,trail:·,extends:»,precedes:«,nbsp:␣
+
+
+" ============================================================================
+" BACKUP / SWAP / UNDO
+" ============================================================================
+
+set backup
+set writebackup
+
+execute 'set backupdir=' . fnameescape(s:cache . '/backup//')
+execute 'set directory=' . fnameescape(s:cache . '/swap//')
+
+if has('persistent_undo')
+    set undofile
+    execute 'set undodir=' . fnameescape(s:cache . '/undo//')
+endif
+
+
+" ============================================================================
+" TRUE COLOR / THEME
+" ============================================================================
+
+if has('termguicolors')
+    set termguicolors
+endif
+
+set background=dark
+
+if !empty(globpath(&runtimepath, 'colors/astronaut.vim'))
+    colorscheme astronaut
+endif
+
+
+" ============================================================================
+" LIGHTLINE
+" ============================================================================
+
+set laststatus=2
+
+let g:lightline = {
+      \ 'colorscheme': 'astronaut',
+      \ 'active': {
+      \   'left': [
+      \       ['mode', 'paste'],
+      \       ['gitbranch', 'readonly', 'filename', 'modified']
+      \   ],
+      \   'right': [
+      \       ['lineinfo'],
+      \       ['percent'],
+      \       ['fileformat', 'fileencoding', 'filetype']
+      \   ]
+      \ },
+      \ 'component_function': {
+      \   'gitbranch': 'FugitiveHead'
+      \ }
+      \ }
+
+
+" ============================================================================
+" LEADER
+" ============================================================================
+
+let mapleader = " "
+let maplocalleader = " "
+
+
+" ============================================================================
+" LINE NUMBERS
+" ============================================================================
+
+" Space+n : toggle line numbers
+nnoremap <silent> <leader>n :set number!<CR>
+
+
+" ============================================================================
+" FZF
+" ============================================================================
+
+" Ctrl-P : files
+nnoremap <C-p> :Files<CR>
+
+" Space-f : files
+nnoremap <leader>f :Files<CR>
+
+" Space-b : buffers
+nnoremap <leader>b :Buffers<CR>
+
+" Space-g : ripgrep
+nnoremap <leader>g :Rg<CR>
+
+" Space-h : command history
+nnoremap <leader>h :History:<CR>
+
+" Space-l : lines
+nnoremap <leader>l :Lines<CR>
+
+let g:fzf_layout = {
+      \ 'down': '~40%'
+      \ }
+
+let g:fzf_vim = {}
+
+let g:fzf_vim.preview_window = [
+      \ 'right,50%',
+      \ 'ctrl-/'
+      \ ]
+
+
+" ============================================================================
+" NERDTREE
+" ============================================================================
+
+nnoremap <leader>e :NERDTreeToggle<CR>
+
+let g:NERDTreeShowHidden = 1
+let g:NERDTreeMinimalUI = 1
+let g:NERDTreeDirArrows = 1
+let g:NERDTreeQuitOnOpen = 0
+
+augroup nerdtree
+    autocmd!
+
+    autocmd BufEnter *
+          \ if winnr('$') == 1
+          \ && exists('b:NERDTree')
+          \ && b:NERDTree.isTabTree()
+          \ | quit
+          \ | endif
+augroup END
+
+
+" ============================================================================
+" GIT
+" ============================================================================
+
+nnoremap <leader>gs :Git<CR>
+nnoremap <leader>gd :Gdiffsplit<CR>
+nnoremap <leader>gb :Git blame<CR>
+nnoremap <leader>gc :Git commit<CR>
+nnoremap <leader>gp :Git push<CR>
+
+
+" ----------------------------------------------------------------------------
+" GitGutter
+" ----------------------------------------------------------------------------
+
+let g:gitgutter_enabled = 1
+let g:gitgutter_map_keys = 0
+
+nnoremap ]c :GitGutterNextHunk<CR>
+nnoremap [c :GitGutterPrevHunk<CR>
+
+nnoremap <leader>hp :GitGutterPreviewHunk<CR>
+nnoremap <leader>hs :GitGutterStageHunk<CR>
+nnoremap <leader>hu :GitGutterUndoHunk<CR>
+
+
+" ============================================================================
+" ALE - LINT / FORMAT
+" ============================================================================
+
+let g:ale_enabled = 1
+
+let g:ale_lint_on_enter = 1
+let g:ale_lint_on_save = 1
+let g:ale_lint_on_text_changed = 'never'
+
+let g:ale_fix_on_save = 0
+
+
+" ----------------------------------------------------------------------------
+" Linters
+" ----------------------------------------------------------------------------
+
+let g:ale_linters = {
+      \ 'python': ['ruff'],
+      \ 'sh': ['shellcheck'],
+      \ 'bash': ['shellcheck'],
+      \ 'json': ['jq'],
+      \ 'yaml': ['yamllint']
+      \ }
+
+
+" ----------------------------------------------------------------------------
+" Formatters
+" ----------------------------------------------------------------------------
+
+let g:ale_fixers = {
+      \ '*': ['remove_trailing_lines', 'trim_whitespace'],
+      \ 'python': ['ruff_format'],
+      \ 'sh': ['shfmt'],
+      \ 'bash': ['shfmt'],
+      \ 'json': ['jq'],
+      \ 'yaml': ['prettier'],
+      \ 'java': ['google_java_format']
+      \ }
+
+
+" F7 : format current file
+nnoremap <F7> :ALEFix<CR>
+
+" F8 : lint current file
+nnoremap <F8> :ALELint<CR>
+
+" Previous / next diagnostic
+nnoremap [d :ALEPreviousWrap<CR>
+nnoremap ]d :ALENextWrap<CR>
+
+
+" ============================================================================
+" VIM-LSP
+" ============================================================================
+
+let g:lsp_diagnostics_enabled = 1
+let g:lsp_diagnostics_echo_cursor = 1
+let g:lsp_diagnostics_float_cursor = 1
+
+let g:lsp_document_code_action_signs_enabled = 1
+let g:lsp_preview_float = 1
+
+
+" ----------------------------------------------------------------------------
+" LSP keybindings
+" ----------------------------------------------------------------------------
+
+function! s:LspBindings() abort
+
+    if &filetype ==# ''
+        return
+    endif
+
+    nmap <buffer> gd <plug>(lsp-definition)
+    nmap <buffer> gD <plug>(lsp-declaration)
+
+    nmap <buffer> gr <plug>(lsp-references)
+
+    nmap <buffer> gi <plug>(lsp-implementation)
+
+    nmap <buffer> K <plug>(lsp-hover)
+
+    nmap <buffer> <leader>rn <plug>(lsp-rename)
+
+    nmap <buffer> <leader>ca <plug>(lsp-code-action)
+
+    nmap <buffer> [e <plug>(lsp-previous-diagnostic)
+    nmap <buffer> ]e <plug>(lsp-next-diagnostic)
+
+endfunction
+
+
+augroup lsp_keybindings
+    autocmd!
+    autocmd FileType * call s:LspBindings()
+augroup END
+
+
+" ============================================================================
+" COMPLETION
+" ============================================================================
+
+let g:asyncomplete_auto_popup = 1
+let g:asyncomplete_auto_completeopt = 0
+
+set completeopt=menuone,noinsert,noselect
+
+inoremap <expr> <Tab>
+      \ pumvisible()
+      \ ? "\<C-n>"
+      \ : "\<Tab>"
+
+inoremap <expr> <S-Tab>
+      \ pumvisible()
+      \ ? "\<C-p>"
+      \ : "\<S-Tab>"
+
+inoremap <expr> <CR>
+      \ pumvisible()
+      \ ? "\<C-y>"
+      \ : "\<CR>"
+
+
+" ============================================================================
+" COMMENTS
+" ============================================================================
+
+" vim-commentary:
+"
+" gcc   -> comment current line
+" gc    -> comment selection / motion
+
+
+" ============================================================================
+" WINDOW NAVIGATION
+" ============================================================================
+
+nnoremap <C-h> <C-w>h
+nnoremap <C-j> <C-w>j
+nnoremap <C-k> <C-w>k
+nnoremap <C-l> <C-w>l
+
+
+" ============================================================================
+" BUFFER NAVIGATION
+" ============================================================================
+
+nnoremap <Tab> :bnext<CR>
+nnoremap <S-Tab> :bprevious<CR>
+
+nnoremap <leader>q :bdelete<CR>
+
+
+" ============================================================================
+" WINDOW RESIZE
+" ============================================================================
+
+nnoremap <M-Up> :resize +2<CR>
+nnoremap <M-Down> :resize -2<CR>
+nnoremap <M-Left> :vertical resize -2<CR>
+nnoremap <M-Right> :vertical resize +2<CR>
+
+
+" ============================================================================
+" SEARCH
+" ============================================================================
+
+" Clear search highlighting
+nnoremap <silent> <Esc> :nohlsearch<CR>
+
+
+" ============================================================================
+" TERMINAL
+" ============================================================================
+
+if has('terminal')
+
+    nnoremap <leader>t :terminal<CR>
+
+    tnoremap <Esc><Esc> <C-W>N
+
+endif
+
+
+" ============================================================================
+" FILETYPE-SPECIFIC OPTIONS
+" ============================================================================
+
+augroup filetypes
+    autocmd!
+
+    autocmd FileType python
+          \ setlocal tabstop=4 shiftwidth=4 softtabstop=4 expandtab
+
+    autocmd FileType java
+          \ setlocal tabstop=4 shiftwidth=4 softtabstop=4 expandtab
+
+    autocmd FileType sh,bash,zsh
+          \ setlocal tabstop=4 shiftwidth=4 softtabstop=4 expandtab
+
+    autocmd FileType javascript,typescript,json,yaml
+          \ setlocal tabstop=2 shiftwidth=2 softtabstop=2 expandtab
+
+    autocmd FileType make
+          \ setlocal noexpandtab
+
+augroup END
+
+
+" ============================================================================
+" TRIM TRAILING WHITESPACE
+" ============================================================================
+
+function! TrimWhitespace()
+    let l:save = winsaveview()
+
+    keeppatterns %s/\s\+$//e
+
+    call winrestview(l:save)
+endfunction
+
+command! TrimWhitespace call TrimWhitespace()
+
+
+" ============================================================================
+" CONFIG
+" ============================================================================
+
+" Reload config
+nnoremap <leader>sv :source $MYVIMRC<CR>
+
+" Edit config
+nnoremap <leader>ev :edit ~/.config/vim/vimrc<CR>
+
+
+" ============================================================================
+" END
+" ============================================================================
