@@ -23,7 +23,11 @@ credentials are unavailable. Choices come from `zsh/home/.zshenv`.
 
 ## Tools and state
 
-The selected editor may be `vim`, `nano`, `fresh`, or `micro`. Fastfetch is
+The selected editor may be `vim`, `nano`, `fresh`, or `micro`. Nano is installed
+with Homebrew on macOS and APT on Linux; its configuration is linked to
+`~/.config/nano` and its backups are stored in `~/.cache/nano/backups`. Vim is
+installed with APT on Linux, while macOS uses its system Vim; its configuration
+is linked to `~/.config/vim`. Fastfetch is
 disabled, shown at every interactive startup, or shown only in the first
 active terminal. Mise and Oh My Posh are installed only when selected.
 

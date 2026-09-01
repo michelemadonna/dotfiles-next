@@ -538,7 +538,7 @@ install_required_packages() {
     run_apt_get update
     run_apt_get install -y \
       bat eza chafa mediainfo poppler-utils tree file dnsutils fd-find wget \
-      stow grc ripgrep python3-pip command-not-found git-delta tmux htop
+      stow grc ripgrep python3-pip command-not-found git-delta tmux htop unzip curl fontconfig
 
     mkdir -p "$HOME/.local/bin"
     fdfind_path=$(command -v fdfind || true)
@@ -1061,6 +1061,12 @@ load_non_interactive_choices() {
 }
 
 install_editor() {
+  if [ "$editor" = vim ] && [ "$PLATFORM" = macos ]; then
+    info 'Using the Vim provided by macOS; skipping installation'
+    link_editor_config
+    return 0
+  fi
+
   if command -v "$editor" >/dev/null 2>&1 || [ -x "$HOME/.local/bin/$editor" ]; then
     info "$editor already installed; skipping installation"
     link_editor_config
@@ -1089,7 +1095,18 @@ install_editor() {
 
 link_editor_config() {
   editor_config="$DOTFILES_DIR/$editor"
-  [ -e "$editor_config" ] && link_path "$editor_config" "$HOME/.config/$editor"
+  case $editor in
+    nano)
+      mkdir -p "$HOME/.cache/nano/backups"
+      [ -e "$editor_config" ] && link_path "$editor_config" "$HOME/.config/nano"
+      ;;
+    vim)
+      [ -e "$editor_config" ] && link_path "$editor_config" "$HOME/.config/vim"
+      ;;
+    *)
+      [ -e "$editor_config" ] && link_path "$editor_config" "$HOME/.config/$editor"
+      ;;
+  esac
 }
 
 install_micro() {

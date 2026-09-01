@@ -196,7 +196,7 @@ The base package set is installed once per platform. It supplies the commands us
 | 🧠 **Completion generator**                          | Optional, enabled by default | Generates and caches getopt-style completion for the current command when explicitly requested with `Shift-Tab`.                                                                                                 |
 | 🎨 **Fastfetch**                                     | Optional                     | Displays a visual overview of the operating system, hardware, memory, disks, shell, terminal, and other system details. It can run at every interactive Zsh startup or only at the first active terminal prompt. |
 | 📦 **Mise**                                          | Optional, enabled by default | Installs and activates language/tool runtimes, and maintains compatibility with `.tool-versions`. It is also preinstalled in the Docker demo.                                                                    |
-| ✏️ **Micro**, **Fresh Editor**, **Vim**, or **Nano** | Select one                   | Configures the requested default editor; Micro is the default. Repository configurations are linked for Micro and Fresh.                                                                                         |
+| ✏️ **Micro**, **Fresh Editor**, **Vim**, or **Nano** | Select one                   | Configures the requested default editor; Micro is the default. Nano uses Homebrew on macOS and APT on Linux; Vim uses the system version on macOS and APT on Linux. Repository configurations are linked for the selected editor. |
 
 The repository also contains configurations for **Git**, **Ghostty**, **iTerm2**, **Fastfetch**, **Mise**, **SSH**, **ripgrep**, **tmux**, **Micro**, and **Fresh Editor**. Some are reference configurations and are not all linked by the host installer.
 
@@ -273,6 +273,9 @@ The installer manages those symbolic links:
 - The selected editor's configuration when using Micro or Fresh and relative configs
   * `~/.config/micro` → `~/.dotfiles/micro`
   * `~/.config/fresh` → `~/.dotfiles/fresh`
+  * `~/.config/nano` → `~/.dotfiles/nano`
+  * `~/.config/vim` → `~/.dotfiles/vim`
+  * Nano backups → `~/.cache/nano/backups`
 - Fastfetch and Mise configuration when those components are installed
   * `~/.config/fastfetch` → `~/.dotfiles/fastfetch`
   * `~/.config/mise` → `~/.dotfiles/mise`
