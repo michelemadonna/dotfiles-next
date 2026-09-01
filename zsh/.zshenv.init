@@ -45,6 +45,8 @@ if [ -n "${ZSH_VERSION-}" ]; then
   export EDITOR=${EDITOR:="micro"}
   export VISUAL="$EDITOR"
 
+  export VIMINIT='source ~/.config/vim/vimrc'
+
   source "$DOTFILES_DIR/zsh/helpers/tool-bootstrap.zsh"
 
   ## customize your color scheme and keep them in sync

@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "theme": "terminal",
+  "theme": "astronaut.json",
   "editor": {
     "enable_semantic_tokens_full": true,
     "use_terminal_bg": true,
@@ -9,6 +9,7 @@
     "completion_popup_auto_show": true,
     "nerd_font_icons": true,
     "auto_read_only": false,
+    "line_numbers": true,
    },
   "active_keybinding_map": "vscode",
   "default_language": "bash",

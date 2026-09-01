@@ -35,3 +35,6 @@ git/*pgp*
 *.local
 local.*
 gitconfig*
+zsh/home/.zsh_history
+zsh/home/.zshenv
+vim/autoload/plug.vim

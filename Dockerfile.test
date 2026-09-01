@@ -8,7 +8,9 @@ RUN apt-get update \
         curl \
         git \
         sudo \
-        zsh
+        zsh \
+        openssh-client \
+    && rm -rf /var/lib/apt/lists/*
         
 RUN useradd --create-home --shell /bin/zsh demo \
     && printf 'demo ALL=(ALL) NOPASSWD:ALL\n' >/etc/sudoers.d/demo \
