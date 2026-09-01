@@ -5,7 +5,9 @@
 - `install.sh` is the only installer and owns package installation, choices,
   generated preferences, backups, links, and z4h-style logs.
 - `zsh/.zshenv.init` defines defaults, paths, environment variables, and
-  sources `zsh/helpers/tool-bootstrap.zsh` before `.zshenv_z4h`.
+  sources `zsh/helpers/tool-bootstrap.zsh` before `.zshenv_z4h`. If
+  `zsh/home/.zshenv_z4h` is missing, it is fetched atomically from the pinned
+  zsh4humans v5 raw source before being sourced.
 - `zsh/home/.zshenv` is generated or retained preferences; `~/.zshenv` points
   to it. `.zshenv_z4h` loads z4h; `.zshrc` loads interactive helpers/plugins.
 - `zsh/helpers/` owns SSH, Fastfetch, tool bootstrap, fzf state/preview, and
@@ -21,7 +23,9 @@ Fastfetch, Mise, and the selected editor. Mise activation/completion caches and
 ASDF plugin compatibility data are prepared by
 `zsh/helpers/prepare-mise-cache.sh`.
 
-Persistent sources live in the repository. Generated preferences, z4h data,
+Persistent sources live in the repository. The zsh4humans bootstrap file is
+kept at `zsh/home/.zshenv_z4h`; a missing copy is restored from
+`https://raw.githubusercontent.com/romkatv/zsh4humans/v5/.zshenv`. Generated preferences, z4h data,
 completion data, compiled files, state markers, and runtime caches are derived
 artifacts and must not be edited as source.
 

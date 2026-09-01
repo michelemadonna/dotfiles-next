@@ -191,8 +191,8 @@ The base package set is installed once per platform. It supplies the commands us
 | 🐚 **Zsh for Humans**                                | Core                         | Bootstraps the Zsh environment, manages external plugins, and supplies shell utilities and key bindings.                                                                                                         |
 | 🚀 **Powerlevel10k**                                 | Default                      | Fast, Git-aware two-line prompt configured by [`powerlevel10k/.p10k.zsh`](powerlevel10k/.p10k.zsh).                                                                                                              |
 | 🎨 **Oh My Posh**                                    | Optional                     | Alternative prompt using the repository's custom JSON theme. Installed only when `ohmyposh` is selected.                                                                                                         |
-| 🛠️ **Oh My Zsh helpers**                            | Optional, enabled by default | Loads selected libraries and plugins such as `sudo`, `command-not-found`, and the macOS/Homebrew helpers without sourcing the complete `oh-my-zsh.sh`.                                                           |
-| 🔍 **fzf-tab stack**                                 | Optional, enabled by default | Adds fuzzy completion, previews, syntax highlighting, history search, and suggestions.                                                                                                                           |
+| 🛠️ **Oh My Zsh helpers**                            | Always enabled                 | Loads selected libraries and plugins such as `sudo`, `command-not-found`, and the macOS/Homebrew helpers without sourcing the complete `oh-my-zsh.sh`.                                                           |
+| 🔍 **fzf-tab stack**                                 | Always enabled                 | Adds fuzzy completion, previews, syntax highlighting, history search, and suggestions.                                                                                                                           |
 | 🧠 **Completion generator**                          | Optional, enabled by default | Generates and caches getopt-style completion for the current command when explicitly requested with `Shift-Tab`.                                                                                                 |
 | 🎨 **Fastfetch**                                     | Optional                     | Displays a visual overview of the operating system, hardware, memory, disks, shell, terminal, and other system details. It can run at every interactive Zsh startup or only at the first active terminal prompt. |
 | 📦 **Mise**                                          | Optional, enabled by default | Installs and activates language/tool runtimes, and maintains compatibility with `.tool-versions`. It is also preinstalled in the Docker demo.                                                                    |
@@ -235,7 +235,7 @@ You can also clone the repository yourself and run:
 ./install.sh
 ```
 
-Existing regular files or directories at managed destinations are moved to a timestamped `.backup.YYYYMMDDhhmmss` path before linking. Existing symbolic links are replaced. Repeated non-interactive runs retain an existing generated preferences file; interactive runs write the newly approved choices. Both modes reevaluate optional tools and skip the versioned base-package step when its marker exists. 
+Existing regular files or directories at managed destinations are moved to a timestamped `.backup.YYYYMMDDhhmmss` path before linking. Existing symbolic links are replaced. Repeated non-interactive runs retain existing generated preferences while normalizing the three fixed fzf/Oh My Zsh values; interactive runs write the newly approved choices. Both modes reevaluate optional tools and skip the versioned base-package step when its marker exists.
 
 After installation, start a fresh login shell:
 
@@ -292,7 +292,9 @@ The envs defined into `zsh/home/.zshenv`:
 * `Z4H_SSH_SHOW_KEY` Controls whether the SSH keys currently loaded in the agent are displayed during shell startup.
 * `Z4H_SSH_ASKPASS_REQUIRE` Controls SSH passphrase prompting. When enabled, SSH is required to use an askpass mechanism whenever a private key needs to be unlocked.
 * `Z4H_USE_MISE` Enables Mise integration. When enabled, Mise is installed automatically if necessary and initialized for runtime management, activation, completions, and asdf-compatible plugins.
-* `Z4H_USE_FZF_FROM_Z4H` Selects the fzf binary used by the shell. The default is `false`, which installs and uses the latest fzf binary from a local Git checkout; set it to `true` to retain the fzf binary supplied by z4h and the compatible fallback pickers.
+* `Z4H_USE_FZF_TAB` is always `true`; it remains exported for compatibility.
+* `Z4H_ENABLE_OH_MY_ZSH` is always `true`; it remains exported for compatibility.
+* `Z4H_USE_FZF_FROM_Z4H` is always `false`; the installer uses the latest fzf binary from its local Git checkout and keeps this variable exported for compatibility.
 * `Z4H_MISE_REFRESH_SECONDS` Controls the periodic safety refresh performed by Mise. The default is `5` seconds. Directory changes, `PATH` changes, and successful `mise` commands always trigger an immediate refresh. Set it to `0` to refresh Mise before
   every prompt.
 * `POWERLEVEL9K_CONFIG_FILE` the powerlevel10k's config file path.
@@ -433,8 +435,8 @@ with `Ctrl-F` is applied on the next launch (fzf cannot resize an open picker).
 `Ctrl-H` is not needed inside fzf-git: its file picker already includes tracked
 and untracked dotfiles from Git status/index data.
 
-The pinned upstream revision requires fzf 0.66 or newer. The default installer
-choice (`Z4H_USE_FZF_FROM_Z4H=false`) installs, verifies, and keeps the latest
+The pinned upstream revision requires fzf 0.66 or newer. The installer always
+uses (`Z4H_USE_FZF_FROM_Z4H=false`), verifies, and keeps the latest
 checkout under `~/.local/share/fzf`; older fzf versions retain separate
 compatible pickers and normal fzf-tab fallback. Git 2.42 or newer is required
 for the `for-each-ref` picker. Because upstream fzf-git uses newline-delimited

@@ -589,14 +589,18 @@ set_interactive_defaults() {
   prompt=powerlevel10k
   editor=micro
   show_fastfetch=false
-  use_fzf_tab=true
-  use_fzf_from_z4h=true
   use_mise=true
   enable_auto_gencomp=true
-  enable_oh_my_zsh=true
   load_ssh_key=true
   show_ssh_key=true
   askpass_require=false
+  set_fixed_preferences
+}
+
+set_fixed_preferences() {
+  use_fzf_tab=true
+  use_fzf_from_z4h=false
+  enable_oh_my_zsh=true
 }
 
 ask_boolean_menu() {
@@ -623,21 +627,11 @@ y|true|Yes
 f|first|Yes, but only at the first terminal prompt'
   show_fastfetch=$MENU_VALUE
 
-  ask_boolean_menu 'fzf-tab' 'Enable fuzzy completion, previews, history search, and suggestions?' y
-  use_fzf_tab=$MENU_VALUE
-
-  ui_menu 'fzf binary' 'Select the fzf binary used by the shell.' z 'z|true|Use the z4h-native fzf
-l|false|Use the latest release from a local Git checkout'
-  use_fzf_from_z4h=$MENU_VALUE
-
   ask_boolean_menu 'Mise' 'Install Mise and prepare its shell caches?' y
   use_mise=$MENU_VALUE
 
   ask_boolean_menu 'Completion generator' 'Enable explicit Shift-Tab completion generation and caching?' y
   enable_auto_gencomp=$MENU_VALUE
-
-  ask_boolean_menu 'Oh My Zsh helpers' 'Enable the selected Oh My Zsh libraries and helper plugins?' y
-  enable_oh_my_zsh=$MENU_VALUE
 
   ask_boolean_menu 'SSH keys' 'Load SSH keys automatically when Zsh starts?' y
   load_ssh_key=$MENU_VALUE
@@ -942,10 +936,10 @@ ui_summary() {
     ui_summary_line 'Prompt' "$prompt"
     ui_summary_line 'Editor' "$editor"
     ui_summary_line 'Fastfetch' "$(human_boolean "$show_fastfetch")"
-    ui_summary_line 'fzf-tab' "$(human_boolean "$use_fzf_tab")"
-    ui_summary_line 'fzf binary' "$(if [ "$use_fzf_from_z4h" = true ]; then printf 'z4h native'; else printf 'latest release from a local Git checkout'; fi)"
+    ui_summary_line 'fzf-tab' 'Enabled (fixed)'
+    ui_summary_line 'fzf binary' 'Latest release from a local Git checkout (fixed)'
     ui_summary_line 'Completion generator' "$(human_boolean "$enable_auto_gencomp")"
-    ui_summary_line 'Oh My Zsh helpers' "$(human_boolean "$enable_oh_my_zsh")"
+    ui_summary_line 'Oh My Zsh helpers' 'Enabled (fixed)'
     ui_summary_line 'Load SSH keys' "$(human_boolean "$load_ssh_key")"
     if [ "$load_ssh_key" = true ]; then
       ui_summary_line 'Show SSH keys' "$(human_boolean "$show_ssh_key")"
@@ -983,11 +977,7 @@ generate_zshenv() {
   [ -f "$source_file" ] || die "Missing Zsh template: $source_file"
 
   mkdir -p "$(dirname "$generated_file")"
-
-  if is_non_interactive; then
-    [ "$source_file" = "$generated_file" ] || cp "$source_file" "$generated_file"
-    return 0
-  fi
+  temporary_file=$(mktemp "${generated_file}.tmp.XXXXXX") || die "Cannot create temporary Zsh environment file: $generated_file"
 
   awk \
     -v prompt="$prompt" \
@@ -1003,17 +993,33 @@ generate_zshenv() {
     -v askpass_require="$askpass_require" '
       /^  export Z4H_PROMPT=/ { $0 = "  export Z4H_PROMPT=\"" prompt "\""; }
       /^  export Z4H_SHOW_FASTFETCH=/ { $0 = "  export Z4H_SHOW_FASTFETCH=" show_fastfetch; }
-      /^  export Z4H_USE_FZF_TAB=/ { $0 = "  export Z4H_USE_FZF_TAB=" use_fzf_tab; }
-      /^  export Z4H_USE_FZF_FROM_Z4H=/ { $0 = "  export Z4H_USE_FZF_FROM_Z4H=" use_fzf_from_z4h; }
+      /^  export Z4H_USE_FZF_TAB=/ {
+        if (++fixed_fzf_tab > 1) next
+        $0 = "  export Z4H_USE_FZF_TAB=" use_fzf_tab
+      }
+      /^  export Z4H_USE_FZF_FROM_Z4H=/ {
+        if (++fixed_fzf_from_z4h > 1) next
+        $0 = "  export Z4H_USE_FZF_FROM_Z4H=" use_fzf_from_z4h
+      }
       /^  export Z4H_USE_MISE=/ { $0 = "  export Z4H_USE_MISE=" use_mise; }
       /^  export Z4H_ENABLE_AUTO_GENCOMP=/ { $0 = "  export Z4H_ENABLE_AUTO_GENCOMP=" enable_auto_gencomp; }
-      /^  export Z4H_ENABLE_OH_MY_ZSH=/ { $0 = "  export Z4H_ENABLE_OH_MY_ZSH=" enable_oh_my_zsh; }
+      /^  export Z4H_ENABLE_OH_MY_ZSH=/ {
+        if (++fixed_oh_my_zsh > 1) next
+        $0 = "  export Z4H_ENABLE_OH_MY_ZSH=" enable_oh_my_zsh
+      }
       /^  export Z4H_SSH_LOAD_KEY=/ { $0 = "  export Z4H_SSH_LOAD_KEY=" load_ssh_key; }
       /^  export Z4H_SSH_SHOW_KEY=/ { $0 = "  export Z4H_SSH_SHOW_KEY=" show_ssh_key; }
       /^  export Z4H_SSH_ASKPASS_REQUIRE=/ { $0 = "  export Z4H_SSH_ASKPASS_REQUIRE=" askpass_require; }
       /^  export EDITOR=/ { $0 = "  export EDITOR=\"" editor "\""; }
       { print }
-    ' "$source_file" >| "$generated_file"
+    ' "$source_file" >| "$temporary_file" || {
+    rm -f "$temporary_file"
+    die "Cannot generate Zsh environment file: $generated_file"
+  }
+  mv -f "$temporary_file" "$generated_file" || {
+    rm -f "$temporary_file"
+    die "Cannot install generated Zsh environment file: $generated_file"
+  }
 }
 
 configure_non_interactive() {
@@ -1021,14 +1027,12 @@ configure_non_interactive() {
   prompt=powerlevel10k
   editor=micro
   show_fastfetch=first
-  use_fzf_tab=true
-  use_fzf_from_z4h=false
   use_mise=true
   enable_auto_gencomp=true
-  enable_oh_my_zsh=true
   load_ssh_key=true
   show_ssh_key=true
   askpass_require=false
+  set_fixed_preferences
 }
 
 load_non_interactive_choices() {
@@ -1049,9 +1053,8 @@ load_non_interactive_choices() {
 
   for choice in \
     'prompt Z4H_PROMPT' 'editor EDITOR' 'show_fastfetch Z4H_SHOW_FASTFETCH' \
-    'use_fzf_tab Z4H_USE_FZF_TAB' 'use_fzf_from_z4h Z4H_USE_FZF_FROM_Z4H' \
     'use_mise Z4H_USE_MISE' 'enable_auto_gencomp Z4H_ENABLE_AUTO_GENCOMP' \
-    'enable_oh_my_zsh Z4H_ENABLE_OH_MY_ZSH' 'load_ssh_key Z4H_SSH_LOAD_KEY' \
+    'load_ssh_key Z4H_SSH_LOAD_KEY' \
     'show_ssh_key Z4H_SSH_SHOW_KEY' 'askpass_require Z4H_SSH_ASKPASS_REQUIRE'; do
     choice_name=${choice%% *}
     choice_variable=${choice#* }
@@ -1226,6 +1229,7 @@ apply_installation() {
   if is_non_interactive; then
     load_non_interactive_choices
   fi
+  set_fixed_preferences
 
   generate_zshenv
   zshenv_source="$DOTFILES_DIR/zsh/home/.zshenv"

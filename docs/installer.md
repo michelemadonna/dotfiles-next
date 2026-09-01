@@ -11,15 +11,19 @@ shows a review screen and changes nothing until approval. It supports:
 ```
 
 The wizard selects the prompt (`powerlevel10k` or `ohmyposh`), editor
-(`vim`, `nano`, `fresh`, or `micro`), Fastfetch mode, fzf-tab, generated
-completion, Oh My Zsh helpers, fzf source, Mise, and SSH key loading/display/
-askpass behavior. `q` exits without changes; `a` or `Enter` accepts the review;
+(`vim`, `nano`, `fresh`, or `micro`), Fastfetch mode, generated completion,
+Mise, and SSH key loading/display/askpass behavior. fzf-tab, the local fzf
+checkout, and Oh My Zsh helpers are always enabled and are not prompted.
+`q` exits without changes; `a` or `Enter` accepts the review;
 `r` restarts the wizard.
 
 Non-interactive mode never reads `/dev/tty`, opens menus, clears the screen,
 asks questions, or installs Mise because of an environment override. It uses
 non-prompting package operations (`sudo -n` on Ubuntu) and fails when required
-credentials are unavailable. Choices come from `zsh/home/.zshenv`.
+credentials are unavailable. Remaining user choices come from
+`zsh/home/.zshenv`; the three fixed integration flags are always normalized.
+At shell startup, a missing `zsh/home/.zshenv_z4h` is downloaded from the
+pinned zsh4humans v5 `.zshenv` source and saved at that path before loading.
 
 ## Tools and state
 
@@ -31,12 +35,11 @@ is linked to `~/.config/vim`. Fastfetch is
 disabled, shown at every interactive startup, or shown only in the first
 active terminal. Mise and Oh My Posh are installed only when selected.
 
-When `Z4H_USE_FZF_FROM_Z4H=false`, the latest fzf checkout is kept in
-`~/.local/share/fzf`, fast-forwarded on subsequent installer runs, and its
-binary is copied to `~/.local/bin/fzf`. This path supplies the modern fzf
-actions used by the vendored fzf-git integration. Startup checks that this
-binary is at least fzf 0.66 and reruns the non-interactive updater when it is
-older; the z4h fzf remains a compatible fallback when explicitly selected.
+The latest fzf checkout is always kept in `~/.local/share/fzf`, fast-forwarded
+on subsequent installer runs, and its binary is copied to `~/.local/bin/fzf`.
+This path supplies the modern fzf actions used by the vendored fzf-git
+integration. Startup checks that this binary is at least fzf 0.66 and reruns
+the non-interactive updater when it is older.
 Mise uses Homebrew on
 macOS or the official installer on Linux, then prepares activation,
 completion, and ASDF compatibility data. The startup helper can invoke the
