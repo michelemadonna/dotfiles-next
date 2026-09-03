@@ -60,12 +60,12 @@ fi
 # ============================================================
 
 typeset -g FZF_TAB_PREVIEW_COMMAND="$DOTFILES_DIR/zsh/helpers/fzf-tab-preview-helper"
-typeset -g FZF_TAB_STATE_COMMAND="${commands[zsh]:-/bin/zsh}"
-typeset -g FZF_TAB_STATE_HELPER="$DOTFILES_DIR/zsh/helpers/fzf-tab-state-helper"
+typeset -gx FZF_TAB_STATE_COMMAND="${commands[zsh]:-/bin/zsh}"
+typeset -gx FZF_TAB_STATE_HELPER="$DOTFILES_DIR/zsh/helpers/fzf-tab-state-helper"
 typeset -g FZF_TAB_STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/zsh/fzf-tab"
 typeset -gx FZF_TAB_PREVIEW_STATE_FILE="$FZF_TAB_STATE_DIR/preview-position"
 typeset -gx FZF_TAB_HEIGHT_STATE_FILE="$FZF_TAB_STATE_DIR/height"
-typeset -g FZF_TAB_HIDDEN_STATE_FILE="$FZF_TAB_STATE_DIR/show-hidden"
+typeset -gx FZF_TAB_HIDDEN_STATE_FILE="$FZF_TAB_STATE_DIR/show-hidden"
 typeset -g FZF_TAB_HIDDEN_MARKER="${TMPDIR:-/tmp}/fzf-tab-hidden-${$}"
 
 mkdir -p -- "$FZF_TAB_STATE_DIR" 2>/dev/null || return
@@ -333,7 +333,7 @@ _fzf_widget_refresh_flags() {
     local fzf_height=$reply[1]
 
     export FZF_CTRL_T_OPTS="--no-sort --height=${fzf_height} --header='TAB/SHIFT-TAB move  ·  CTRL-SPACE select  ·  CTRL-A mark all  ·  CTRL-J/K preview scroll  ·  CTRL-P preview  ·  CTRL-H hidden  ·  ENTER insert  ·  ESC close' --preview '$FZF_TAB_PREVIEW_COMMAND {}' --preview-window=${preview_window} --bind='ctrl-a:toggle-all,ctrl-j:preview-down,ctrl-k:preview-up,ctrl-p:execute-silent(${state_command_q} ${state_helper_q} cycle-preview ${preview_state_q})+change-preview-window(${preview_cycle})+refresh-preview,ctrl-h:execute-silent(${toggle_hidden_command})+reload(${list_files_command})'"
-    export FZF_ALT_C_OPTS="--no-sort --height=${fzf_height} --header='TAB/SHIFT-TAB move  ·  CTRL-J/K preview scroll  ·  CTRL-P preview  ·  CTRL-H hidden  ·  ENTER cd  ·  ESC close' --preview '$FZF_TAB_PREVIEW_COMMAND {}' --preview-window=${preview_window} --bind='ctrl-j:preview-down,ctrl-k:preview-up,ctrl-p:execute-silent(${state_command_q} ${state_helper_q} cycle-preview ${preview_cycle})+change-preview-window(${preview_cycle})+refresh-preview,ctrl-h:execute-silent(${toggle_hidden_command})+reload(${list_directories_command})'"
+    export FZF_ALT_C_OPTS="--no-sort --height=${fzf_height} --header='TAB/SHIFT-TAB move  ·  CTRL-J/K preview scroll  ·  CTRL-P preview  ·  CTRL-H hidden  ·  ENTER cd  ·  ESC close' --preview '$FZF_TAB_PREVIEW_COMMAND {}' --preview-window=${preview_window} --bind='ctrl-j:preview-down,ctrl-k:preview-up,ctrl-p:execute-silent(${state_command_q} ${state_helper_q} cycle-preview ${preview_state_q})+change-preview-window(${preview_cycle})+refresh-preview,ctrl-h:execute-silent(${toggle_hidden_command})+reload(${list_directories_command})'"
 }
 
 _z4h_fzf_file_widget() {
@@ -406,6 +406,12 @@ _fzf_tab_complete_with_dots() {
     local autocd_enabled=${options[autocd]}
     emulate -L zsh
     setopt local_options extended_glob
+
+    if [[ ${Z4H_FZF_GIT_UPSTREAM:-false} == true ]] &&
+        (( $+functions[_z4h_fzf_git_complete] )) &&
+        _z4h_fzf_git_complete; then
+        return 0
+    fi
 
     # A unique directory completion leaves a trailing slash in LBUFFER.
     # Do not re-enter fzf-tab when that directory has no child directories:
@@ -583,6 +589,41 @@ zstyle ':fzf-tab:complete:(cd|pushd):*' \
 # ============================================================
 
 if (( $+commands[brew] )); then
+
+    # Homebrew 6 can return an empty list when its generated completion calls
+    # `HOMEBREW_COMPLETION=1 brew formulae` on macOS Tahoe, even though the API
+    # name index is populated. Serve that index only for Homebrew's internal
+    # completion calls; all normal brew invocations still reach the binary.
+    if [[ -z ${Z4H_BREW_COMMAND:-} ]]; then
+        typeset -g Z4H_BREW_COMMAND=${commands[brew]}
+    fi
+    brew() {
+        if [[ ${HOMEBREW_COMPLETION:-} == 1 &&
+              ( ${1:-} == formulae || ${1:-} == casks ) ]]; then
+            local kind=${1%?}
+            local api_dir=${HOMEBREW_CACHE:-$HOME/Library/Caches/Homebrew}/api
+            local names_file=$api_dir/${kind}_names.txt
+            [[ -s $names_file ]] || names_file=$api_dir/${kind}_names.before.txt
+            if [[ -s $names_file ]]; then
+                command cat -- "$names_file"
+                return
+            fi
+        fi
+        command "$Z4H_BREW_COMMAND" "$@"
+    }
+
+    # Discard only the tiny serialized empty lists produced by the failure
+    # above. Native completion recreates these runtime caches on first use.
+    local brew_completion_cache brew_completion_cache_dir
+    zstyle -s ':completion:*' cache-path brew_completion_cache_dir ||
+        brew_completion_cache_dir=$ZSH_CACHE_DIR/zcompcache-$ZSH_VERSION
+    for brew_completion_cache in \
+        "$brew_completion_cache_dir"/brew_(formulae|casks)(N); do
+        if (( $(command wc -c < "$brew_completion_cache") < 100 )); then
+            command rm -f -- "$brew_completion_cache"
+        fi
+    done
+    unset brew_completion_cache brew_completion_cache_dir
 
     # Do not open a preview while selecting a brew command or option.
     zstyle ':fzf-tab:complete:brew:*' \
@@ -1032,9 +1073,3 @@ fi
 #  fzf-tab-complete
 #}
 #
-#fzf-git-update() {
-#  mkdir -p "$HOME/.fzf"
-#  command curl -fsSL https://raw.githubusercontent.com/junegunn/fzf-git.sh/master/fzf-git.sh \
-#    -o "$HOME/.fzf/fzf-git.sh"
-#}
-#[[ -r "$DOTF/.fzf/fzf-git.sh" ]] && source "$HOME/.fzf/fzf-git.sh"

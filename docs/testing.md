@@ -39,6 +39,32 @@ Exercise the actual key sequence for `Ctrl-T`, `Alt-C`, fzf-tab, preview, and
 hidden-file toggles. A non-empty option value or non-interactive `zsh -lic`
 test is insufficient evidence.
 
+For fzf-git changes, use a disposable repository containing local and remote
+branches, tags, commits, modified/untracked paths, stashes, reflogs, and a
+linked worktree. In a writable PTY verify every `Ctrl-G` picker, all internal
+upstream bindings, Git-aware TAB contexts, cancellation, partial prefixes, and
+quoting of paths with spaces or metacharacters. Cover every direct `Alt-B`,
+`Alt-T`, `Alt-H`, `Alt-E`, `Alt-F`, and `Alt-W` transition plus at least one
+multi-hop chain such as Each-ref → Files → Branches → Hashes. Verify that
+Hashes → Files selects files from the chosen commits and that `Alt-W` selects
+working-tree files. Execute the generated Git commands; inspecting the buffer
+alone is insufficient. Run at least one picker without `Z4H_FZF_GIT_FILTER`:
+filtered mode does not exercise fzf terminal ownership and cannot detect a
+stopped background picker. Confirm that `Ctrl-P` updates the shared preview
+state and geometry and that the persisted `Ctrl-F` height is applied to both
+normal and tmux picker launches. Test `Alt-V` with the configured terminal
+editor for both Files and Each-ref; the latter must receive a readable regular
+temporary file that is removed after the editor exits. Cycle preview through
+right, down, down90, hidden, and right again, verifying that delta
+side-by-side is used only for the two lower layouts.
+
+For contextual branch and worktree completion, verify `branch -d/-D`,
+`branch --set-upstream-to`, `branch --edit-description`, branch start-points,
+`worktree add <path>`, `worktree add -b/-B <name> <path>`, and
+`worktree remove/lock/unlock/move`. Plain `branch`/`worktree`, branch rename or
+copy destinations, orphan worktree creation, and completed operands must fall
+back without modifying the buffer.
+
 ## Docker and documentation
 
 Run `docker build --check .` and the affected remote or local build, followed

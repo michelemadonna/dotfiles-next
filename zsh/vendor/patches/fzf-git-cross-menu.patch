@@ -1,0 +1,261 @@
+--- a/zsh/vendor/fzf-git.sh
++++ b/zsh/vendor/fzf-git.sh
+@@ -53,6 +53,10 @@
+ }
+ 
+ __fzf_git_pager() {
++  if [[ -n ${Z4H_FZF_GIT_SHELL_Q:-} && -n ${Z4H_FZF_GIT_ACTION_Q:-} ]]; then
++    printf '%s %s preview-pager' "$Z4H_FZF_GIT_SHELL_Q" "$Z4H_FZF_GIT_ACTION_Q"
++    return
++  fi
+   local pager
+   pager="${FZF_GIT_PAGER:-${GIT_PAGER:-$(git config --get core.pager 2> /dev/null)}}"
+   echo "${pager:-cat}"
+@@ -73,30 +77,40 @@
+     case "$1" in
+       branches)
+         echo 'CTRL-O (open in browser) ╱ ALT-A (show all branches)'
+-        echo 'ALT-H (list commit hashes)'
++        [[ -z ${Z4H_FZF_GIT_ALLOWED:-} || ",${Z4H_FZF_GIT_ALLOWED}," == *",hashes,"* ]] &&
++          echo 'ALT-H (list commit hashes)' || echo
+         branches
+         ;;
+       all-branches)
+         echo 'CTRL-O (open in browser) ╱ ALT-ENTER (accept without remote)'
+-        echo 'ALT-H (list commit hashes)'
++        [[ -z ${Z4H_FZF_GIT_ALLOWED:-} || ",${Z4H_FZF_GIT_ALLOWED}," == *",hashes,"* ]] &&
++          echo 'ALT-H (list commit hashes)' || echo
+         branches -a
+         ;;
+       hashes)
+         echo 'CTRL-O (open in browser) ╱ CTRL-D (diff) ╱ CTRL-S (toggle sort)'
+-        echo 'ALT-R (toggle raw mode) ╱ ALT-F (list files) ╱ ALT-A (show all hashes)'
++        if [[ -z ${Z4H_FZF_GIT_ALLOWED:-} || ",${Z4H_FZF_GIT_ALLOWED}," == *",files,"* ]]; then
++          echo 'ALT-R (toggle raw mode) ╱ ALT-F (list files) ╱ ALT-A (show all hashes)'
++        else
++          echo 'ALT-R (toggle raw mode) ╱ ALT-A (show all hashes)'
++        fi
+         hashes
+         ;;
+       all-hashes)
+         echo 'CTRL-O (open in browser) ╱ CTRL-D (diff)'
+-        echo 'CTRL-S (toggle sort) ╱ ALT-F (list files)'
++        if [[ -z ${Z4H_FZF_GIT_ALLOWED:-} || ",${Z4H_FZF_GIT_ALLOWED}," == *",files,"* ]]; then
++          echo 'CTRL-S (toggle sort) ╱ ALT-F (list files)'
++        else
++          echo 'CTRL-S (toggle sort)'
++        fi
+         hashes --all
+         ;;
+       refs)
+-        echo 'CTRL-O (open in browser) ╱ ALT-E (examine in editor) ╱ ALT-A (show all refs)'
++        echo 'CTRL-O (open in browser) ╱ ALT-V (examine in editor) ╱ ALT-A (show all refs)'
+         refs --exclude='refs/remotes'
+         ;;
+       all-refs)
+-        echo 'CTRL-O (open in browser) ╱ ALT-E (examine in editor) ╱ ALT-ENTER (accept without remote)'
++        echo 'CTRL-O (open in browser) ╱ ALT-V (examine in editor) ╱ ALT-ENTER (accept without remote)'
+         refs
+         ;;
+       *) exit 1 ;;
+@@ -190,6 +204,58 @@
+   return 1
+ }
+ 
++__fzf_git_mode_allowed() {
++  local mode=$1
++  [[ $mode != tree_files ]] || mode=files
++  [[ -z ${Z4H_FZF_GIT_ALLOWED:-} || ",${Z4H_FZF_GIT_ALLOWED}," == *",${mode},"* ]]
++}
++
++__fzf_git_transition_bind() {
++  local key=$1 mode=$2 extra=${3:-}
++  if [[ -z ${Z4H_FZF_GIT_SHELL_Q:-} || -z ${Z4H_FZF_GIT_ADAPTER_Q:-} ]] ||
++     ! __fzf_git_mode_allowed "$mode"; then
++    printf '%s:ignore' "$key"
++    return
++  fi
++  printf '%s:become:%s %s --bridge %s --transition%s' \
++    "$key" "$Z4H_FZF_GIT_SHELL_Q" "$Z4H_FZF_GIT_ADAPTER_Q" "$mode" "$extra"
++}
++
++__fzf_git_branch_hash_bind() {
++  if [[ -z ${Z4H_FZF_GIT_SHELL_Q:-} || -z ${Z4H_FZF_GIT_ADAPTER_Q:-} ]] ||
++     ! __fzf_git_mode_allowed hashes; then
++    printf '%s' 'alt-h:ignore'
++    return
++  fi
++  printf '%s' "alt-h:become:LIST_OPTS=\$(cut -c3- <<< {} | cut -d' ' -f1) $Z4H_FZF_GIT_SHELL_Q $Z4H_FZF_GIT_ADAPTER_Q --bridge hashes --transition"
++}
++
++__fzf_git_transition_header() {
++  local source=$1 header=
++  __fzf_git_mode_allowed branches && header='ALT-B branches'
++  __fzf_git_mode_allowed tags && header="${header:+$header ╱ }ALT-T tags"
++  __fzf_git_mode_allowed hashes && header="${header:+$header ╱ }ALT-H hashes"
++  if __fzf_git_mode_allowed files; then
++    if [[ $source == hashes ]]; then
++      header="${header:+$header ╱ }ALT-F commit files ╱ ALT-W working files"
++    else
++      header="${header:+$header ╱ }ALT-F files ╱ ALT-W working files"
++    fi
++  fi
++  __fzf_git_mode_allowed refs && header="${header:+$header ╱ }ALT-E refs"
++  printf '%s' "$header"
++}
++
++__fzf_git_editor_bind() {
++  local mode=$1 selection=$2
++  if [[ -z ${Z4H_FZF_GIT_SHELL_Q:-} || -z ${Z4H_FZF_GIT_ACTION_Q:-} ]]; then
++    printf '%s' 'alt-v:ignore'
++    return
++  fi
++  printf 'alt-v:execute:%s %s edit %s %s' \
++    "$Z4H_FZF_GIT_SHELL_Q" "$Z4H_FZF_GIT_ACTION_Q" "$mode" "$selection"
++}
++
+ __fzf_git=${BASH_SOURCE[0]:-${(%):-%x}}
+ __fzf_git=$(readlink -f "$__fzf_git" 2> /dev/null || /usr/bin/ruby --disable-gems -e 'puts File.expand_path(ARGV.first)' "$__fzf_git" 2> /dev/null)
+ 
+@@ -213,9 +279,15 @@
+   ) |
+     _fzf_git_fzf -m --ansi --nth 2..,.. \
+       --border-label '📁 Files ' \
+-      --header 'CTRL-O (open in browser) ╱ ALT-E (open in editor)' \
++      --header "$(printf '%s\n%s' 'CTRL-O (open in browser) ╱ ALT-V (open in editor)' "$(__fzf_git_transition_header files)")" \
+       --bind "ctrl-o:execute-silent:bash \"$__fzf_git\" --list file $extract_file_name" \
+-      --bind "alt-e:execute:${EDITOR:-vim} $extract_file_name" \
++      --bind "$(__fzf_git_editor_bind file "$extract_file_name")" \
++      --bind "$(__fzf_git_transition_bind alt-b branches)" \
++      --bind "$(__fzf_git_transition_bind alt-t tags)" \
++      --bind "$(__fzf_git_transition_bind alt-h hashes)" \
++      --bind "$(__fzf_git_transition_bind alt-f files)" \
++      --bind "$(__fzf_git_transition_bind alt-w files)" \
++      --bind "$(__fzf_git_transition_bind alt-e refs)" \
+       --query "$query" \
+       --preview "git -c core.quotePath=false diff --no-ext-diff --color=$(__fzf_git_color .) -- $extract_file_name | $(__fzf_git_pager); $(__fzf_git_cat) $extract_file_name" "$@" |
+     cut -c4- | sed 's/.* -> //'
+@@ -232,18 +304,20 @@
+   done | sort -u | sed "s|^$cdup$prefix||" |
+     _fzf_git_fzf -m \
+       --border-label "📂 Files in $* " \
+-      --header 'CTRL-O (open in browser) ╱ ALT-E (open in editor)' \
++      --header "$(printf '%s\n%s' 'CTRL-O (open in browser)' "$(__fzf_git_transition_header tree_files)")" \
+       --bind "ctrl-o:execute-silent:bash \"$__fzf_git\" --list file {}" \
+-      --bind "alt-e:execute:${EDITOR:-vim} {}" \
++      --bind "$(__fzf_git_transition_bind alt-b branches)" \
++      --bind "$(__fzf_git_transition_bind alt-t tags)" \
++      --bind "$(__fzf_git_transition_bind alt-h hashes)" \
++      --bind "$(__fzf_git_transition_bind alt-f files)" \
++      --bind "$(__fzf_git_transition_bind alt-w files)" \
++      --bind "$(__fzf_git_transition_bind alt-e refs)" \
+       --preview "git -c core.quotePath=false diff --no-ext-diff --color=$(__fzf_git_color .) -- {} | $(__fzf_git_pager); $(__fzf_git_cat) {}"
+ }
+ 
+ _fzf_git_branches() {
+   _fzf_git_check || return
+ 
+-  local shell
+-  [[ -n ${BASH_VERSION:-} ]] && shell=bash || shell=zsh
+-
+   bash "$__fzf_git" --list branches |
+   __fzf_git_fzf=$(declare -f _fzf_git_fzf) _fzf_git_fzf --ansi \
+     --border-label '🌲 Branches ' \
+@@ -255,7 +329,13 @@
+     --bind 'ctrl-/:change-preview-window(down,70%|hidden|)' \
+     --bind "ctrl-o:execute-silent:bash \"$__fzf_git\" --list branch {}" \
+     --bind "alt-a:change-border-label(🌳 All branches)+reload:bash \"$__fzf_git\" --list all-branches" \
+-    --bind "alt-h:become:LIST_OPTS=\$(cut -c3- <<< {} | cut -d' ' -f1) $shell \"$__fzf_git\" --run hashes" \
++    --header "$(__fzf_git_transition_header branches)" \
++    --bind "$(__fzf_git_transition_bind alt-b branches)" \
++    --bind "$(__fzf_git_transition_bind alt-t tags)" \
++    --bind "$(__fzf_git_branch_hash_bind)" \
++    --bind "$(__fzf_git_transition_bind alt-f files)" \
++    --bind "$(__fzf_git_transition_bind alt-w files)" \
++    --bind "$(__fzf_git_transition_bind alt-e refs)" \
+     --bind "alt-enter:become:printf '%s\n' {+} | cut -c3- | sed 's@[^/]*/@@'" \
+     --preview "git log --oneline --graph --date=short --color=$(__fzf_git_color .) --pretty='format:%C(auto)%cd %h%d %s' \$(cut -c3- <<< {} | cut -d' ' -f1) --" "$@" |
+   sed 's/^\* //' | awk '{print $1}' # Slightly modified to work with hashes as well
+@@ -266,9 +346,15 @@
+   git tag --sort -version:refname |
+   _fzf_git_fzf --preview-window right,70% \
+     --border-label '📛 Tags ' \
+-    --header 'CTRL-O (open in browser)' \
++    --header "$(printf '%s\n%s' 'CTRL-O (open in browser)' "$(__fzf_git_transition_header tags)")" \
+     --bind "ctrl-o:execute-silent:bash \"$__fzf_git\" --list tag {}" \
+     --bind 'alt-r:toggle-raw' \
++    --bind "$(__fzf_git_transition_bind alt-b branches)" \
++    --bind "$(__fzf_git_transition_bind alt-t tags)" \
++    --bind "$(__fzf_git_transition_bind alt-h hashes)" \
++    --bind "$(__fzf_git_transition_bind alt-f files)" \
++    --bind "$(__fzf_git_transition_bind alt-w files)" \
++    --bind "$(__fzf_git_transition_bind alt-e refs)" \
+     --preview "git show --color=$(__fzf_git_color .) {} | $(__fzf_git_pager)" "$@"
+ }
+ 
+@@ -281,9 +367,13 @@
+     --bind "ctrl-o:execute-silent:bash \"$__fzf_git\" --list commit {}" \
+     --bind "ctrl-d:execute:grep -o '[a-f0-9]\{7,\}' <<< {} | head -n 1 | xargs git diff --color=$(__fzf_git_color) > /dev/tty" \
+     --bind "alt-a:change-border-label(🍇 All hashes)+reload:bash \"$__fzf_git\" --list all-hashes" \
+-    --bind "alt-f:become:echo ::tree_files;
+-      awk 'match(\$0, /[a-f0-9][a-f0-9][a-f0-9][a-f0-9][a-f0-9][a-f0-9][a-f0-9][a-f0-9]*/) { print substr(\$0, RSTART, RLENGTH) }' {+f} |
+-        xargs bash \"$__fzf_git\" --run tree_files" \
++    --header "$(__fzf_git_transition_header hashes)" \
++    --bind "$(__fzf_git_transition_bind alt-b branches)" \
++    --bind "$(__fzf_git_transition_bind alt-t tags)" \
++    --bind "$(__fzf_git_transition_bind alt-h hashes)" \
++    --bind "$(__fzf_git_transition_bind alt-f tree_files ' {+f}')" \
++    --bind "$(__fzf_git_transition_bind alt-w files)" \
++    --bind "$(__fzf_git_transition_bind alt-e refs)" \
+     --color hl:underline,hl+:underline \
+     --preview "grep -o '[a-f0-9]\{7,\}' <<< {} | head -n 1 | xargs git show --color=$(__fzf_git_color .) | $(__fzf_git_pager)" "$@" |
+   awk '
+@@ -336,6 +426,8 @@
+ 
+ _fzf_git_each_ref() {
+   _fzf_git_check || return
++  local accept_nth=2
++  [[ ${Z4H_FZF_GIT_BRIDGE_CAPTURE:-} != each_ref ]] || accept_nth=1,2
+   bash "$__fzf_git" --list refs | _fzf_git_fzf --ansi \
+     --nth 2,2.. \
+     --tiebreak begin \
+@@ -346,11 +438,18 @@
+     --no-hscroll \
+     --bind 'ctrl-/:change-preview-window(down,70%|hidden|)' \
+     --bind "ctrl-o:execute-silent:bash \"$__fzf_git\" --list {1} {2}" \
+-    --bind "alt-e:execute:${EDITOR:-vim} <(git show {2}) < /dev/tty > /dev/tty" \
++    --bind "$(__fzf_git_editor_bind ref '{2}')" \
+     --bind "alt-a:change-border-label(🍀 Every ref)+reload:bash \"$__fzf_git\" --list all-refs" \
++    --header "$(__fzf_git_transition_header refs)" \
++    --bind "$(__fzf_git_transition_bind alt-b branches)" \
++    --bind "$(__fzf_git_transition_bind alt-t tags)" \
++    --bind "$(__fzf_git_transition_bind alt-h hashes)" \
++    --bind "$(__fzf_git_transition_bind alt-f files)" \
++    --bind "$(__fzf_git_transition_bind alt-w files)" \
++    --bind "$(__fzf_git_transition_bind alt-e refs)" \
+     --bind "alt-enter:become:printf '%s\n' {+2} | sed 's@[^/]*/@@'" \
+     --preview "git log --oneline --graph --date=short --color=$(__fzf_git_color .) --pretty='format:%C(auto)%cd %h%d %s' {2} --" \
+-    --accept-nth 2 \
++    --accept-nth "$accept_nth" \
+     "$@"
+ }
+ 
+@@ -390,7 +489,12 @@
+   shift
+   type=$1
+   shift
+-  eval "_fzf_git_$type" "$@"
++  case $type in
++    files|tree_files|branches|tags|remotes|hashes|stashes|lreflogs|each_ref|worktrees)
++      "_fzf_git_$type" "$@"
++      ;;
++    *) return 1 ;;
++  esac
+ 
+ elif [[ $- =~ i ]]; then # ------------------------------------------------------
+ if [[ -n "${BASH_VERSION:-}" ]]; then
+@@ -443,4 +547,3 @@
+ __fzf_git_init files branches tags remotes hashes stashes lreflogs each_ref worktrees '?list_bindings'
+ 
+ fi # --------------------------------------------------------------------------
+-

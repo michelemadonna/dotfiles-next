@@ -1,13 +1,17 @@
 [core]
-	excludesfile = ./.gitignore_global
-    attributesfile = ./.gitattributes
+    excludesfile = ~/.config/git/.gitignore_global
+    attributesfile = ~/.config/git/.gitattributes
+
 [include]
-	path = ./.main.gitconfig
+    path = ~/.config/git/.main.gitconfig
+
 [include]
-	path = ./local.gitconfig
+    path = ~/.config/local/git/local.gitconfig
+
 [credential "https://github.com"]
-	helper = 
-	helper = !/usr/bin/gh auth git-credential
+    helper =
+    helper = !gh auth git-credential
+
 [credential "https://gist.github.com"]
-	helper = 
-	helper = !/usr/bin/gh auth git-credential
+    helper =
+    helper = !gh auth git-credential

@@ -7,15 +7,15 @@ if [ -n "${ZSH_VERSION-}" ]; then
   export Z4H_PROMPT=${Z4H_PROMPT:="powerlevel10k"} # powerlevel10k/ohmyposh/minimal
   export Z4H_SHOW_FASTFETCH=${Z4H_SHOW_FASTFETCH:=first} #false/true/first
   export Z4H_ENABLE_ALLAFINE=false
-  export Z4H_USE_FZF_TAB=${Z4H_USE_FZF_TAB:=true} #true/false
+  export Z4H_USE_FZF_TAB=true
   export Z4H_ENABLE_AUTO_GENCOMP=${Z4H_ENABLE_AUTO_GENCOMP:=true} #true/false
-  export Z4H_ENABLE_OH_MY_ZSH=${Z4H_ENABLE_OH_MY_ZSH:=true} #true/false
+  export Z4H_ENABLE_OH_MY_ZSH=true
   export Z4H_SSH_LOAD_KEY=${Z4H_SSH_LOAD_KEY:=true} #false/true
   export Z4H_SSH_SHOW_KEY=${Z4H_SSH_SHOW_KEY:=true} #false/true
   export Z4H_SSH_ASKPASS_REQUIRE=${Z4H_SSH_ASKPASS_REQUIRE:=false} #false/true
   export Z4H_MISE_REFRESH_SECONDS=${Z4H_MISE_REFRESH_SECONDS:=5} #0 checks every prompt
   export Z4H_USE_MISE=${Z4H_USE_MISE:=true} #true/false
-  export Z4H_USE_FZF_FROM_Z4H=${Z4H_USE_FZF_FROM_Z4H:=true} #true/false use fzf from z4h or from local build
+  export Z4H_USE_FZF_FROM_Z4H=false
   
   export DOTFILES_DIR="$HOME/.dotfiles" #${DOTFILES_DIR:="$HOME/.dotfiles"}
   export XDG_CACHE_HOME=${XDG_CACHE_HOME:="$HOME/.cache"}
@@ -34,6 +34,8 @@ if [ -n "${ZSH_VERSION-}" ]; then
   path=("$HOME/.local/bin" $path)
   typeset -gU path PATH
   rehash
+
+  (( $+commands[python3] )) && alias python='command python3'
 
   
   
@@ -82,7 +84,34 @@ if [ -n "${ZSH_VERSION-}" ]; then
   export POWERLEVEL9K_CONFIG_FILE="$DOTFILES_DIR/powerlevel10k/.p10k.zsh" 
   export Z4H_OH_MY_POSH_CONFIG="$DOTFILES_DIR/oh-my-posh/custom.omp.json"
   
-  . ${ZDOTDIR}/.zshenv_z4h
+  z4h_zshenv="$ZDOTDIR/.zshenv_z4h"
+  if [[ ! -s $z4h_zshenv ]]; then
+    z4h_zshenv_url='https://raw.githubusercontent.com/romkatv/zsh4humans/v5/.zshenv'
+    z4h_zshenv_tmp=$(mktemp "${z4h_zshenv}.tmp.XXXXXX" 2>/dev/null) || z4h_zshenv_tmp=
+    if [[ -n $z4h_zshenv_tmp ]]; then
+      z4h_zshenv_downloaded=false
+      if command -v curl >/dev/null 2>&1 &&
+          curl -fsSL -- "$z4h_zshenv_url" >| "$z4h_zshenv_tmp"; then
+        z4h_zshenv_downloaded=true
+      elif command -v wget >/dev/null 2>&1 &&
+          wget -qO- -- "$z4h_zshenv_url" >| "$z4h_zshenv_tmp"; then
+        z4h_zshenv_downloaded=true
+      fi
+      if [[ $z4h_zshenv_downloaded == true && -s $z4h_zshenv_tmp ]]; then
+        mv -f -- "$z4h_zshenv_tmp" "$z4h_zshenv"
+      else
+        rm -f -- "$z4h_zshenv_tmp"
+        print -u2 -r -- 'z4h: unable to download .zshenv from zsh4humans.'
+      fi
+    else
+      print -u2 -r -- 'z4h: unable to create a temporary file for .zshenv.'
+    fi
+  fi
+  if [[ -r $z4h_zshenv ]]; then
+    . "$z4h_zshenv"
+  else
+    print -u2 -r -- "z4h: missing $z4h_zshenv"
+  fi
 
   : ${ZDOTDIR:=~}
 fi

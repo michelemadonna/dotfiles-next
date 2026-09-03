@@ -24,6 +24,7 @@ local mise_activate_cache="$mise_cache_dir/${__mise}-activate-lazy.zsh"
 local mise_activate_tmp="$mise_activate_cache.${$}.tmp"
 local mise_activate_raw_tmp="$mise_activate_cache.${$}.raw"
 local mise_initial_hook_deferred=0
+local -a mise_path_before_activation=($path)
 
 if [[ ! -s $mise_activate_cache || $mise_binary -nt $mise_activate_cache ]]; then
   [[ -d $mise_cache_dir ]] || command mkdir -p "$mise_cache_dir"
@@ -48,6 +49,13 @@ if [[ -s $mise_activate_cache ]]; then
 else
   eval "$(command "$mise_binary" --quiet activate zsh)"
 fi
+
+# `mise activate` embeds the PATH from cache-generation time. Keep its shims
+# first, but do not let a cache prepared by the installer discard paths added
+# later by shell startup (notably ~/.local/bin and Homebrew on macOS).
+path=(${path:|mise_path_before_activation} $mise_path_before_activation)
+typeset -gU path PATH
+rehash
 
 typeset -ga precmd_functions chpwd_functions
 if (( $+functions[_mise_hook_precmd] && $+functions[_mise_hook_chpwd] )); then
@@ -127,7 +135,7 @@ else
 fi
 
 unset mise_binary mise_cache_dir mise_activate_cache mise_activate_tmp mise_activate_raw_tmp
-unset mise_initial_hook_deferred mise_refresh_seconds
+unset mise_initial_hook_deferred mise_refresh_seconds mise_path_before_activation
 
 asdf() {
   command mise --quiet "$@"

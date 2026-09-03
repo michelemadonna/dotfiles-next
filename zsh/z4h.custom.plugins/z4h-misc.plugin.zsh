@@ -192,6 +192,10 @@ Ctrl+G then S                 │ fzf-git select stashes
 Ctrl+G then L                 │ fzf-git select reflogs
 Ctrl+G then W                 │ fzf-git select worktrees
 Ctrl+G then E                 │ fzf-git select refs
+Inside fzf-git                │ Alt-B/T/H/E branch/tag/hash/all refs
+Inside fzf-git                │ Alt-F/W commit-or-working files / working files
+Inside Files / Each-ref       │ Alt-V open in editor
+Inside upstream pickers       │ Alt-A/R, Ctrl-O/D retain mode-specific actions
 
 ----------------------------------------------------------------------------------
 🔀 tmux

@@ -24,6 +24,14 @@ z4h_tool_available() {
   (( $+commands[$tool] )) || [[ -x $HOME/.local/bin/$tool ]]
 }
 
+z4h_fzf_is_current() {
+  local fzf_bin=$HOME/.local/bin/fzf version
+  [[ -d $HOME/.local/share/fzf/.git && -x $fzf_bin ]] || return 1
+  version=$($fzf_bin --version 2>/dev/null) || return 1
+  autoload -Uz is-at-least
+  is-at-least 0.66.0 ${version%% *}
+}
+
 z4h_bootstrap_tools() {
   local needs_install=false editor_config
   local -a editor_configs
@@ -46,8 +54,7 @@ z4h_bootstrap_tools() {
   if [[ $Z4H_USE_MISE == true ]] && ! z4h_tool_available mise; then
     needs_install=true
   fi
-  if [[ $Z4H_USE_FZF_FROM_Z4H == false ]] &&
-    [[ ! -d $HOME/.local/share/fzf/.git || ! -x $HOME/.local/bin/fzf ]]; then
+  if [[ $Z4H_USE_FZF_FROM_Z4H == false ]] && ! z4h_fzf_is_current; then
     needs_install=true
   fi
 
@@ -71,4 +78,4 @@ z4h_bootstrap_tools() {
 }
 
 z4h_bootstrap_tools
-unfunction z4h_link_config z4h_tool_available z4h_bootstrap_tools
+unfunction z4h_link_config z4h_tool_available z4h_fzf_is_current z4h_bootstrap_tools
