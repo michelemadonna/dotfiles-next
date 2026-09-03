@@ -21,6 +21,8 @@ The host installer supports:
 - `sudo` access on Ubuntu 26.04 when installation is not run as root.
 - `bash` on macOS if Homebrew must be installed automatically.
 
+> ⚠️ **Homebrew on Intel Macs:** From September 2026, macOS Intel is moving to Homebrew Tier 3 support, and Homebrew will no longer build new binary bottles for Intel. Homebrew will continue to work on supported Intel Macs during the transition, but some formulae or applications may need to be compiled locally, making installation times significantly longer. Apple Silicon is recommended for new macOS installations. See [Homebrew's support tiers](https://docs.brew.sh/Support-Tiers) for the current timeline and details.
+
 If Zsh is missing, install it with the platform package manager:
 
 ```sh
