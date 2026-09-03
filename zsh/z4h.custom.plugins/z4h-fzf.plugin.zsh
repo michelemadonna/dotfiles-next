@@ -590,6 +590,41 @@ zstyle ':fzf-tab:complete:(cd|pushd):*' \
 
 if (( $+commands[brew] )); then
 
+    # Homebrew 6 can return an empty list when its generated completion calls
+    # `HOMEBREW_COMPLETION=1 brew formulae` on macOS Tahoe, even though the API
+    # name index is populated. Serve that index only for Homebrew's internal
+    # completion calls; all normal brew invocations still reach the binary.
+    if [[ -z ${Z4H_BREW_COMMAND:-} ]]; then
+        typeset -g Z4H_BREW_COMMAND=${commands[brew]}
+    fi
+    brew() {
+        if [[ ${HOMEBREW_COMPLETION:-} == 1 &&
+              ( ${1:-} == formulae || ${1:-} == casks ) ]]; then
+            local kind=${1%?}
+            local api_dir=${HOMEBREW_CACHE:-$HOME/Library/Caches/Homebrew}/api
+            local names_file=$api_dir/${kind}_names.txt
+            [[ -s $names_file ]] || names_file=$api_dir/${kind}_names.before.txt
+            if [[ -s $names_file ]]; then
+                command cat -- "$names_file"
+                return
+            fi
+        fi
+        command "$Z4H_BREW_COMMAND" "$@"
+    }
+
+    # Discard only the tiny serialized empty lists produced by the failure
+    # above. Native completion recreates these runtime caches on first use.
+    local brew_completion_cache brew_completion_cache_dir
+    zstyle -s ':completion:*' cache-path brew_completion_cache_dir ||
+        brew_completion_cache_dir=$ZSH_CACHE_DIR/zcompcache-$ZSH_VERSION
+    for brew_completion_cache in \
+        "$brew_completion_cache_dir"/brew_(formulae|casks)(N); do
+        if (( $(command wc -c < "$brew_completion_cache") < 100 )); then
+            command rm -f -- "$brew_completion_cache"
+        fi
+    done
+    unset brew_completion_cache brew_completion_cache_dir
+
     # Do not open a preview while selecting a brew command or option.
     zstyle ':fzf-tab:complete:brew:*' \
         fzf-preview ''

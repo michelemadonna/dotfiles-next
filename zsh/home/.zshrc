@@ -4,6 +4,12 @@
 #
 # Documentation: https://github.com/romkatv/zsh4humans/blob/v5/README.md.
 
+# macOS's /etc/zprofile can rebuild PATH after .zshenv has run. Restore the
+# user-local bin directory before z4h installs or initializes any plugins.
+path=("$HOME/.local/bin" $path)
+typeset -gU path PATH
+rehash
+
 if [[ -z ${TMUX:-} ]]; then
   export TERM=xterm-256color
 fi
@@ -146,6 +152,15 @@ source "$DOTFILES_DIR/zsh/helpers/fastfetch.zsh"
 # perform network I/O must be done above. Everything else is best done below.
 z4h init || return
 
+# A cached compinit dump can predate Homebrew's addition to fpath. Register
+# its native completion explicitly so formula/cask candidates and the
+# brew-install fzf-tab context are available without clearing user caches.
+if (( $+commands[brew] )); then
+	autoload -Uz _brew
+	typeset -gA _comps
+	_comps[brew]=_brew
+fi
+
 if (( $+commands[git] )); then
 	# Homebrew's _git delegates to Bash completion and drops the grouped refs,
 	# recent commits and descriptions provided by macOS's native Zsh completion.
@@ -168,10 +183,6 @@ if (( $+commands[git] )); then
 	zstyle -d ':completion:*:git-*:argument-rest:commit-objects' ignored-patterns
 	zstyle -d ':completion:*:git-*:argument-rest:recent-branches' ignored-patterns
 fi
-
-# Extend PATH.
-path=(~/local/bin $path)
-typeset -gU path PATH
 
 # Export environment variables.
 export GPG_TTY=$TTY

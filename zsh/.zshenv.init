@@ -35,6 +35,8 @@ if [ -n "${ZSH_VERSION-}" ]; then
   typeset -gU path PATH
   rehash
 
+  (( $+commands[python3] )) && alias python='command python3'
+
   
   
 

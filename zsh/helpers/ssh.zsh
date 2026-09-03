@@ -6,6 +6,7 @@ function load-our-ssh-keys() {
 
 	local agent_file=$HOME/.ssh/ssh-agent
 	local agent_status agent_keys key fingerprint fingerprint_line
+	local -a ssh_add_options
 	local -a keys
 	typeset -g _ZQS_SSH_KEYS=
 	typeset -gi _ZQS_SSH_KEYS_STATUS=2
@@ -63,7 +64,15 @@ function load-our-ssh-keys() {
 			fingerprint_line=$(ssh-keygen -l -f "$key" 2>/dev/null) || continue
 			fingerprint=${${(z)fingerprint_line}[2]}
 			[[ -n $fingerprint ]] || continue
-			if [[ $agent_keys != *"$fingerprint"* ]] && ssh-add -q -- "$key"; then
+			ssh_add_options=(-q)
+			if [[ $OSTYPE == darwin* ]]; then
+				if (( $+commands[sw_vers] )) && (( ${$(sw_vers -productVersion)%%.*} >= 12 )); then
+					ssh_add_options+=(--apple-use-keychain)
+				else
+					ssh_add_options+=(-K)
+				fi
+			fi
+			if [[ $agent_keys != *"$fingerprint"* ]] && ssh-add $ssh_add_options -- "$key"; then
 				agent_keys+=$'\n'$fingerprint
 				_ZQS_SSH_KEYS_VALID=0
 			fi

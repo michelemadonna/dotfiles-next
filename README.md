@@ -261,6 +261,9 @@ Because the installer marker is removed, the next installer run executes the bas
 
 The primary shell configuration is [`zsh/home/.zshrc`](zsh/home/.zshrc).
 The installer creates or retain [`zsh/home/.zshenv`](zsh/home/.zshenv), and creates a symlink `~/.zshenv` that points to it.
+Shell startup puts `$HOME/.local/bin` at the front of `PATH`; `.zshrc` reapplies
+it before z4h initialization so macOS login-shell startup cannot discard it.
+Cached Mise activation also preserves the current startup paths.
 
 The installer manages those symbolic links:
 
@@ -284,6 +287,9 @@ The installer manages those symbolic links:
   * `Z4H_OH_MY_POSH_CONFIG="$DOTFILES_DIR/oh-my-posh/custom.omp.json`"
 
 The envs defined into `zsh/home/.zshenv`:
+
+When `python3` is available, the generated environment also defines `python`
+as an alias for `python3`.
 
 * `Z4H_PROMPT` Selects the prompt theme. Supported values are `powerlevel10k`, `ohmyposh`, and `minimal`.
 * `Z4H_SHOW_FASTFETCH` Controls when Fastfetch is displayed. Set it to `false` to disable Fastfetch, `true` to display it at every interactive terminal startup, or `first` to display it only in the first active terminal session.

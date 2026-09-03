@@ -19,9 +19,20 @@
 
 Startup adds Homebrew paths on macOS and `$HOME/.local/bin` everywhere, then
 bootstraps selected tools and links existing repository configurations for
-Fastfetch, Mise, and the selected editor. Mise activation/completion caches and
-ASDF plugin compatibility data are prepared by
+Fastfetch, Mise, and the selected editor. Interactive startup restores
+`$HOME/.local/bin` before z4h initialization because macOS's `/etc/zprofile`
+can rebuild `PATH` after `.zshenv`. Mise activation/completion caches and ASDF
+plugin compatibility data are prepared by
 `zsh/helpers/prepare-mise-cache.sh`.
+Loading the cached Mise activation preserves any entries already present in
+the current startup `PATH`, since the generated activation script contains the
+environment that was active when the cache was created.
+After z4h initializes completion, `.zshrc` explicitly registers Homebrew's
+native `_brew` function so an older compinit dump cannot suppress formula and
+cask completion or its fzf-tab preview context.
+On macOS Tahoe, the fzf plugin also supplies Homebrew's generated completion
+with the local API name indexes when Homebrew 6 returns an empty completion
+list, and invalidates only previously serialized empty brew completion caches.
 
 Persistent sources live in the repository. The zsh4humans bootstrap file is
 kept at `zsh/home/.zshenv_z4h`; a missing copy is restored from
