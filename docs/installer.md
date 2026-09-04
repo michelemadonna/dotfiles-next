@@ -79,7 +79,9 @@ installed automatically. A missing Intel MacPorts installation is downloaded fro
 `pkgutil`, Gatekeeper, and the macOS Installer compatibility query, then
 installed with one explained privileged command. Required Intel ports include
 the explicit `bind9` mapping; a missing port is an error and never triggers a
-Homebrew fallback. Ubuntu uses package names such as `poppler-utils`,
+Homebrew fallback. Installer-initiated MacPorts operations use its global `-N`
+mode so dependency and upgrade confirmations do not require repeated input.
+Ubuntu uses package names such as `poppler-utils`,
 `dnsutils`, `fd-find`, and `command-not-found`.
 
 The Intel provider is persisted as `DOTFILES_INTEL_PACKAGE_MANAGER` so

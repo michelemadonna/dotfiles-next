@@ -443,11 +443,7 @@ run_apt_get() {
 run_macports() {
   macports_reason=$1
   shift
-  if is_non_interactive; then
-    run_privileged "$macports_reason" "$MACPORTS_PORT" -N "$@"
-  else
-    run_privileged "$macports_reason" "$MACPORTS_PORT" "$@"
-  fi
+  run_privileged "$macports_reason" "$MACPORTS_PORT" -N "$@"
 }
 
 backup_if_needed() {

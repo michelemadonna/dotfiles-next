@@ -155,6 +155,20 @@ PRIVILEGE_LOG=$noninteractive_log sh -c '
 ' sh "$TEST_ROOT/install-lib.sh"
 grep -q '^SUDO:-n test-command$' "$noninteractive_log"
 
+macports_command=$(
+  sh -c '
+    . "$1"
+    MODE=interactive
+    MACPORTS_PORT=/opt/local/bin/port
+    run_privileged() {
+      shift
+      printf "%s\n" "$*"
+    }
+    run_macports "install requested ports" install git
+  ' sh "$TEST_ROOT/install-lib.sh"
+)
+assert_equal "$macports_command" '/opt/local/bin/port -N install git'
+
 mkdir -p "$TEST_ROOT/root-bin" "$TEST_ROOT/root-home"
 printf '#!/bin/sh\nprintf "0\\n"\n' >"$TEST_ROOT/root-bin/id"
 chmod +x "$TEST_ROOT/root-bin/id"
