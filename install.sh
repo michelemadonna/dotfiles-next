@@ -428,12 +428,12 @@ run_privileged() {
   [ "$#" -gt 0 ] || die 'A command is required for a privileged operation.'
 
   info "Administrator privileges are required to $privilege_reason.\nCommand: $*\nYou may be asked for your account password."
-  if is_non_interactive; then
-    sudo -n "$@" ||
-      die "The privileged command failed. Non-interactive mode cannot prompt for a sudo password: $*"
-  else
+  #if is_non_interactive; then
+  #  sudo -n "$@" ||
+  #    die "The privileged command failed. Non-interactive mode cannot prompt for a sudo password: $*"
+  #else
     sudo "$@"
-  fi
+  #fi
 }
 
 run_apt_get() {
