@@ -361,8 +361,11 @@ zsh_prerequisite_error() {
     case $(uname -s) in
     Darwin)
       if [ "$(uname -m)" = x86_64 ]; then
-        zsh_install_steps='Install MacPorts first, then install Zsh. Administrator privileges are required because MacPorts writes into /opt/local:
-  sudo /opt/local/bin/port install zsh'
+        zsh_install_steps='Install Zsh with MacPorts (recommended on Intel):
+  sudo /opt/local/bin/port install zsh
+
+Alternatively, if Homebrew is already installed:
+  brew install -y zsh'
       else
         zsh_install_steps='Install Zsh with Homebrew:
   brew install -y zsh'
@@ -511,11 +514,39 @@ detect_platform() {
       MACOS_ARCH=$(uname -m)
       case $MACOS_ARCH in
         x86_64)
-          PACKAGE_MANAGER=macports
+          intel_package_manager=${DOTFILES_INTEL_PACKAGE_MANAGER:-}
+          if [ -z "$intel_package_manager" ]; then
+            choices_file="$DOTFILES_DIR/zsh/home/.zshenv"
+            if [ -f "$choices_file" ]; then
+              intel_package_manager=$(
+                awk '
+                  /^  export DOTFILES_INTEL_PACKAGE_MANAGER=/ {
+                    sub(/^  export DOTFILES_INTEL_PACKAGE_MANAGER=/, "")
+                    sub(/[[:space:]]+#.*/, "")
+                    gsub(/^"|"$/, "")
+                    print
+                    exit
+                  }
+                ' "$choices_file"
+              )
+            fi
+          fi
+          [ -n "$intel_package_manager" ] || intel_package_manager=macports
+          case $intel_package_manager in
+            macports | homebrew) PACKAGE_MANAGER=$intel_package_manager ;;
+            *)
+              die "Unsupported DOTFILES_INTEL_PACKAGE_MANAGER value: $intel_package_manager. Use macports or homebrew."
+              ;;
+          esac
+          DOTFILES_INTEL_PACKAGE_MANAGER=$PACKAGE_MANAGER
+          export DOTFILES_INTEL_PACKAGE_MANAGER
+          if [ "$PACKAGE_MANAGER" = homebrew ]; then
+            homebrew_installed || have bash || die 'bash is required to install Homebrew.'
+          fi
           ;;
         arm64)
           PACKAGE_MANAGER=homebrew
-          have brew || have bash || die 'bash is required to install Homebrew.'
+          homebrew_installed || have bash || die 'bash is required to install Homebrew.'
           ;;
         *)
           die "Unsupported macOS architecture: $MACOS_ARCH"
@@ -532,6 +563,24 @@ detect_platform() {
       die "Unsupported operating system: $(uname -s)"
       ;;
   esac
+}
+
+homebrew_installed() {
+  have brew || [ -x /opt/homebrew/bin/brew ] || [ -x /usr/local/bin/brew ]
+}
+
+activate_homebrew() {
+  have brew && return 0
+
+  if [ -x /opt/homebrew/bin/brew ]; then
+    eval "$(/opt/homebrew/bin/brew shellenv)"
+  elif [ -x /usr/local/bin/brew ]; then
+    eval "$(/usr/local/bin/brew shellenv)"
+  else
+    return 1
+  fi
+
+  have brew
 }
 
 install_macports() {
@@ -566,7 +615,7 @@ install_macports() {
   macports_package_file="${TMPDIR:-/tmp}/MacPorts.$$.pkg"
   TEMP_PACKAGE_FILE=$macports_package_file
   info "Downloading the official MacPorts package: ${macports_package_url##*/}"
-  curl -fL -- "$macports_package_url" -o "$macports_package_file"
+  curl -fL -o "$macports_package_file" -- "$macports_package_url"
 
   info 'Verifying the MacPorts package signature and Gatekeeper assessment'
   pkgutil --check-signature "$macports_package_file"
@@ -587,20 +636,13 @@ install_macports() {
 setup_homebrew() {
   [ "$PACKAGE_MANAGER" = homebrew ] || return 0
 
-  if ! have brew; then
-    info 'The official Homebrew installer may request your password to create and configure /opt/homebrew. Administrator privileges are required for those system locations.'
+  if ! activate_homebrew; then
+    have bash || die 'bash is required to install Homebrew.'
+    info 'The official Homebrew installer may request your password to create and configure its default prefix (/opt/homebrew on Apple Silicon or /usr/local on Intel). Administrator privileges are required for those system locations.'
     NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
   fi
 
-  if ! have brew; then
-    if [ -x /opt/homebrew/bin/brew ]; then
-      eval "$(/opt/homebrew/bin/brew shellenv)"
-    elif [ -x /usr/local/bin/brew ]; then
-      eval "$(/usr/local/bin/brew shellenv)"
-    else
-      die 'Homebrew was installed but cannot be found.'
-    fi
-  fi
+  activate_homebrew || die 'Homebrew was installed but cannot be found.'
 }
 
 setup_platform() {
@@ -733,6 +775,18 @@ set_interactive_defaults() {
   set_fixed_preferences
 }
 
+collect_intel_package_manager_choice() {
+  [ "$PLATFORM" = macos ] && [ "$MACOS_ARCH" = x86_64 ] || return 0
+
+  package_manager_default=m
+  [ "$PACKAGE_MANAGER" = homebrew ] && package_manager_default=h
+  ui_menu 'Intel package manager' 'MacPorts is recommended. Homebrew on Intel is Tier 3: it has no CI support and receives no new binary bottles, so formulae may compile from source, take much longer, or fail. You can instead install Homebrew manually alongside MacPorts, mainly for casks and formulae unavailable in MacPorts; the custom pkgmng plugin manages their coexistence.' "$package_manager_default" 'm|macports|MacPorts (recommended)
+h|homebrew|Homebrew (Tier 3; no new Intel bottles)'
+  PACKAGE_MANAGER=$MENU_VALUE
+  DOTFILES_INTEL_PACKAGE_MANAGER=$PACKAGE_MANAGER
+  export DOTFILES_INTEL_PACKAGE_MANAGER
+}
+
 set_fixed_preferences() {
   use_fzf_tab=true
   use_fzf_from_z4h=false
@@ -748,6 +802,8 @@ n|false|No'
 }
 
 collect_interactive_choices() {
+  collect_intel_package_manager_choice
+
   ui_menu 'Prompt' 'Select the prompt renderer.' p 'p|powerlevel10k|Powerlevel10k
 o|ohmyposh|Oh My Posh'
   prompt=$MENU_VALUE
@@ -816,7 +872,7 @@ inspect_installation_state() {
       fi
       ;;
     homebrew)
-      if have brew; then
+      if homebrew_installed; then
         package_manager_action='Reuse Homebrew'
       else
         package_manager_action='Install Homebrew non-interactively'
@@ -1113,6 +1169,10 @@ ui_summary() {
     ui_summary_line 'Git' "$git_action"
     ui_summary_line 'Repository' "$repository_action"
     ui_summary_line 'Base packages' "$base_packages_action"
+    if [ "$PLATFORM" = macos ] && [ "$MACOS_ARCH" = x86_64 ] &&
+      [ "$PACKAGE_MANAGER" = homebrew ]; then
+      ui_text 'Warning: Homebrew on Intel is Tier 3, without CI support or new binary bottles; some formulae may compile from source, take much longer, or fail.' "$COLOR_YELLOW$COLOR_BOLD"
+    fi
     ui_summary_line 'Mise' "$(human_boolean "$use_mise")"
     ui_line '' ''
     ui_section 'Zsh preferences'
@@ -1162,7 +1222,14 @@ generate_zshenv() {
   mkdir -p "$(dirname "$generated_file")"
   temporary_file=$(mktemp "${generated_file}.tmp.XXXXXX") || die "Cannot create temporary Zsh environment file: $generated_file"
 
+  generated_intel_package_manager=${DOTFILES_INTEL_PACKAGE_MANAGER:-macports}
+  case $generated_intel_package_manager in
+    macports | homebrew) ;;
+    *) generated_intel_package_manager=macports ;;
+  esac
+
   awk \
+    -v intel_package_manager="$generated_intel_package_manager" \
     -v prompt="$prompt" \
     -v editor="$editor" \
     -v show_fastfetch="$show_fastfetch" \
@@ -1174,6 +1241,7 @@ generate_zshenv() {
     -v load_ssh_key="$load_ssh_key" \
     -v show_ssh_key="$show_ssh_key" \
     -v askpass_require="$askpass_require" '
+      /^  export DOTFILES_INTEL_PACKAGE_MANAGER=/ { $0 = "  export DOTFILES_INTEL_PACKAGE_MANAGER=" intel_package_manager; }
       /^  export Z4H_PROMPT=/ { $0 = "  export Z4H_PROMPT=\"" prompt "\""; }
       /^  export Z4H_SHOW_FASTFETCH=/ { $0 = "  export Z4H_SHOW_FASTFETCH=" show_fastfetch; }
       /^  export Z4H_USE_FZF_TAB=/ {
@@ -1467,17 +1535,21 @@ main() {
     check_prerequisites
     detect_platform
     info "Detected platform: $PLATFORM"
+    if [ "$PLATFORM" = macos ] && [ "$MACOS_ARCH" = x86_64 ] &&
+      [ "$PACKAGE_MANAGER" = homebrew ]; then
+      info 'Warning: Homebrew on Intel is Tier 3, without CI support or new binary bottles. Formulae may compile from source, take much longer, or fail. MacPorts is recommended.'
+    fi
     configure_non_interactive
   else
     check_interactive_terminal
     ui_intro
     check_prerequisites
     detect_platform
-    inspect_installation_state
 
     while :; do
       set_interactive_defaults
       collect_interactive_choices
+      inspect_installation_state
       ui_summary && break
     done
 

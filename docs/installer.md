@@ -15,7 +15,9 @@ shows a review screen and changes nothing until approval. It supports:
 ./install.sh --non-interactive
 ```
 
-The wizard selects the prompt (`powerlevel10k` or `ohmyposh`), editor
+On Intel macOS the wizard first selects MacPorts or Homebrew as the package
+provider. It recommends and defaults to MacPorts and warns that Homebrew on
+Intel is Tier 3, has no CI support, and receives no new binary bottles. The wizard also selects the prompt (`powerlevel10k` or `ohmyposh`), editor
 (`vim`, `nano`, `fresh`, or `micro`), Fastfetch mode, generated completion,
 Mise, and SSH key loading/display/askpass behavior. fzf-tab, the local fzf
 checkout, and Oh My Zsh helpers are always enabled and are not prompted.
@@ -27,6 +29,9 @@ asks questions, or installs Mise because of an environment override. It uses
 non-prompting package operations (`sudo -n` on Ubuntu) and fails when required
 credentials are unavailable. Remaining user choices come from
 `zsh/home/.zshenv`; the three fixed integration flags are always normalized.
+Intel defaults to MacPorts; `DOTFILES_INTEL_PACKAGE_MANAGER=homebrew` selects
+Homebrew, and an existing generated preference is reused when the environment
+does not override it.
 At shell startup, a missing `zsh/home/.zshenv_z4h` is downloaded from the
 pinned zsh4humans v5 `.zshenv` source and saved at that path before loading.
 
@@ -67,13 +72,21 @@ contribute to this global approximation and may suppress Fastfetch.
 ## Platform and logs
 
 Supported hosts are macOS and Ubuntu 26.04. Apple Silicon uses Homebrew, Intel
-macOS uses MacPorts from `/opt/local`, and Ubuntu uses APT. A missing Intel
-MacPorts installation is downloaded from the official release, checked with
+macOS chooses MacPorts from `/opt/local` or Homebrew from `/usr/local`, and
+Ubuntu uses APT. MacPorts is recommended on Intel because Homebrew is Tier 3,
+without CI support or new Intel bottles. A missing selected package manager is
+installed automatically. A missing Intel MacPorts installation is downloaded from the official release, checked with
 `pkgutil`, Gatekeeper, and the macOS Installer compatibility query, then
 installed with one explained privileged command. Required Intel ports include
 the explicit `bind9` mapping; a missing port is an error and never triggers a
 Homebrew fallback. Ubuntu uses package names such as `poppler-utils`,
 `dnsutils`, `fd-find`, and `command-not-found`.
+
+The Intel provider is persisted as `DOTFILES_INTEL_PACKAGE_MANAGER` so
+non-interactive startup repairs retain the approved provider. Users may install
+Homebrew manually alongside a MacPorts-primary setup for casks or formulae
+missing from MacPorts. In that configuration the custom `z4h-pkgmng` plugin
+isolates Homebrew from the normal `PATH` and exposes explicit exceptions.
 
 Installer logs use the z4u palette: cyan 36, yellow 33, green 32, red 31,
 bold 1, reset 0, with Unicode icons/borders and an ASCII fallback. External

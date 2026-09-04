@@ -15,13 +15,13 @@ Zsh for Humans (z4h) bootstraps the shell framework and manages the external Zsh
 
 The host installer supports:
 
-- macOS on Apple Silicon with Homebrew, macOS on Intel with MacPorts, or Ubuntu 26.04 with APT.
+- macOS on Apple Silicon with Homebrew, macOS on Intel with MacPorts or Homebrew, and Ubuntu 26.04 with APT.
 - Zsh already installed and configured as the current user's login shell.
 - `curl` and an internet connection.
 - An Administrator account with `sudo` access. Run the installer as that normal user, never with `sudo` or as root.
-- `bash` on Apple Silicon if Homebrew must be installed automatically.
+- `bash` on macOS if Homebrew must be installed automatically.
 
-> ⚠️ **Homebrew on Intel Macs:** From September 2026, macOS Intel is moving to Homebrew Tier 3 support. New installations therefore use MacPorts as their primary package manager. An existing Intel Homebrew installation is retained but removed from the normal `PATH`; `pkgmng` exposes only commands explicitly assigned to Homebrew. See [Homebrew's support tiers](https://docs.brew.sh/Support-Tiers) for the current timeline and details.
+> ⚠️ **Homebrew on Intel Macs:** Since September 2026, Intel macOS is Homebrew Tier 3: it has no CI support and receives no new binary bottles, so formulae may compile from source, take considerably longer, or fail. The installer therefore recommends and defaults to MacPorts, but allows Homebrew as the primary provider. Homebrew can also be installed manually alongside MacPorts, mainly for casks and formulae unavailable in MacPorts. When MacPorts is selected and both managers are installed, the custom `z4h-pkgmng` plugin keeps MacPorts primary and exposes explicit Homebrew exceptions. See [Homebrew's support tiers](https://docs.brew.sh/Support-Tiers) for the current policy and timeline.
 
 If Zsh is missing, install it with the platform package manager:
 
@@ -29,8 +29,11 @@ If Zsh is missing, install it with the platform package manager:
 # Apple Silicon macOS
 brew install zsh
 
-# Intel macOS after installing MacPorts
+# Intel macOS with MacPorts (recommended)
 sudo /opt/local/bin/port install zsh
+
+# Intel macOS with an existing Homebrew installation
+brew install zsh
 
 # Ubuntu 26.04
 sudo apt-get update
@@ -216,6 +219,7 @@ The project-specific plugins live in [`zsh/z4h.custom.plugins`](zsh/z4h.custom.p
 | `z4h-eza`          | Replaces common `ls` forms with an icon-aware `eza` configuration and falls back to `exa` when necessary. Provides `ll` and `lls`.                                                                                                                                                                           |
 | `z4h-gencomp-lazy` | Generates completion from a command's help output on explicit `Shift-Tab`, caches it, loads it immediately, and remembers failed attempts for the current session. It also provides the manual `gencomp` command.                                                                                            |
 | `z4h-mise`         | Caches Mise activation and completion, avoids duplicate hooks, refreshes immediately after directory changes and successful `mise` commands, throttles unchanged prompts, provides `asdf` compatibility, and synchronizes `mise use` selections to `.tool-versions`.                                         |
+| `z4h-pkgmng`       | On Intel macOS with MacPorts selected and both managers installed, keeps MacPorts primary while exposing explicitly selected Homebrew commands, completions, rescans, and an isolated Homebrew shell.                                                                                |
 | `z4h-oh-my-posh`   | Loads Oh My Posh only when selected and caches the generated Zsh initialization until the binary, theme, or plugin changes.                                                                                                                                                                                  |
 | `z4h-misc`         | Provides compatibility aliases, the optional allafine behavior, and a searchable `Ctrl-K` keybinding reference for Zsh, fzf, tmux, and Micro.                                                                                                                                                                |
 
@@ -230,9 +234,8 @@ The installer checks the platform, installs Git when necessary, clones the repos
 Use an Administrator account, but do not run the installer with `sudo` and do
 not start it from a root shell. The installer explains every privileged
 operation before invoking `sudo` for that individual command. On Intel macOS,
-this includes installing the signed official MacPorts package into `/opt/local`
-and installing ports; on Apple Silicon it includes any privilege request made
-by the official Homebrew installer.
+the wizard asks whether to use the recommended MacPorts backend or Homebrew;
+the selected installer may request privileges for its default prefix.
 
 To download and launch the interactive installer:
 
@@ -247,6 +250,13 @@ To run without prompts, use:
 
 ```sh
 sh /tmp/dotfiles-next-install.sh non-interactive
+```
+
+Non-interactive Intel installations default to MacPorts. Select Homebrew with:
+
+```sh
+DOTFILES_INTEL_PACKAGE_MANAGER=homebrew \
+  sh /tmp/dotfiles-next-install.sh non-interactive
 ```
 
 Alternatively, clone the repository and launch the local copy:
@@ -288,10 +298,17 @@ Cached Mise activation also preserves the current startup paths.
 
 ### Intel macOS package providers
 
-On Intel Macs, `/opt/local/bin` and `/opt/local/sbin` take precedence and
-`/usr/local/bin` and `/usr/local/sbin` are excluded from the normal shell
-`PATH`. If Homebrew already exists, its completion remains available and the
-following commands manage explicit Homebrew exceptions:
+The Intel installer asks which package manager should provide the base tools.
+MacPorts is recommended and is the default; Homebrew can be selected despite
+its Tier 3 limitations. `DOTFILES_INTEL_PACKAGE_MANAGER=macports|homebrew`
+controls non-interactive runs and is persisted in `zsh/home/.zshenv` so later
+automatic tool installation keeps the same provider.
+
+When MacPorts is selected, `/opt/local/bin` and `/opt/local/sbin` take
+precedence and Homebrew's `/usr/local/bin` and `/usr/local/sbin` are excluded
+from the normal shell `PATH`. If Homebrew is also installed manually, the
+custom `z4h-pkgmng` plugin is enabled and the following commands manage
+explicit Homebrew exceptions:
 
 ```zsh
 pkg-bootstrap [formula ...]
@@ -308,7 +325,8 @@ Rescans and upgrades preserve commands explicitly assigned to MacPorts. A
 normal `brew install` registers commands from newly installed formulae as
 Homebrew defaults, while `brew-shell` provides a temporary full Homebrew
 environment. The installer never falls back from a missing MacPorts port to
-Homebrew.
+Homebrew. When Homebrew is selected as the primary provider, `/usr/local` is
+used normally and the MacPorts-primary coexistence plugin remains disabled.
 
 The installer manages those symbolic links:
 
@@ -337,6 +355,7 @@ When `python3` is available, the generated environment also defines `python`
 as an alias for `python3`.
 
 * `Z4H_PROMPT` Selects the prompt theme. Supported values are `powerlevel10k`, `ohmyposh`, and `minimal`.
+* `DOTFILES_INTEL_PACKAGE_MANAGER` selects `macports` or `homebrew` as the Intel macOS installer and shell provider. It defaults to `macports` and has no effect on Apple Silicon or Linux.
 * `Z4H_SHOW_FASTFETCH` Controls when Fastfetch is displayed. Set it to `false` to disable Fastfetch, `true` to display it at every interactive terminal startup, or `first` to display it only in the first active terminal session.
 * `Z4H_ENABLE_AUTO_GENCOMP` Enables on-demand generation of Zsh completions for commands that do not already provide them. Completions are generated from the command’s `--help` output.
 * `Z4H_SSH_LOAD_KEY` Controls automatic SSH key loading. When enabled, private keys found in `$HOME/.ssh` are loaded into the active SSH agent or platform keychain.

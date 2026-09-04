@@ -12,7 +12,9 @@ git status --short
 For installer changes run `sh -n install.sh` and ShellCheck when available.
 Use a disposable HOME and stubbed package managers for installer branches;
 never change the host unintentionally.
-Cover Intel MacPorts, Apple Silicon Homebrew, and Linux APT. Assert that root
+Cover Intel MacPorts, Intel Homebrew, Apple Silicon Homebrew, and Linux APT.
+Assert that the Intel provider override and persisted preference are honored,
+and that root
 invocation is rejected and that every stubbed `sudo` call is immediately
 preceded by its privilege reason. Do not download or install MacPorts during
 host-side tests; perform the real package, idempotency, provider, and PTY tests

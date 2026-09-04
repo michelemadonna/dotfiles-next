@@ -26,7 +26,58 @@ platform_result=$(
 assert_equal "$platform_result" 'macos:macports:x86_64'
 
 platform_result=$(
-  sh -c '
+  DOTFILES_INTEL_PACKAGE_MANAGER=homebrew sh -c '
+    . "$1"
+    uname() { [ "$1" = -s ] && printf "Darwin\n" || printf "x86_64\n"; }
+    brew() { :; }
+    detect_platform
+    printf "%s:%s:%s\n" "$PLATFORM" "$PACKAGE_MANAGER" "$MACOS_ARCH"
+  ' sh "$TEST_ROOT/install-lib.sh"
+)
+assert_equal "$platform_result" 'macos:homebrew:x86_64'
+
+invalid_provider_result=$(
+  DOTFILES_INTEL_PACKAGE_MANAGER=invalid sh -c '
+    . "$1"
+    uname() { [ "$1" = -s ] && printf "Darwin\n" || printf "x86_64\n"; }
+    die() { printf "%s\n" "$*"; exit 1; }
+    detect_platform
+  ' sh "$TEST_ROOT/install-lib.sh" 2>&1 || true
+)
+case $invalid_provider_result in
+  *'Unsupported DOTFILES_INTEL_PACKAGE_MANAGER value: invalid'*) ;;
+  *)
+    printf 'invalid Intel provider was not rejected:\n%s\n' "$invalid_provider_result" >&2
+    exit 1
+    ;;
+esac
+
+mkdir -p "$TEST_ROOT/persisted-dotfiles/zsh/home"
+printf '  export DOTFILES_INTEL_PACKAGE_MANAGER=homebrew\n' >"$TEST_ROOT/persisted-dotfiles/zsh/home/.zshenv"
+platform_result=$(
+  DOTFILES_DIR="$TEST_ROOT/persisted-dotfiles" sh -c '
+    . "$1"
+    uname() { [ "$1" = -s ] && printf "Darwin\n" || printf "x86_64\n"; }
+    brew() { :; }
+    detect_platform
+    printf "%s:%s:%s\n" "$PLATFORM" "$PACKAGE_MANAGER" "$MACOS_ARCH"
+  ' sh "$TEST_ROOT/install-lib.sh"
+)
+assert_equal "$platform_result" 'macos:homebrew:x86_64'
+
+platform_result=$(
+  DOTFILES_DIR="$TEST_ROOT/persisted-dotfiles" \
+    DOTFILES_INTEL_PACKAGE_MANAGER=macports sh -c '
+      . "$1"
+      uname() { [ "$1" = -s ] && printf "Darwin\n" || printf "x86_64\n"; }
+      detect_platform
+      printf "%s:%s:%s\n" "$PLATFORM" "$PACKAGE_MANAGER" "$MACOS_ARCH"
+    ' sh "$TEST_ROOT/install-lib.sh"
+)
+assert_equal "$platform_result" 'macos:macports:x86_64'
+
+platform_result=$(
+  DOTFILES_INTEL_PACKAGE_MANAGER=macports sh -c '
     . "$1"
     uname() { [ "$1" = -s ] && printf "Darwin\n" || printf "arm64\n"; }
     brew() { :; }
@@ -49,6 +100,32 @@ platform_result=$(
   ' sh "$TEST_ROOT/install-lib.sh"
 )
 assert_equal "$platform_result" 'linux:apt'
+
+interactive_provider=$(
+  sh -c '
+    . "$1"
+    PLATFORM=macos
+    MACOS_ARCH=x86_64
+    PACKAGE_MANAGER=macports
+    ui_menu() { MENU_VALUE=homebrew; }
+    collect_intel_package_manager_choice
+    printf "%s:%s\n" "$PACKAGE_MANAGER" "$DOTFILES_INTEL_PACKAGE_MANAGER"
+  ' sh "$TEST_ROOT/install-lib.sh"
+)
+assert_equal "$interactive_provider" 'homebrew:homebrew'
+
+mkdir -p "$TEST_ROOT/generated-dotfiles/zsh/home"
+cp "$ROOT/zsh/.zshenv.init" "$TEST_ROOT/generated-dotfiles/zsh/.zshenv.init"
+DOTFILES_DIR="$TEST_ROOT/generated-dotfiles" sh -c '
+  . "$1"
+  MODE=interactive
+  PACKAGE_MANAGER=homebrew
+  DOTFILES_INTEL_PACKAGE_MANAGER=homebrew
+  configure_non_interactive
+  info() { :; }
+  generate_zshenv
+  grep -q "^  export DOTFILES_INTEL_PACKAGE_MANAGER=homebrew$" "$DOTFILES_DIR/zsh/home/.zshenv"
+' sh "$TEST_ROOT/install-lib.sh"
 
 privilege_log=$TEST_ROOT/privilege.log
 PRIVILEGE_LOG=$privilege_log sh -c '
@@ -141,6 +218,7 @@ MACPORTS_LOG=$macports_log sh -c '
         printf "%s\n" "{\"browser_download_url\":\"https://github.com/macports/macports-base/releases/download/v2.12.6/MacPorts-2.12.6-26-Tahoe.pkg\"}"
         ;;
       *)
+        printf "CURL:%s\n" "$*" >>"$MACPORTS_LOG"
         while [ "$#" -gt 0 ]; do
           if [ "$1" = -o ]; then
             : >"$2"
@@ -160,6 +238,7 @@ MACPORTS_LOG=$macports_log sh -c '
 ' sh "$TEST_ROOT/install-lib.sh" "$TEST_ROOT"
 grep -q '^PKGUTIL:--check-signature ' "$macports_log"
 grep -q '^SPCTL:--assess --type install --verbose ' "$macports_log"
+grep -q '^CURL:-fL -o .*/MacPorts\.[0-9][0-9]*\.pkg -- https://github.com/' "$macports_log"
 grep -q 'INSTALLER:.*-pkginfo' "$macports_log"
 grep -q '^PRIVILEGED:install the verified MacPorts package into ' "$macports_log"
 

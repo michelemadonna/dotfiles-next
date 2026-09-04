@@ -1,8 +1,9 @@
 #!/usr/bin/env zsh
 
-# Load the MacPorts/Homebrew coexistence layer only on Intel macOS when both
-# package managers are installed.
-if [[ $OSTYPE == darwin* && $(uname -m) == x86_64 ]] &&
+# Load the MacPorts-primary coexistence layer only on Intel macOS when
+# MacPorts is selected and both package managers are installed.
+if [[ ${DOTFILES_INTEL_PACKAGE_MANAGER:-macports} == macports ]] &&
+	[[ $OSTYPE == darwin* && $(uname -m) == x86_64 ]] &&
 	[[ -x ${HOMEBREW_BREW:-/usr/local/bin/brew} ]] &&
 	[[ -x ${MACPORTS_PREFIX:-/opt/local}/bin/port ]]; then
 
