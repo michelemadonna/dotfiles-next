@@ -776,7 +776,7 @@ collect_intel_package_manager_choice() {
 
   package_manager_default=m
   [ "$PACKAGE_MANAGER" = homebrew ] && package_manager_default=h
-  ui_menu 'Intel package manager' 'MacPorts is recommended. Homebrew on Intel is Tier 3: it has no CI support and receives no new binary bottles, so formulae may compile from source, take much longer, or fail. You can instead install Homebrew manually alongside MacPorts, mainly for casks and formulae unavailable in MacPorts; the custom pkgmng plugin manages their coexistence.' "$package_manager_default" 'm|macports|MacPorts (recommended)
+  ui_menu 'Intel package manager' 'MacPorts is recommended. Homebrew on Intel is Tier 3: it has no CI support and receives no new binary bottles, so formulae may compile from source, take much longer, or fail. You can instead install Homebrew manually alongside MacPorts, mainly for casks and formulae unavailable in MacPorts; the custom z4h-pkgmng plugin manages their coexistence.' "$package_manager_default" 'm|macports|MacPorts (recommended)
 h|homebrew|Homebrew (Tier 3; no new Intel bottles)'
   PACKAGE_MANAGER=$MENU_VALUE
   DOTFILES_INTEL_PACKAGE_MANAGER=$PACKAGE_MANAGER

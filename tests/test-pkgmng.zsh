@@ -10,18 +10,26 @@ trap 'rm -rf -- "$TEST_ROOT"' EXIT HUP INT TERM
 export HOME=$TEST_ROOT/home
 export XDG_STATE_HOME=$TEST_ROOT/state
 export DOTFILES_DIR=$ROOT
+export DOTFILES_INTEL_PACKAGE_MANAGER=macports
 export MACPORTS_PREFIX=$TEST_ROOT/macports
 export HOMEBREW_PREFIX=$TEST_ROOT/homebrew
 export HOMEBREW_BREW=$HOMEBREW_PREFIX/bin/brew
+export PLUGIN_TEST_OSTYPE=darwin26.0
+export TEST_UNAME_MACHINE=x86_64
 
 mkdir -p \
     "$HOME" \
+    "$TEST_ROOT/test-bin" \
     "$MACPORTS_PREFIX/bin" \
     "$MACPORTS_PREFIX/sbin" \
     "$HOMEBREW_PREFIX/bin" \
     "$HOMEBREW_PREFIX/sbin" \
     "$HOMEBREW_PREFIX/opt/jq/bin"
 
+cat >"$TEST_ROOT/test-bin/uname" <<'EOF'
+#!/bin/sh
+printf '%s\n' "${TEST_UNAME_MACHINE:-x86_64}"
+EOF
 cat >"$HOMEBREW_BREW" <<'EOF'
 #!/bin/sh
 case $1 in
@@ -47,13 +55,20 @@ cat >"$MACPORTS_PREFIX/bin/jq" <<'EOF'
 #!/bin/sh
 printf 'macports\n'
 EOF
+cat >"$MACPORTS_PREFIX/bin/port" <<'EOF'
+#!/bin/sh
+exit 0
+EOF
 chmod +x \
+    "$TEST_ROOT/test-bin/uname" \
     "$HOMEBREW_BREW" \
     "$HOMEBREW_PREFIX/opt/jq/bin/jq" \
-    "$MACPORTS_PREFIX/bin/jq"
+    "$MACPORTS_PREFIX/bin/jq" \
+    "$MACPORTS_PREFIX/bin/port"
 
-path=("$HOMEBREW_PREFIX/bin" "$HOMEBREW_PREFIX/sbin" /usr/bin /bin)
-source "$ROOT/zsh/helpers/pkgmng"
+OSTYPE=$PLUGIN_TEST_OSTYPE
+path=("$TEST_ROOT/test-bin" "$HOMEBREW_PREFIX/bin" "$HOMEBREW_PREFIX/sbin" /usr/bin /bin)
+source "$ROOT/zsh/z4h.custom.plugins/z4h-pkgmng.plugin.zsh"
 
 [[ -f $PKGMGR_DB ]]
 [[ $path[1] == "$MACPORTS_PREFIX/bin" ]]
@@ -95,28 +110,45 @@ SHELL=$TEST_ROOT/test-shell
 brew_shell_output=$(brew-shell)
 [[ $brew_shell_output == *"BREW_SHELL:1:"*"$HOMEBREW_PREFIX/bin"* ]]
 
-(
-    export HOME=$TEST_ROOT/no-brew-home
-    export XDG_STATE_HOME=$TEST_ROOT/no-brew-state
-    export HOMEBREW_PREFIX=$TEST_ROOT/missing-homebrew
-    export HOMEBREW_BREW=$HOMEBREW_PREFIX/bin/brew
-    path=(/usr/bin /bin)
-    source "$ROOT/zsh/helpers/pkgmng"
-    [[ -f $PKGMGR_DB ]]
-    if brew --version >/dev/null 2>&1; then
-        return 1
-    else
-        [[ $? == 127 ]]
-    fi
-)
+assert_plugin_disabled() {
+    local test_name=$1
+    local test_ostype=$2
+    local test_machine=$3
+    local test_provider=$4
+    local test_brew=$5
+    local test_state=$TEST_ROOT/disabled-$test_name
+
+    HOME=$TEST_ROOT/disabled-home \
+        XDG_STATE_HOME=$test_state \
+        DOTFILES_DIR=$ROOT \
+        DOTFILES_INTEL_PACKAGE_MANAGER=$test_provider \
+        MACPORTS_PREFIX=$MACPORTS_PREFIX \
+        HOMEBREW_PREFIX=$HOMEBREW_PREFIX \
+        HOMEBREW_BREW=$test_brew \
+        PLUGIN_TEST_OSTYPE=$test_ostype \
+        TEST_UNAME_MACHINE=$test_machine \
+        PATH="$TEST_ROOT/test-bin:/usr/bin:/bin" \
+        /bin/zsh -dfc '
+            OSTYPE=$PLUGIN_TEST_OSTYPE
+            source "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-pkgmng.plugin.zsh"
+            (( ! $+functions[brew] ))
+            (( ! ${+parameters[PKGMGR_DB]} ))
+            [[ ! -e "$XDG_STATE_HOME/zsh/package-providers.db" ]]
+        '
+}
+
+assert_plugin_disabled apple-silicon darwin26.0 arm64 macports "$HOMEBREW_BREW"
+assert_plugin_disabled linux linux-gnu x86_64 macports "$HOMEBREW_BREW"
+assert_plugin_disabled homebrew-primary darwin26.0 x86_64 homebrew "$HOMEBREW_BREW"
+assert_plugin_disabled missing-brew darwin26.0 x86_64 macports "$TEST_ROOT/missing-brew"
 
 : >"$PKGMGR_DB"
 (
-    source "$ROOT/zsh/helpers/pkgmng"
+    source "$ROOT/zsh/z4h.custom.plugins/z4h-pkgmng.plugin.zsh"
     _pkgmgr_db_set one one brew
 ) &
 (
-    source "$ROOT/zsh/helpers/pkgmng"
+    source "$ROOT/zsh/z4h.custom.plugins/z4h-pkgmng.plugin.zsh"
     _pkgmgr_db_set two two macports
 ) &
 wait
@@ -134,7 +166,7 @@ port_preview=$(
             autoload -Uz compinit
             compinit -D
             source "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-fzf.plugin.zsh"
-            zstyle -s ":fzf-tab:complete:port-install:ports" \
+            zstyle -s ":fzf-tab:complete:port:argument-2" \
                 fzf-preview preview
             group="Available ports"
             word=jq

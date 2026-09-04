@@ -10,9 +10,9 @@
   zsh4humans v5 raw source before being sourced.
 - `zsh/home/.zshenv` is generated or retained preferences; `~/.zshenv` points
   to it. `.zshenv_z4h` loads z4h; `.zshrc` loads interactive helpers/plugins.
-- `zsh/helpers/` owns SSH, Fastfetch, tool bootstrap, fzf state/preview, Mise
-  cache preparation, and the Intel MacPorts/Homebrew coexistence layer.
-  `zsh/z4h.custom.plugins/` owns repository plugins.
+- `zsh/helpers/` owns SSH, Fastfetch, tool bootstrap, fzf state/preview, and
+  Mise cache preparation. `zsh/z4h.custom.plugins/` owns repository plugins,
+  including the self-contained Intel MacPorts/Homebrew coexistence layer.
 - Powerlevel10k is the default prompt. Oh My Posh is optional and uses the
   repository JSON theme when selected.
 
@@ -23,7 +23,7 @@ or MacPorts paths on Intel, and
 `$HOME/.local/bin` everywhere, then bootstraps selected tools and links
 existing repository configurations for Fastfetch, Mise, and the selected
 editor. In a MacPorts-primary Intel setup, startup excludes `/usr/local/bin`
-and `/usr/local/sbin`, then loads `pkgmng` interactively before completion
+and `/usr/local/sbin`, then loads the `z4h-pkgmng` plugin before completion
 initialization only when both Homebrew and MacPorts are installed. The
 persisted `DOTFILES_INTEL_PACKAGE_MANAGER` preference also keeps automatic
 non-interactive tool installation on the selected backend. Interactive startup restores
@@ -40,7 +40,7 @@ cask completion or its fzf-tab preview context.
 On macOS Tahoe, the fzf plugin also supplies Homebrew's generated completion
 with the local API name indexes when Homebrew 6 returns an empty completion
 list, and invalidates only previously serialized empty brew completion caches.
-On Intel, `pkgmng` owns Brew execution and provider wrappers; the fzf plugin
+On Intel, `z4h-pkgmng` owns Brew execution and provider wrappers; the fzf plugin
 owns only completion fallback and previews. Provider state is stored under
 `${XDG_STATE_HOME:-$HOME/.local/state}/zsh` and explicit MacPorts selections
 survive Homebrew rescans, upgrades, and cleanup.

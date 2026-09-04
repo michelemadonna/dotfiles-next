@@ -671,11 +671,7 @@ fi
 
 if (( $+commands[port] )); then
 
-    # Actions and options are not filesystem paths.
     zstyle ':fzf-tab:complete:port:*' \
-        fzf-preview ''
-
-    zstyle ':fzf-tab:complete:port-*:*' \
         fzf-preview '
             case "$group" in
 
