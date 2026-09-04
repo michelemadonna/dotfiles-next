@@ -681,10 +681,7 @@ if (( $+commands[port] )); then
 
                 ports|*[Aa]vailable*[Pp]orts*|*[Ii]nstalled*[Pp]orts*)
 
-                    print -P "%BMacPorts package%b: $word"
-                    print
-
-                    port info "$word" 2>/dev/null
+                    exec port info "$word" 2>/dev/null
                     ;;
 
                 *)

@@ -141,6 +141,6 @@ port_preview=$(
             eval "$preview"
         '
 )
-[[ $port_preview == *'MacPorts package'*jq*'info jq'* ]]
+[[ $port_preview == 'info jq' ]]
 
 printf 'pkgmng_tests=ok\n'
