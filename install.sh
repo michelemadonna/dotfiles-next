@@ -433,6 +433,19 @@ check_prerequisites() {
   have zsh || zsh_prerequisite_error 'Zsh was not found.'
 
   login_shell=${SHELL:-}
+  case $(uname -s) in
+    Darwin)
+      account_name=${USER:-$(id -un)}
+      account_shell=$(dscl . -read "/Users/$account_name" UserShell 2>/dev/null |
+        awk '{print $2}') || account_shell=
+      [ -n "$account_shell" ] && login_shell=$account_shell
+      ;;
+    Linux)
+      account_shell=$(getent passwd "${USER:-$(id -un)}" 2>/dev/null |
+        awk -F: '{print $7}') || account_shell=
+      [ -n "$account_shell" ] && login_shell=$account_shell
+      ;;
+  esac
   [ "${login_shell##*/}" = zsh ] ||
     zsh_prerequisite_error "Zsh is installed, but it is not the login shell for the current user (current: ${login_shell:-unknown})."
 
