@@ -1537,7 +1537,7 @@ install_oh_my_posh() {
   if [ "$PACKAGE_MANAGER" = macports ]; then
     install_macports_ports oh-my-posh
   elif [ "$PACKAGE_MANAGER" = homebrew ]; then
-    brew install oh-my-posh
+    brew install -y oh-my-posh
   else
     mkdir -p "$HOME/.local/bin"
     curl -fsSL https://ohmyposh.dev/install.sh | bash -s -- -d "$HOME/.local/bin"
