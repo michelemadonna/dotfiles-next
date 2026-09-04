@@ -133,6 +133,10 @@ pkg-default jq brew >/dev/null
 [[ $(_pkgmgr_db_provider jq) == brew ]]
 [[ $(jq) == brew:* ]]
 
+bottle_check_implementation=${functions[brew-bottle-check]}${functions[_brew_real]}
+[[ $bottle_check_implementation != *jq* ]]
+[[ $bottle_check_implementation != *python* ]]
+
 set +e
 bottle_output=$(brew-bottle-check bottled)
 bottle_status=$?
