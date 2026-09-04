@@ -661,6 +661,41 @@ if (( $+commands[brew] || $+functions[brew] )); then
 fi
 
 # ============================================================
+# MacPorts
+# ============================================================
+#
+# Any port subcommand whose completion group contains available or installed
+# ports receives the same package metadata preview.
+#
+# ============================================================
+
+if (( $+commands[port] )); then
+
+    # Actions and options are not filesystem paths.
+    zstyle ':fzf-tab:complete:port:*' \
+        fzf-preview ''
+
+    zstyle ':fzf-tab:complete:port-*:*' \
+        fzf-preview '
+            case "$group" in
+
+                ports|*[Aa]vailable*[Pp]orts*|*[Ii]nstalled*[Pp]orts*)
+
+                    print -P "%BMacPorts package%b: $word"
+                    print
+
+                    port info "$word" 2>/dev/null
+                    ;;
+
+                *)
+                    ;;
+
+            esac
+        '
+
+fi
+
+# ============================================================
 # APT
 # ============================================================
 #

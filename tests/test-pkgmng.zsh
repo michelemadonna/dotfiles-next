@@ -123,4 +123,24 @@ wait
 [[ $(awk '$1 == "one" { ++n } END { print n + 0 }' "$PKGMGR_DB") == 1 ]]
 [[ $(awk '$1 == "two" { ++n } END { print n + 0 }' "$PKGMGR_DB") == 1 ]]
 
+mkdir -p "$TEST_ROOT/preview-bin" "$TEST_ROOT/preview-state"
+ln -s /bin/echo "$TEST_ROOT/preview-bin/port"
+ln -s /usr/bin/true "$TEST_ROOT/preview-bin/fzf"
+port_preview=$(
+    PATH="$TEST_ROOT/preview-bin:/usr/bin:/bin" \
+        XDG_STATE_HOME="$TEST_ROOT/preview-state" \
+        DOTFILES_DIR="$ROOT" \
+        /bin/zsh -dfc '
+            autoload -Uz compinit
+            compinit -D
+            source "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-fzf.plugin.zsh"
+            zstyle -s ":fzf-tab:complete:port-install:ports" \
+                fzf-preview preview
+            group="Available ports"
+            word=jq
+            eval "$preview"
+        '
+)
+[[ $port_preview == *'MacPorts package'*jq*'info jq'* ]]
+
 printf 'pkgmng_tests=ok\n'
