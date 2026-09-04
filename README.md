@@ -222,7 +222,12 @@ The project-specific plugins live in [`zsh/z4h.custom.plugins`](zsh/z4h.custom.p
 
 The installer checks the platform, installs Git when necessary, clones the repository into `~/.dotfiles`, installs the base packages, and creates the required configuration links.
 
-Download the installer before running it so it can be reviewed locally:
+### Launch the installer
+
+On a new macOS installation, use an Administrator account. Homebrew and its
+base packages require `sudo` during the first installation.
+
+To download and launch the interactive installer:
 
 ```sh
 curl -fsSL \
@@ -231,10 +236,17 @@ curl -fsSL \
 sh /tmp/dotfiles-next-install.sh
 ```
 
-You can also clone the repository yourself and run:
+To run without prompts, use:
 
 ```sh
-./install.sh
+sh /tmp/dotfiles-next-install.sh non-interactive
+```
+
+Alternatively, clone the repository and launch the local copy:
+
+```sh
+git clone https://github.com/michelemadonna/dotfiles-next.git ~/.dotfiles
+sh ~/.dotfiles/install.sh
 ```
 
 Existing regular files or directories at managed destinations are moved to a timestamped `.backup.YYYYMMDDhhmmss` path before linking. Existing symbolic links are replaced. Repeated non-interactive runs retain existing generated preferences while normalizing the three fixed fzf/Oh My Zsh values; interactive runs write the newly approved choices. Both modes reevaluate optional tools and skip the versioned base-package step when its marker exists.
