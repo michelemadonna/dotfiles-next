@@ -350,7 +350,8 @@ have() {
 zsh_prerequisite_error() {
   reason=$1
 
-  case $(uname -s) in
+  if [ "${login_shell##*/}" != zsh ]; then
+    case $(uname -s) in
     Darwin)
       zsh_install_steps='Install Zsh with Homebrew:
   brew install -y zsh'
@@ -363,7 +364,8 @@ zsh_prerequisite_error() {
     *)
       zsh_install_steps='Install Zsh with your operating system package manager.'
       ;;
-  esac
+    esac
+  fi
 
   zsh_activate_steps="Make Zsh your login shell:
   chsh -s \"\$(command -v zsh)\""
@@ -433,7 +435,12 @@ check_prerequisites() {
   have zsh || zsh_prerequisite_error 'Zsh was not found.'
 
   login_shell=${SHELL:-}
-  case $(uname -s) in
+  running_shell=$(ps -p "$PPID" -o comm= 2>/dev/null || true)
+  if [ "${running_shell##*/}" = zsh ]; then
+    login_shell=$running_shell
+  fi
+  if [ "${login_shell##*/}" != zsh ]; then
+    case $(uname -s) in
     Darwin)
       account_name=${USER:-$(id -un)}
       account_shell=$(dscl . -read "/Users/$account_name" UserShell 2>/dev/null |
@@ -445,7 +452,8 @@ check_prerequisites() {
         awk -F: '{print $7}') || account_shell=
       [ -n "$account_shell" ] && login_shell=$account_shell
       ;;
-  esac
+    esac
+  fi
   [ "${login_shell##*/}" = zsh ] ||
     zsh_prerequisite_error "Zsh is installed, but it is not the login shell for the current user (current: ${login_shell:-unknown})."
 
