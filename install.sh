@@ -7,7 +7,14 @@ DEFAULT_REPO_URL="https://github.com/michelemadonna/dotfiles-next.git"
 REPO_URL=${DOTFILES_REPO_URL:-$DEFAULT_REPO_URL}
 DOTFILES_DIR=${DOTFILES_DIR:-"$HOME/.dotfiles"}
 MODE=interactive
-BASE_PACKAGES_MARKER_VERSION=1
+BASE_PACKAGES_MARKER_VERSION=2
+PLATFORM=
+PACKAGE_MANAGER=
+MACOS_ARCH=
+MACPORTS_PREFIX=/opt/local
+MACPORTS_PORT=/opt/local/bin/port
+MACPORTS_RELEASE_API=https://api.github.com/repos/macports/macports-base/releases/latest
+SYSTEM_INSTALLER=/usr/sbin/installer
 
 COLOR_CYAN=$(printf '\033[36m')
 COLOR_YELLOW=$(printf '\033[33m')
@@ -353,11 +360,16 @@ zsh_prerequisite_error() {
   if [ "${login_shell##*/}" != zsh ]; then
     case $(uname -s) in
     Darwin)
-      zsh_install_steps='Install Zsh with Homebrew:
+      if [ "$(uname -m)" = x86_64 ]; then
+        zsh_install_steps='Install MacPorts first, then install Zsh. Administrator privileges are required because MacPorts writes into /opt/local:
+  sudo /opt/local/bin/port install zsh'
+      else
+        zsh_install_steps='Install Zsh with Homebrew:
   brew install -y zsh'
+      fi
       ;;
     Linux)
-      zsh_install_steps='Install Zsh with APT:
+      zsh_install_steps='Install Zsh with APT. Administrator privileges are required to update system packages:
   sudo apt-get update
   sudo apt-get install -y zsh'
       ;;
@@ -386,21 +398,52 @@ Sign out and sign back in, then rerun this installer."
   exit 1
 }
 
-run_as_root() {
-  if [ "$(id -u)" -eq 0 ]; then
-    "$@"
-  elif is_non_interactive; then
-    sudo -n "$@"
+check_unprivileged_invocation() {
+  [ "$(id -u)" -ne 0 ] || {
+    invocation="sh $0"
+    is_non_interactive && invocation="$invocation non-interactive"
+    die "Do not run this installer with sudo or as root. Run it as your normal user instead:\n\n  $invocation"
+  }
+}
+
+run_privileged() {
+  privilege_reason=$1
+  shift
+
+  [ -n "$privilege_reason" ] || die 'A reason is required before running a privileged command.'
+  [ "$#" -gt 0 ] || die 'A command is required for a privileged operation.'
+
+  info "Administrator privileges are required to $privilege_reason.\nCommand: $*\nYou may be asked for your account password."
+  if is_non_interactive; then
+    sudo -n "$@" ||
+      die "The privileged command failed. Non-interactive mode cannot prompt for a sudo password: $*"
   else
     sudo "$@"
   fi
 }
 
 run_apt_get() {
+  apt_action=$1
+  case $apt_action in
+    update) apt_reason='refresh the APT package index' ;;
+    install) apt_reason='install the requested system packages with APT' ;;
+    *) apt_reason="run the privileged APT operation '$apt_action'" ;;
+  esac
+
   if is_non_interactive; then
-    run_as_root env DEBIAN_FRONTEND=noninteractive apt-get "$@"
+    run_privileged "$apt_reason" env DEBIAN_FRONTEND=noninteractive apt-get "$@"
   else
-    run_as_root apt-get "$@"
+    run_privileged "$apt_reason" apt-get "$@"
+  fi
+}
+
+run_macports() {
+  macports_reason=$1
+  shift
+  if is_non_interactive; then
+    run_privileged "$macports_reason" "$MACPORTS_PORT" -N "$@"
+  else
+    run_privileged "$macports_reason" "$MACPORTS_PORT" "$@"
   fi
 }
 
@@ -435,25 +478,6 @@ check_prerequisites() {
   have zsh || zsh_prerequisite_error 'Zsh was not found.'
 
   login_shell=${SHELL:-}
-  running_shell=$(ps -p "$PPID" -o comm= 2>/dev/null || true)
-  if [ "${running_shell##*/}" = zsh ]; then
-    login_shell=$running_shell
-  fi
-  if [ "${login_shell##*/}" != zsh ]; then
-    case $(uname -s) in
-    Darwin)
-      account_name=${USER:-$(id -un)}
-      account_shell=$(dscl . -read "/Users/$account_name" UserShell 2>/dev/null |
-        awk '{print $2}') || account_shell=
-      [ -n "$account_shell" ] && login_shell=$account_shell
-      ;;
-    Linux)
-      account_shell=$(getent passwd "${USER:-$(id -un)}" 2>/dev/null |
-        awk -F: '{print $7}') || account_shell=
-      [ -n "$account_shell" ] && login_shell=$account_shell
-      ;;
-    esac
-  fi
   [ "${login_shell##*/}" = zsh ] ||
     zsh_prerequisite_error "Zsh is installed, but it is not the login shell for the current user (current: ${login_shell:-unknown})."
 
@@ -484,14 +508,25 @@ detect_platform() {
   case $(uname -s) in
     Darwin)
       PLATFORM=macos
-      have brew || have bash || die 'bash is required to install Homebrew.'
+      MACOS_ARCH=$(uname -m)
+      case $MACOS_ARCH in
+        x86_64)
+          PACKAGE_MANAGER=macports
+          ;;
+        arm64)
+          PACKAGE_MANAGER=homebrew
+          have brew || have bash || die 'bash is required to install Homebrew.'
+          ;;
+        *)
+          die "Unsupported macOS architecture: $MACOS_ARCH"
+          ;;
+      esac
       ;;
     Linux)
       PLATFORM=linux
+      PACKAGE_MANAGER=apt
       have apt-get || die 'This installer supports only apt-based Linux distributions.'
-      if [ "$(id -u)" -ne 0 ]; then
-        have sudo || die 'sudo is required for system package installation.'
-      fi
+      have sudo || die 'sudo is required for system package installation.'
       ;;
     *)
       die "Unsupported operating system: $(uname -s)"
@@ -499,11 +534,61 @@ detect_platform() {
   esac
 }
 
-setup_platform() {
-  [ "$PLATFORM" = macos ] || return 0
+install_macports() {
+  have xcode-select || die 'xcode-select is required to verify the Command Line Tools installation.'
+  xcode-select -p >/dev/null 2>&1 ||
+    die 'Apple Command Line Tools are required before MacPorts. Run "xcode-select --install", complete the installation, then rerun this installer.'
+  have sw_vers || die 'sw_vers is required to select the MacPorts package for this macOS release.'
+  have pkgutil || die 'pkgutil is required to verify the MacPorts package signature.'
+  have spctl || die 'spctl is required to assess the MacPorts package.'
+  [ -x "$SYSTEM_INSTALLER" ] || die 'The macOS installer command was not found.'
+
+  macos_major=$(sw_vers -productVersion | awk -F. '{print $1}')
+  case $macos_major in
+    '' | *[!0-9]*) die 'Cannot determine the macOS major version.' ;;
+  esac
+
+  info "Locating the official MacPorts package for macOS $macos_major"
+  macports_package_url=$(
+    curl -fsSL "$MACPORTS_RELEASE_API" |
+      awk -v release="-$macos_major-" '
+        /"browser_download_url"/ && index($0, release) && /\.pkg"/ {
+          sub(/^.*"browser_download_url"[[:space:]]*:[[:space:]]*"/, "")
+          sub(/".*$/, "")
+          print
+          exit
+        }
+      '
+  ) || macports_package_url=
+  [ -n "$macports_package_url" ] ||
+    die "No official MacPorts package was found for macOS $macos_major."
+
+  macports_package_file="${TMPDIR:-/tmp}/MacPorts.$$.pkg"
+  TEMP_PACKAGE_FILE=$macports_package_file
+  info "Downloading the official MacPorts package: ${macports_package_url##*/}"
+  curl -fL -- "$macports_package_url" -o "$macports_package_file"
+
+  info 'Verifying the MacPorts package signature and Gatekeeper assessment'
+  pkgutil --check-signature "$macports_package_file"
+  spctl --assess --type install --verbose "$macports_package_file"
+
+  info "Verifying that the MacPorts package is compatible with this $MACOS_ARCH Mac"
+  "$SYSTEM_INSTALLER" -pkg "$macports_package_file" -target / -pkginfo
+
+  run_privileged \
+    "install the verified MacPorts package into $MACPORTS_PREFIX" \
+    "$SYSTEM_INSTALLER" -pkg "$macports_package_file" -target /
+
+  rm -f -- "$macports_package_file"
+  TEMP_PACKAGE_FILE=
+  [ -x "$MACPORTS_PORT" ] || die "MacPorts was installed but $MACPORTS_PORT was not found."
+}
+
+setup_homebrew() {
+  [ "$PACKAGE_MANAGER" = homebrew ] || return 0
 
   if ! have brew; then
-    info 'Installing Homebrew'
+    info 'The official Homebrew installer may request your password to create and configure /opt/homebrew. Administrator privileges are required for those system locations.'
     NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
   fi
 
@@ -518,16 +603,39 @@ setup_platform() {
   fi
 }
 
+setup_platform() {
+  case $PACKAGE_MANAGER in
+    macports)
+      [ -x "$MACPORTS_PORT" ] || install_macports
+      PATH="$MACPORTS_PREFIX/bin:$MACPORTS_PREFIX/sbin:$PATH"
+      export PATH
+      ;;
+    homebrew) setup_homebrew ;;
+    apt) ;;
+    *) die "Unsupported package manager backend: $PACKAGE_MANAGER" ;;
+  esac
+}
+
+install_macports_ports() {
+  for macports_package in "$@"; do
+    "$MACPORTS_PORT" info "$macports_package" >/dev/null 2>&1 ||
+      die "The required MacPorts port '$macports_package' is unavailable. No Homebrew fallback will be used."
+  done
+  run_macports 'install the requested MacPorts packages into /opt/local' install "$@"
+}
+
 install_git() {
   have git && return 0
 
   info 'Installing Git'
-  if [ "$PLATFORM" = macos ]; then
-    brew install -y git
-  else
-    run_apt_get update
-    run_apt_get install -y git
-  fi
+  case $PACKAGE_MANAGER in
+    macports) install_macports_ports git ;;
+    homebrew) brew install -y git ;;
+    apt)
+      run_apt_get update
+      run_apt_get install -y git
+      ;;
+  esac
   have git || die 'Git installation failed.'
 }
 
@@ -552,7 +660,14 @@ clone_repository() {
 
 install_required_packages() {
   info 'Installing required packages'
-  if [ "$PLATFORM" = macos ]; then
+  if [ "$PACKAGE_MANAGER" = macports ]; then
+    run_macports 'update the MacPorts index before installing required packages' selfupdate
+    install_macports_ports \
+      coreutils bat eza fd git-delta htop ripgrep tmux tree wget git chafa \
+      mediainfo poppler file bind9
+    mkdir -p "$HOME/Library/Fonts"
+    cp "$DOTFILES_DIR"/fonts/* "$HOME/Library/Fonts/"
+  elif [ "$PACKAGE_MANAGER" = homebrew ]; then
     brew install -y coreutils bat eza fd git-delta htop ripgrep tmux tree wget git chafa mediainfo poppler file bind
     brew install -y --cask font-fira-code-nerd-font
   else
@@ -575,7 +690,7 @@ install_required_packages() {
 set_base_packages_marker() {
   state_home=${XDG_STATE_HOME:-"$HOME/.local/state"}
   marker_dir="$state_home/dotfiles-next"
-  base_packages_marker="$marker_dir/base-packages-v${BASE_PACKAGES_MARKER_VERSION}-${PLATFORM}.done"
+  base_packages_marker="$marker_dir/base-packages-v${BASE_PACKAGES_MARKER_VERSION}-${PLATFORM}-${PACKAGE_MANAGER}.done"
 }
 
 install_required_packages_once() {
@@ -692,15 +807,23 @@ inspect_installation_state() {
     repository_action="Clone $REPO_URL into $DOTFILES_DIR"
   fi
 
-  if [ "$PLATFORM" = macos ]; then
-    if have brew; then
-      package_manager_action='Reuse Homebrew'
-    else
-      package_manager_action='Install Homebrew non-interactively'
-    fi
-  else
-    package_manager_action='Use APT'
-  fi
+  case $PACKAGE_MANAGER in
+    macports)
+      if [ -x "$MACPORTS_PORT" ]; then
+        package_manager_action='Reuse MacPorts from /opt/local'
+      else
+        package_manager_action='Install the signed official MacPorts package into /opt/local'
+      fi
+      ;;
+    homebrew)
+      if have brew; then
+        package_manager_action='Reuse Homebrew'
+      else
+        package_manager_action='Install Homebrew non-interactively'
+      fi
+      ;;
+    apt) package_manager_action='Use APT' ;;
+  esac
 
   if have git; then
     git_action='Reuse installed Git'
@@ -793,6 +916,18 @@ report_homebrew_tool_version() {
     "$@"
 }
 
+report_macports_tool_version() {
+  macports_tool_label=$1
+  macports_executable=$2
+  macports_version_line=$3
+  shift 3
+  report_tool_version \
+    "$macports_tool_label" \
+    "$MACPORTS_PREFIX/bin/$macports_executable" \
+    "$macports_version_line" \
+    "$@"
+}
+
 report_z4h_versions() {
   z4h_root=${Z4H:-${XDG_CACHE_HOME:-$HOME/.cache}/zsh4humans/v5}
   z4h_revision=
@@ -828,15 +963,36 @@ show_installed_tool_versions() {
   report_z4h_versions
 
   if [ "$PLATFORM" = macos ]; then
-    homebrew_prefix=$(brew --prefix 2>/dev/null || true)
     ui_line '' ''
     ui_section 'Package manager'
-    report_tool_version 'Homebrew' brew 1 --version
+    if [ "$PACKAGE_MANAGER" = macports ]; then
+      report_tool_version 'MacPorts' "$MACPORTS_PORT" 1 version
+    else
+      homebrew_prefix=$(brew --prefix 2>/dev/null || true)
+      report_tool_version 'Homebrew' brew 1 --version
+    fi
   fi
 
   ui_line '' ''
   ui_section 'Base command-line tools'
-  if [ "$PLATFORM" = macos ]; then
+  if [ "$PACKAGE_MANAGER" = macports ]; then
+    report_macports_tool_version 'Git' git 1 --version
+    report_macports_tool_version 'GNU coreutils' gdate 1 --version
+    report_macports_tool_version 'bat' bat 1 --version
+    report_macports_tool_version 'eza' eza 2 --version
+    report_macports_tool_version 'fd' fd 1 --version
+    report_macports_tool_version 'delta' delta 1 --version
+    report_macports_tool_version 'htop' htop 1 --version
+    report_macports_tool_version 'ripgrep' rg 1 --version
+    report_macports_tool_version 'tmux' tmux 1 -V
+    report_macports_tool_version 'tree' tree 1 --version
+    report_macports_tool_version 'Wget' wget 1 --version
+    report_macports_tool_version 'Chafa' chafa 1 --version
+    report_macports_tool_version 'MediaInfo' mediainfo 2 --Version
+    report_macports_tool_version 'Poppler' pdftotext 1 -v
+    report_macports_tool_version 'file' file 1 --version
+    report_macports_tool_version 'DNS tools' dig 1 -v
+  elif [ "$PACKAGE_MANAGER" = homebrew ]; then
     report_homebrew_tool_version 'Git' git git 1 --version
     report_homebrew_tool_version 'GNU coreutils' coreutils gdate 1 --version
     report_homebrew_tool_version 'bat' bat bat 1 --version
@@ -878,28 +1034,36 @@ show_installed_tool_versions() {
   ui_section 'Interactive selections'
   case $editor in
     vim)
-      if [ "$PLATFORM" = macos ]; then
+      if [ "$PACKAGE_MANAGER" = macports ]; then
+        report_tool_version 'Vim' vim 1 --version
+      elif [ "$PACKAGE_MANAGER" = homebrew ]; then
         report_homebrew_tool_version 'Vim' vim vim 1 --version
       else
         report_tool_version 'Vim' vim 1 --version
       fi
       ;;
     nano)
-      if [ "$PLATFORM" = macos ]; then
+      if [ "$PACKAGE_MANAGER" = macports ]; then
+        report_macports_tool_version 'Nano' nano 1 --version
+      elif [ "$PACKAGE_MANAGER" = homebrew ]; then
         report_homebrew_tool_version 'Nano' nano nano 1 --version
       else
         report_tool_version 'Nano' nano 1 --version
       fi
       ;;
     fresh)
-      if [ "$PLATFORM" = macos ]; then
+      if [ "$PACKAGE_MANAGER" = macports ]; then
+        report_macports_tool_version 'Fresh' fresh 1 --version
+      elif [ "$PACKAGE_MANAGER" = homebrew ]; then
         report_homebrew_tool_version 'Fresh' fresh-editor fresh 1 --version
       else
         report_tool_version 'Fresh' fresh 1 --version
       fi
       ;;
     micro)
-      if [ "$PLATFORM" = macos ]; then
+      if [ "$PACKAGE_MANAGER" = macports ]; then
+        report_macports_tool_version 'Micro' micro 1 --version
+      elif [ "$PACKAGE_MANAGER" = homebrew ]; then
         report_homebrew_tool_version 'Micro' micro micro 1 --version
       else
         report_tool_version 'Micro' micro 1 --version
@@ -908,17 +1072,15 @@ show_installed_tool_versions() {
   esac
 
   if [ "$use_mise" = true ]; then
-    if [ "$PLATFORM" = macos ]; then
-      report_homebrew_tool_version 'Mise' mise mise 1 --version
-    else
-      mise_executable="$HOME/.local/bin/mise"
-      report_tool_version 'Mise' "$mise_executable" 1 --version
-    fi
+    mise_executable="$HOME/.local/bin/mise"
+    report_tool_version 'Mise' "$mise_executable" 1 --version
   fi
 
   case $show_fastfetch in
     true | first)
-      if [ "$PLATFORM" = macos ]; then
+      if [ "$PACKAGE_MANAGER" = macports ]; then
+        report_macports_tool_version 'Fastfetch' fastfetch 1 --version
+      elif [ "$PACKAGE_MANAGER" = homebrew ]; then
         report_homebrew_tool_version 'Fastfetch' fastfetch fastfetch 1 --version
       else
         report_tool_version 'Fastfetch' fastfetch 1 --version
@@ -927,7 +1089,9 @@ show_installed_tool_versions() {
   esac
 
   if [ "$prompt" = ohmyposh ]; then
-    if [ "$PLATFORM" = macos ]; then
+    if [ "$PACKAGE_MANAGER" = macports ]; then
+      report_macports_tool_version 'Oh My Posh' oh-my-posh 1 --version
+    elif [ "$PACKAGE_MANAGER" = homebrew ]; then
       report_homebrew_tool_version 'Oh My Posh' oh-my-posh oh-my-posh 1 --version
     else
       oh_my_posh_executable="$HOME/.local/bin/oh-my-posh"
@@ -1103,7 +1267,9 @@ install_editor() {
       fi
       ;;
     nano)
-      if [ "$PLATFORM" = macos ]; then
+      if [ "$PACKAGE_MANAGER" = macports ]; then
+        install_macports_ports nano
+      elif [ "$PACKAGE_MANAGER" = homebrew ]; then
         brew install -y nano
       else
         run_apt_get install -y nano
@@ -1132,7 +1298,9 @@ link_editor_config() {
 }
 
 install_micro() {
-  if [ "$PLATFORM" = macos ]; then
+  if [ "$PACKAGE_MANAGER" = macports ]; then
+    install_macports_ports micro
+  elif [ "$PACKAGE_MANAGER" = homebrew ]; then
     brew install -y micro
   else
     run_apt_get install -y micro
@@ -1141,7 +1309,9 @@ install_micro() {
 }
 
 install_fresh() {
-  if [ "$PLATFORM" = macos ]; then
+  if [ "$PACKAGE_MANAGER" = macports ]; then
+    install_macports_ports fresh-editor
+  elif [ "$PACKAGE_MANAGER" = homebrew ]; then
     brew install -y fresh-editor
   else
     architecture=$(dpkg --print-architecture)
@@ -1183,7 +1353,9 @@ install_fastfetch() {
     link_path "$DOTFILES_DIR/fastfetch" "$HOME/.config/fastfetch"
     return 0
   fi
-  if [ "$PLATFORM" = macos ]; then
+  if [ "$PACKAGE_MANAGER" = macports ]; then
+    install_macports_ports fastfetch
+  elif [ "$PACKAGE_MANAGER" = homebrew ]; then
     brew install -y fastfetch
   else
     run_apt_get install -y fastfetch
@@ -1197,7 +1369,9 @@ install_oh_my_posh() {
     link_path "$DOTFILES_DIR/oh-my-posh" "$HOME/.config/oh-my-posh"
     return 0
   fi
-  if [ "$PLATFORM" = macos ]; then
+  if [ "$PACKAGE_MANAGER" = macports ]; then
+    install_macports_ports oh-my-posh
+  elif [ "$PACKAGE_MANAGER" = homebrew ]; then
     brew install oh-my-posh
   else
     mkdir -p "$HOME/.local/bin"
@@ -1286,6 +1460,7 @@ apply_installation() {
 
 main() {
   parse_arguments "$@"
+  check_unprivileged_invocation
 
   if is_non_interactive; then
     info 'Starting non-interactive mode'

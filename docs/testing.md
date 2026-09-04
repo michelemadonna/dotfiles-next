@@ -12,6 +12,11 @@ git status --short
 For installer changes run `sh -n install.sh` and ShellCheck when available.
 Use a disposable HOME and stubbed package managers for installer branches;
 never change the host unintentionally.
+Cover Intel MacPorts, Apple Silicon Homebrew, and Linux APT. Assert that root
+invocation is rejected and that every stubbed `sudo` call is immediately
+preceded by its privilege reason. Do not download or install MacPorts during
+host-side tests; perform the real package, idempotency, provider, and PTY tests
+in a disposable Intel VM.
 
 For modified Zsh files run `/bin/zsh -n` on every file. Static startup checks
 do not prove ZLE, fzf-tab, prompt, Fastfetch, or terminal behavior.

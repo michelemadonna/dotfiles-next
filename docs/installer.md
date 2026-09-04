@@ -2,6 +2,11 @@
 
 ## Modes
 
+The installer must be launched as a normal user. It refuses UID 0, including
+invocation through `sudo`. Each privileged operation is routed through one
+helper that first explains why administrator access is needed and shows the
+command. Non-interactive mode uses `sudo -n` and fails instead of prompting.
+
 With no argument, `install.sh` runs the full-screen single-key wizard. It
 shows a review screen and changes nothing until approval. It supports:
 
@@ -27,8 +32,9 @@ pinned zsh4humans v5 `.zshenv` source and saved at that path before loading.
 
 ## Tools and state
 
-The selected editor may be `vim`, `nano`, `fresh`, or `micro`. Nano is installed
-with Homebrew on macOS and APT on Linux; its configuration is linked to
+The selected editor may be `vim`, `nano`, `fresh`, or `micro`. macOS installs
+non-system editors with its architecture-selected package manager and Linux
+uses APT; the configuration is linked to
 `~/.config/nano` and its backups are stored in `~/.cache/nano/backups`. Vim is
 installed with APT on Linux, while macOS uses its system Vim; its configuration
 is linked to `~/.config/vim`. Fastfetch is
@@ -48,7 +54,7 @@ Managed destinations are backed up as `.backup.YYYYMMDDhhmmss`; existing
 correct symbolic links are retained. Base packages and fonts are guarded by:
 
 ```text
-${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles-next/base-packages-v1-<platform>.done
+${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles-next/base-packages-v2-<platform>-<provider>.done
 ```
 
 The marker is written only after success. Git remains a separate idempotent
@@ -60,10 +66,14 @@ contribute to this global approximation and may suppress Fastfetch.
 
 ## Platform and logs
 
-Supported hosts are macOS and Ubuntu 26.04. Ubuntu uses package names such as
-`poppler-utils`, `dnsutils`, `fd-find`, and `command-not-found`; macOS uses
-Homebrew equivalents such as `poppler`, `bind`, and `fd`. Ubuntu additionally
-installs `grc` and `python3-pip`; macOS installs GNU core utilities.
+Supported hosts are macOS and Ubuntu 26.04. Apple Silicon uses Homebrew, Intel
+macOS uses MacPorts from `/opt/local`, and Ubuntu uses APT. A missing Intel
+MacPorts installation is downloaded from the official release, checked with
+`pkgutil`, Gatekeeper, and the macOS Installer compatibility query, then
+installed with one explained privileged command. Required Intel ports include
+the explicit `bind9` mapping; a missing port is an error and never triggers a
+Homebrew fallback. Ubuntu uses package names such as `poppler-utils`,
+`dnsutils`, `fd-find`, and `command-not-found`.
 
 Installer logs use the z4u palette: cyan 36, yellow 33, green 32, red 31,
 bold 1, reset 0, with Unicode icons/borders and an ASCII fallback. External

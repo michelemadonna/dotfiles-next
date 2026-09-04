@@ -10,16 +10,19 @@
   zsh4humans v5 raw source before being sourced.
 - `zsh/home/.zshenv` is generated or retained preferences; `~/.zshenv` points
   to it. `.zshenv_z4h` loads z4h; `.zshrc` loads interactive helpers/plugins.
-- `zsh/helpers/` owns SSH, Fastfetch, tool bootstrap, fzf state/preview, and
-  Mise cache preparation. `zsh/z4h.custom.plugins/` owns repository plugins.
+- `zsh/helpers/` owns SSH, Fastfetch, tool bootstrap, fzf state/preview, Mise
+  cache preparation, and the Intel MacPorts/Homebrew coexistence layer.
+  `zsh/z4h.custom.plugins/` owns repository plugins.
 - Powerlevel10k is the default prompt. Oh My Posh is optional and uses the
   repository JSON theme when selected.
 
 ## Startup and state
 
-Startup adds Homebrew paths on macOS and `$HOME/.local/bin` everywhere, then
-bootstraps selected tools and links existing repository configurations for
-Fastfetch, Mise, and the selected editor. Interactive startup restores
+Startup adds Homebrew paths on Apple Silicon, MacPorts paths on Intel, and
+`$HOME/.local/bin` everywhere, then bootstraps selected tools and links
+existing repository configurations for Fastfetch, Mise, and the selected
+editor. Intel startup excludes `/usr/local/bin` and `/usr/local/sbin`, then
+loads `pkgmng` interactively before completion initialization. Interactive startup restores
 `$HOME/.local/bin` before z4h initialization because macOS's `/etc/zprofile`
 can rebuild `PATH` after `.zshenv`. Mise activation/completion caches and ASDF
 plugin compatibility data are prepared by
@@ -33,6 +36,10 @@ cask completion or its fzf-tab preview context.
 On macOS Tahoe, the fzf plugin also supplies Homebrew's generated completion
 with the local API name indexes when Homebrew 6 returns an empty completion
 list, and invalidates only previously serialized empty brew completion caches.
+On Intel, `pkgmng` owns Brew execution and provider wrappers; the fzf plugin
+owns only completion fallback and previews. Provider state is stored under
+`${XDG_STATE_HOME:-$HOME/.local/state}/zsh` and explicit MacPorts selections
+survive Homebrew rescans, upgrades, and cleanup.
 
 Persistent sources live in the repository. The zsh4humans bootstrap file is
 kept at `zsh/home/.zshenv_z4h`; a missing copy is restored from

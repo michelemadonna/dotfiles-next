@@ -15,19 +15,22 @@ Zsh for Humans (z4h) bootstraps the shell framework and manages the external Zsh
 
 The host installer supports:
 
-- macOS with Homebrew, or Ubuntu 26.04 with APT.
+- macOS on Apple Silicon with Homebrew, macOS on Intel with MacPorts, or Ubuntu 26.04 with APT.
 - Zsh already installed and configured as the current user's login shell.
 - `curl` and an internet connection.
-- `sudo` access on Ubuntu 26.04 when installation is not run as root.
-- `bash` on macOS if Homebrew must be installed automatically.
+- An Administrator account with `sudo` access. Run the installer as that normal user, never with `sudo` or as root.
+- `bash` on Apple Silicon if Homebrew must be installed automatically.
 
-> ⚠️ **Homebrew on Intel Macs:** From September 2026, macOS Intel is moving to Homebrew Tier 3 support, and Homebrew will no longer build new binary bottles for Intel. Homebrew will continue to work on supported Intel Macs during the transition, but some formulae or applications may need to be compiled locally, making installation times significantly longer. Apple Silicon is recommended for new macOS installations. See [Homebrew's support tiers](https://docs.brew.sh/Support-Tiers) for the current timeline and details.
+> ⚠️ **Homebrew on Intel Macs:** From September 2026, macOS Intel is moving to Homebrew Tier 3 support. New installations therefore use MacPorts as their primary package manager. An existing Intel Homebrew installation is retained but removed from the normal `PATH`; `pkgmng` exposes only commands explicitly assigned to Homebrew. See [Homebrew's support tiers](https://docs.brew.sh/Support-Tiers) for the current timeline and details.
 
 If Zsh is missing, install it with the platform package manager:
 
 ```sh
-# macOS
+# Apple Silicon macOS
 brew install zsh
+
+# Intel macOS after installing MacPorts
+sudo /opt/local/bin/port install zsh
 
 # Ubuntu 26.04
 sudo apt-get update
@@ -51,7 +54,7 @@ Sign out and back in after `chsh`. If Zsh is missing or is not the current user'
 
 ### 1.1. 📺 Terminal
 
-A terminal with Nerd Font support is strongly recommended because the prompts, tmux status line, and file icons use additional glyphs. The installer installs Fira Code Nerd Font on macOS and the bundled fonts on Ubuntu 26.04.
+A terminal with Nerd Font support is strongly recommended because the prompts, tmux status line, and file icons use additional glyphs. The installer uses Homebrew's Fira Code Nerd Font cask on Apple Silicon and the bundled fonts on Intel macOS and Ubuntu 26.04.
 
 #### 👻 Ghostty Terminal
 
@@ -198,7 +201,7 @@ The base package set is installed once per platform. It supplies the commands us
 | 🧠 **Completion generator**                          | Optional, enabled by default | Generates and caches getopt-style completion for the current command when explicitly requested with `Shift-Tab`.                                                                                                 |
 | 🎨 **Fastfetch**                                     | Optional                     | Displays a visual overview of the operating system, hardware, memory, disks, shell, terminal, and other system details. It can run at every interactive Zsh startup or only at the first active terminal prompt. |
 | 📦 **Mise**                                          | Optional, enabled by default | Installs and activates language/tool runtimes, and maintains compatibility with `.tool-versions`. It is also preinstalled in the Docker demo.                                                                    |
-| ✏️ **Micro**, **Fresh Editor**, **Vim**, or **Nano** | Select one                   | Configures the requested default editor; Micro is the default. Nano uses Homebrew on macOS and APT on Linux; Vim uses the system version on macOS and APT on Linux. Repository configurations are linked for the selected editor. |
+| ✏️ **Micro**, **Fresh Editor**, **Vim**, or **Nano** | Select one                   | Configures the requested default editor; Micro is the default. macOS uses its architecture-selected package manager except for the system Vim; Ubuntu uses APT. Repository configurations are linked for the selected editor. |
 
 The repository also contains configurations for **Git**, **Ghostty**, **iTerm2**, **Fastfetch**, **Mise**, **SSH**, **ripgrep**, **tmux**, **Micro**, and **Fresh Editor**. Some are reference configurations and are not all linked by the host installer.
 
@@ -224,8 +227,12 @@ The installer checks the platform, installs Git when necessary, clones the repos
 
 ### Launch the installer
 
-On a new macOS installation, use an Administrator account. Homebrew and its
-base packages require `sudo` during the first installation.
+Use an Administrator account, but do not run the installer with `sudo` and do
+not start it from a root shell. The installer explains every privileged
+operation before invoking `sudo` for that individual command. On Intel macOS,
+this includes installing the signed official MacPorts package into `/opt/local`
+and installing ports; on Apple Silicon it includes any privilege request made
+by the official Homebrew installer.
 
 To download and launch the interactive installer:
 
@@ -278,6 +285,30 @@ The installer creates or retain [`zsh/home/.zshenv`](zsh/home/.zshenv), and crea
 Shell startup puts `$HOME/.local/bin` at the front of `PATH`; `.zshrc` reapplies
 it before z4h initialization so macOS login-shell startup cannot discard it.
 Cached Mise activation also preserves the current startup paths.
+
+### Intel macOS package providers
+
+On Intel Macs, `/opt/local/bin` and `/opt/local/sbin` take precedence and
+`/usr/local/bin` and `/usr/local/sbin` are excluded from the normal shell
+`PATH`. If Homebrew already exists, its completion remains available and the
+following commands manage explicit Homebrew exceptions:
+
+```zsh
+pkg-bootstrap [formula ...]
+pkg-rescan [formula ...]
+pkg-default <command> <brew|macports>
+pkg-which <command>
+pkg-list
+pkg-clean
+brew-shell
+```
+
+`pkg-default` choices persist under `${XDG_STATE_HOME:-$HOME/.local/state}`.
+Rescans and upgrades preserve commands explicitly assigned to MacPorts. A
+normal `brew install` registers commands from newly installed formulae as
+Homebrew defaults, while `brew-shell` provides a temporary full Homebrew
+environment. The installer never falls back from a missing MacPorts port to
+Homebrew.
 
 The installer manages those symbolic links:
 
