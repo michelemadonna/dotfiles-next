@@ -42,6 +42,44 @@ case $1 in
     --prefix)
         printf '%s/opt/%s\n' "$HOMEBREW_PREFIX" "$2"
         ;;
+    info)
+        [ "$4" != missing ]
+        ;;
+    deps)
+        case "$7:$8" in
+            bottled:)
+                printf 'dep-bottle\ndep-source\n'
+                ;;
+            dependency-error:)
+                exit 1
+                ;;
+            multi-one:multi-two)
+                printf 'dep-shared\ndep-one\ndep-shared\n'
+                ;;
+        esac
+        ;;
+    --cache)
+        if [ "$3" = --build-from-source ]; then
+            formula=$5
+            printf '/cache/%s.source.tar.gz\n' "$formula"
+        else
+            formula=$4
+            case $formula in
+                dep-source|source-only)
+                    printf '/cache/%s.source.tar.gz\n' "$formula"
+                    ;;
+                cache-error)
+                    exit 1
+                    ;;
+                *)
+                    printf '/cache/%s.bottle.tar.gz\n' "$formula"
+                    ;;
+            esac
+        fi
+        ;;
+    formulae)
+        printf 'bottled\nsource-only\n'
+        ;;
     *)
         printf 'brew:%s\n' "$*"
         ;;
@@ -95,11 +133,43 @@ pkg-default jq brew >/dev/null
 [[ $(_pkgmgr_db_provider jq) == brew ]]
 [[ $(jq) == brew:* ]]
 
-functions[compdef]='return 0'
+set +e
+bottle_output=$(brew-bottle-check bottled)
+bottle_status=$?
+brew-bottle-check missing >/dev/null 2>&1
+missing_status=$?
+brew-bottle-check dependency-error >/dev/null 2>&1
+dependency_error_status=$?
+brew-bottle-check >/dev/null 2>&1
+usage_status=$?
+set -e
+
+[[ $bottle_output == *'bottled                                BOTTLE'* ]]
+[[ $bottle_output == *'dep-bottle                             BOTTLE'* ]]
+[[ $bottle_output == *'dep-source                             SOURCE'* ]]
+[[ $bottle_output == *'Checked: 3'* ]]
+[[ $bottle_output == *'RESULT: SOURCE BUILD REQUIRED'* ]]
+(( bottle_status == 1 ))
+(( missing_status == 2 ))
+(( dependency_error_status == 2 ))
+(( usage_status == 2 ))
+
+bottles_only_output=$(brew-bottle-check bottles-only)
+[[ $bottles_only_output == *'Checked: 1'* ]]
+[[ $bottles_only_output == *'RESULT: BOTTLES ONLY'* ]]
+
+multiple_output=$(brew-bottle-check multi-one multi-two)
+[[ $multiple_output == *'dep-shared                             BOTTLE'* ]]
+[[ $multiple_output == *'dep-one                                BOTTLE'* ]]
+[[ $multiple_output == *'Checked: 4'* ]]
+[[ $multiple_output == *'RESULT: BOTTLES ONLY'* ]]
+
 typeset -gA _comps
+functions[compdef]='_comps[$2]=$1'
 _comps[jq]=_jq
 _pkgmgr_setup_completions
 [[ $_comps[jq] == _jq ]]
+[[ $_comps[brew-bottle-check] == _brew_bottle_check_completion ]]
 
 cat >"$TEST_ROOT/test-shell" <<'EOF'
 #!/bin/sh
@@ -174,5 +244,26 @@ port_preview=$(
         '
 )
 [[ $port_preview == 'info jq' ]]
+
+brew_bottle_preview=$(
+    PATH="$TEST_ROOT/preview-bin:/usr/bin:/bin" \
+        XDG_STATE_HOME="$TEST_ROOT/preview-state" \
+        DOTFILES_DIR="$ROOT" \
+        /bin/zsh -dfc '
+            autoload -Uz compinit
+            compinit -D
+            brew() {
+                [[ $1 == info && $2 == --formula && $3 == -- ]] || return 1
+                printf "brew info %s\n" "$4"
+            }
+            PKGMGR_BREW_MANAGED=true
+            source "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-fzf.plugin.zsh"
+            zstyle -s ":fzf-tab:complete:brew-bottle-check:argument-1" \
+                fzf-preview preview
+            word=jq
+            eval "$preview"
+        '
+)
+[[ $brew_bottle_preview == 'brew info jq' ]]
 
 printf 'pkgmng_tests=ok\n'

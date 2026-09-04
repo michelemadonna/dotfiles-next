@@ -330,6 +330,7 @@ pkg-default <command> <brew|macports>
 pkg-which <command>
 pkg-list
 pkg-clean
+brew-bottle-check <formula> [formula ...]
 brew-shell
 ```
 
@@ -340,6 +341,14 @@ Homebrew defaults, while `brew-shell` provides a temporary full Homebrew
 environment. The installer never falls back from a missing MacPorts port to
 Homebrew. When Homebrew is selected as the primary provider, `/usr/local` is
 used normally and the MacPorts-primary coexistence plugin remains disabled.
+
+`brew-bottle-check` performs a metadata-only preflight for the requested
+formulae and their recursive required/recommended dependencies. It reports
+whether a normal Homebrew installation currently selects a bottle or a source
+archive without downloading or installing either. Its exit status is `0` for
+bottles only, `1` when compilation would be required, and `2` for invalid input
+or a Homebrew query error. Formula completion and metadata preview work through
+fzf-tab.
 
 The installer manages those symbolic links:
 

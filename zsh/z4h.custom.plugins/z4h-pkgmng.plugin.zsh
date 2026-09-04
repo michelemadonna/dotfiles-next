@@ -32,6 +32,7 @@
 #   pkg-which <command>
 #   pkg-list
 #   pkg-clean
+#   brew-bottle-check <formula...>
 #   brew-shell
 #
 
@@ -150,6 +151,138 @@ _brew_real() {
         command "$HOMEBREW_BREW" "$@"
     )
 }
+
+
+# ============================================================================
+# HOMEBREW BOTTLE PREFLIGHT
+# ============================================================================
+#
+# Check the artifacts selected by a normal Homebrew install for the requested
+# stable formulae and their recursive required/recommended dependencies.
+# Nothing is downloaded or installed.
+#
+# Return values:
+#   0  every checked formula selects a bottle
+#   1  at least one checked formula selects a source archive
+#   2  invalid usage or a Homebrew query error
+#
+
+brew-bottle-check() (
+    emulate -L zsh
+    setopt pipefail
+
+    if (( $# < 1 )); then
+        print -u2 -r -- "Usage: brew-bottle-check <formula> [formula ...]"
+        return 2
+    fi
+
+    [[ -x "$HOMEBREW_BREW" ]] || {
+        print -u2 -r -- "ERROR: Homebrew is not installed at $HOMEBREW_BREW."
+        return 2
+    }
+
+    export HOMEBREW_NO_AUTO_UPDATE=1
+    export HOMEBREW_NO_INSTALL_CLEANUP=1
+    export HOMEBREW_NO_ENV_HINTS=1
+
+    local -a requested packages source_packages
+    local formula dependencies pkg normal_cache source_cache
+    local bottle_count=0
+    local source_count=0
+    local error_count=0
+
+    requested=("$@")
+
+    for formula in "${requested[@]}"; do
+        if ! _brew_real info --formula -- "$formula" >/dev/null 2>&1; then
+            print -u2 -r -- "ERROR: unable to resolve Homebrew formula: $formula"
+            return 2
+        fi
+    done
+
+    dependencies="$(
+        _brew_real deps \
+            --formula \
+            --full-name \
+            --topological \
+            --union \
+            -- \
+            "${requested[@]}" \
+            2>/dev/null
+    )" || {
+        print -u2 -r -- "ERROR: unable to resolve Homebrew dependencies"
+        return 2
+    }
+
+    packages=("${requested[@]}")
+    [[ -z "$dependencies" ]] || packages+=("${(@f)dependencies}")
+    typeset -U packages
+
+    printf 'Homebrew: %s\n' "$HOMEBREW_PREFIX"
+    printf 'Formulae: %s\n\n' "${requested[*]}"
+    printf '%-38s %s\n' "FORMULA" "STATUS"
+    printf '%-38s %s\n' "--------------------------------------" "--------"
+
+    for pkg in "${packages[@]}"; do
+        normal_cache="$(
+            _brew_real --cache --formula -- "$pkg" 2>/dev/null
+        )"
+
+        if [[ $? -ne 0 || -z "$normal_cache" ]]; then
+            printf '%-38s %s\n' "$pkg" "ERROR"
+            (( ++error_count ))
+            continue
+        fi
+
+        source_cache="$(
+            _brew_real --cache \
+                --formula \
+                --build-from-source \
+                -- \
+                "$pkg" \
+                2>/dev/null
+        )"
+
+        if [[ $? -ne 0 || -z "$source_cache" ]]; then
+            printf '%-38s %s\n' "$pkg" "ERROR"
+            (( ++error_count ))
+            continue
+        fi
+
+        if [[ "$normal_cache" == "$source_cache" ]]; then
+            printf '%-38s %s\n' "$pkg" "SOURCE"
+            source_packages+=("$pkg")
+            (( ++source_count ))
+        else
+            printf '%-38s %s\n' "$pkg" "BOTTLE"
+            (( ++bottle_count ))
+        fi
+    done
+
+    print
+    printf 'Checked: %d\n' "${#packages[@]}"
+    printf 'Bottles: %d\n' "$bottle_count"
+    printf 'Source:  %d\n' "$source_count"
+
+    if (( error_count > 0 )); then
+        printf 'Errors:  %d\n\n' "$error_count"
+        print -r -- "RESULT: CHECK FAILED"
+        return 2
+    fi
+
+    if (( source_count > 0 )); then
+        print
+        print -r -- "Would compile:"
+        printf '  %s\n' "${source_packages[@]}"
+        print
+        print -r -- "RESULT: SOURCE BUILD REQUIRED"
+        return 1
+    fi
+
+    print
+    print -r -- "RESULT: BOTTLES ONLY"
+    return 0
+)
 
 
 # ============================================================================
@@ -471,6 +604,8 @@ _pkgmgr_setup_completions() {
         compdef _brew brew
     fi
 
+    compdef _brew_bottle_check_completion brew-bottle-check
+
     # Reassociate known completion functions with wrapper commands.
     #
     # In most cases this is unnecessary because completion is keyed by command
@@ -496,6 +631,22 @@ _pkgmgr_setup_completions() {
         compdef "$completion" "$cmd"
 
     done < "$PKGMGR_DB"
+}
+
+
+_brew_bottle_check_completion() {
+    if (( $+functions[__brew_formulae] )); then
+        __brew_formulae
+        return
+    fi
+
+    local -a formulae
+    formulae=("${(@f)$(HOMEBREW_COMPLETION=1 brew formulae 2>/dev/null)}")
+    (( ${#formulae} )) || {
+        _message 'Homebrew formula'
+        return
+    }
+    _describe -t formulae 'Homebrew formulae' formulae
 }
 
 

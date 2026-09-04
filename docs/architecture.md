@@ -41,7 +41,9 @@ On macOS Tahoe, the fzf plugin also supplies Homebrew's generated completion
 with the local API name indexes when Homebrew 6 returns an empty completion
 list, and invalidates only previously serialized empty brew completion caches.
 On Intel, `z4h-pkgmng` owns Brew execution and provider wrappers; the fzf plugin
-owns only completion fallback and previews. Provider state is stored under
+owns only completion fallback and previews. The plugin also provides the
+metadata-only `brew-bottle-check` preflight for requested formulae and their
+recursive required/recommended dependencies. Provider state is stored under
 `${XDG_STATE_HOME:-$HOME/.local/state}/zsh` and explicit MacPorts selections
 survive Homebrew rescans, upgrades, and cleanup.
 

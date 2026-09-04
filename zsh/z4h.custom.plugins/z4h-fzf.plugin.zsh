@@ -658,6 +658,9 @@ if (( $+commands[brew] || $+functions[brew] )); then
             esac
         '
 
+    zstyle ':fzf-tab:complete:brew-bottle-check:*' \
+        fzf-preview 'brew info --formula -- "$word" 2>/dev/null'
+
 fi
 
 # ============================================================
