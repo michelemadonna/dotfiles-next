@@ -253,10 +253,7 @@ the selected installer may request privileges for its default prefix.
 To download and launch the interactive installer:
 
 ```sh
-curl -fsSL \
-  https://raw.githubusercontent.com/michelemadonna/dotfiles-next/main/install.sh \
-  -o /tmp/dotfiles-next-install.sh
-sh /tmp/dotfiles-next-install.sh
+curl -fsSL https://raw.githubusercontent.com/michelemadonna/dotfiles-next/main/install.sh -o /tmp/dotfiles-next-install.sh && sh /tmp/dotfiles-next-install.sh
 ```
 
 To run without prompts, use:
