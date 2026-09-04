@@ -75,7 +75,12 @@ Supported hosts are macOS and Ubuntu 26.04. Apple Silicon uses Homebrew, Intel
 macOS chooses MacPorts from `/opt/local` or Homebrew from `/usr/local`, and
 Ubuntu uses APT. MacPorts is recommended on Intel because Homebrew is Tier 3,
 without CI support or new Intel bottles. A missing selected package manager is
-installed automatically. A missing Intel MacPorts installation is downloaded from the official release, checked with
+installed automatically. Before any MacPorts setup, missing Apple Command Line
+Tools are installed headlessly through `softwareupdate`; the installer never
+opens the graphical `xcode-select --install` prompt. Interactive runs can still
+request the administrator password through `sudo`, while non-interactive runs
+use `sudo -n` and fail if authorization is unavailable. A missing Intel
+MacPorts installation is downloaded from the official release, checked with
 `pkgutil`, Gatekeeper, and the macOS Installer compatibility query, then
 installed with one explained privileged command. Required Intel ports include
 the explicit `bind9` mapping; a missing port is an error and never triggers a
@@ -83,6 +88,9 @@ Homebrew fallback. Installer-initiated MacPorts operations use its global `-N`
 mode so dependency and upgrade confirmations do not require repeated input.
 Ubuntu uses package names such as `poppler-utils`,
 `dnsutils`, `fd-find`, and `command-not-found`.
+On macOS the installer uses `/usr/bin/git` supplied by the selected Apple
+developer tools and does not install the Homebrew `git` formula or MacPorts
+`git` port. Linux still installs Git through APT when necessary.
 
 The Intel provider is persisted as `DOTFILES_INTEL_PACKAGE_MANAGER` so
 non-interactive startup repairs retain the approved provider. Users may install

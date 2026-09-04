@@ -164,10 +164,194 @@ macports_command=$(
       shift
       printf "%s\n" "$*"
     }
-    run_macports "install requested ports" install git
+    run_macports "install requested ports" install bat
   ' sh "$TEST_ROOT/install-lib.sh"
 )
-assert_equal "$macports_command" '/opt/local/bin/port -N install git'
+assert_equal "$macports_command" '/opt/local/bin/port -N install bat'
+
+required_packages=$(
+  sh -c '
+    . "$1"
+    PACKAGE_MANAGER=macports
+    HOME=$2/home
+    DOTFILES_DIR=$2/dotfiles
+    info() { :; }
+    run_macports() { printf "MACPORTS:%s\n" "$*"; }
+    install_macports_ports() { printf "PORTS:%s\n" "$*"; }
+    mkdir() { :; }
+    cp() { :; }
+    install_required_packages
+  ' sh "$TEST_ROOT/install-lib.sh" "$TEST_ROOT"
+)
+case $required_packages in
+  *coreutils*)
+    printf 'Intel MacPorts packages unexpectedly include coreutils:\n%s\n' "$required_packages" >&2
+    exit 1
+    ;;
+esac
+if printf '%s\n' "$required_packages" | grep -Eq '(^|[ :])git([ :]|$)'; then
+  printf 'Intel MacPorts packages unexpectedly include Git:\n%s\n' "$required_packages" >&2
+  exit 1
+fi
+
+required_packages=$(
+  sh -c '
+    . "$1"
+    HOME=$2/home
+    DOTFILES_DIR=$2/dotfiles
+    info() { :; }
+    brew() { printf "BREW:%s:%s\n" "$MACOS_ARCH" "$*"; }
+    for MACOS_ARCH in x86_64 arm64; do
+      PACKAGE_MANAGER=homebrew
+      install_required_packages
+    done
+  ' sh "$TEST_ROOT/install-lib.sh" "$TEST_ROOT"
+)
+case $required_packages in
+  *coreutils*)
+    printf 'Intel or Apple Silicon Homebrew packages unexpectedly include coreutils:\n%s\n' "$required_packages" >&2
+    exit 1
+    ;;
+esac
+if printf '%s\n' "$required_packages" | grep -Eq '(^|[ :])git([ :]|$)'; then
+  printf 'Intel or Apple Silicon Homebrew packages unexpectedly include Git:\n%s\n' "$required_packages" >&2
+  exit 1
+fi
+case $required_packages in
+  *'BREW:x86_64:install -y bat '*'BREW:arm64:install -y bat '*) ;;
+  *)
+    printf 'Homebrew package coverage is incomplete:\n%s\n' "$required_packages" >&2
+    exit 1
+    ;;
+esac
+
+printf '#!/bin/sh\nprintf "git version 2.39.5 (Apple Git-154)\\n"\n' >"$TEST_ROOT/apple-git"
+chmod +x "$TEST_ROOT/apple-git"
+apple_git_result=$(
+  sh -c '
+    . "$1"
+    PLATFORM=macos
+    PACKAGE_MANAGER=homebrew
+    SYSTEM_GIT=$2/apple-git
+    brew() { exit 99; }
+    install_macports_ports() { exit 99; }
+    install_git
+    printf "apple_git=ok\n"
+  ' sh "$TEST_ROOT/install-lib.sh" "$TEST_ROOT"
+)
+assert_equal "$apple_git_result" 'apple_git=ok'
+
+clt_log=$TEST_ROOT/clt.log
+clt_ready=$TEST_ROOT/clt-ready
+mkdir -p "$TEST_ROOT/clt-stubs"
+cat >"$TEST_ROOT/clt-stubs/xcode-select" <<'EOF'
+#!/bin/sh
+printf 'XCODE_SELECT:%s\n' "$*" >>"$CLT_LOG"
+case $1 in
+  -p)
+    [ -f "$CLT_READY" ] || exit 1
+    printf '%s\n' "$COMMAND_LINE_TOOLS_DIR"
+    ;;
+  --switch) : >"$CLT_READY" ;;
+  --install) exit 99 ;;
+esac
+EOF
+cat >"$TEST_ROOT/clt-stubs/xcrun" <<'EOF'
+#!/bin/sh
+printf 'XCRUN:%s\n' "$*" >>"$CLT_LOG"
+[ "$*" = '--find clang' ] && [ -f "$CLT_READY" ]
+EOF
+cat >"$TEST_ROOT/clt-stubs/softwareupdate" <<'EOF'
+#!/bin/sh
+printf 'SOFTWAREUPDATE:%s\n' "$*" >>"$CLT_LOG"
+case $1 in
+  -l)
+    if [ "${CLT_NO_LABEL:-}" = 1 ]; then
+      printf '%s\n' 'No new software available.'
+      exit 0
+    fi
+    printf '%s\n' \
+      'Software Update Tool' \
+      '* Label: Command Line Tools for Xcode-26.0' \
+      '    Title: Command Line Tools for Xcode, Version: 26.0'
+    ;;
+  -i) [ "$2" = 'Command Line Tools for Xcode-26.0' ] ;;
+  *) exit 2 ;;
+esac
+EOF
+chmod +x \
+  "$TEST_ROOT/clt-stubs/xcode-select" \
+  "$TEST_ROOT/clt-stubs/xcrun" \
+  "$TEST_ROOT/clt-stubs/softwareupdate"
+CLT_LOG=$clt_log CLT_READY=$clt_ready sh -c '
+  . "$1"
+  MODE=interactive
+  PLATFORM=macos
+  PACKAGE_MANAGER=macports
+  XCODE_SELECT=$2/clt-stubs/xcode-select
+  XCRUN=$2/clt-stubs/xcrun
+  SOFTWAREUPDATE=$2/clt-stubs/softwareupdate
+  COMMAND_LINE_TOOLS_DIR=$2/CommandLineTools
+  COMMAND_LINE_TOOLS_PLACEHOLDER=$2/clt-placeholder
+  MACPORTS_PREFIX=$2/macports-prefix
+  MACPORTS_PORT=$2/missing-port
+  export CLT_LOG CLT_READY COMMAND_LINE_TOOLS_DIR
+  info() { printf "INFO:%s\n" "$*" >>"$CLT_LOG"; }
+  run_privileged() {
+    printf "PRIVILEGED:%s\n" "$1" >>"$CLT_LOG"
+    shift
+    "$@"
+  }
+  install_macports() {
+    apple_developer_tools_ready
+    printf "MACPORTS_INSTALL\n" >>"$CLT_LOG"
+  }
+  setup_platform
+  [ ! -e "$COMMAND_LINE_TOOLS_PLACEHOLDER" ]
+' sh "$TEST_ROOT/install-lib.sh" "$TEST_ROOT"
+grep -q '^SOFTWAREUPDATE:-i Command Line Tools for Xcode-26.0$' "$clt_log"
+grep -q '^XCODE_SELECT:--switch ' "$clt_log"
+grep -q '^MACPORTS_INSTALL$' "$clt_log"
+if grep -q -- '--install' "$clt_log"; then
+  printf 'headless CLT installation invoked the graphical xcode-select path:\n%s\n' "$(cat "$clt_log")" >&2
+  exit 1
+fi
+
+rm -f "$clt_ready" "$clt_log"
+clt_failure=$(
+  CLT_LOG=$clt_log CLT_READY=$clt_ready CLT_NO_LABEL=1 sh -c '
+    . "$1"
+    MODE=interactive
+    XCODE_SELECT=$2/clt-stubs/xcode-select
+    XCRUN=$2/clt-stubs/xcrun
+    SOFTWAREUPDATE=$2/clt-stubs/softwareupdate
+    COMMAND_LINE_TOOLS_DIR=$2/CommandLineTools
+    COMMAND_LINE_TOOLS_PLACEHOLDER=$2/clt-placeholder
+    export CLT_LOG CLT_READY CLT_NO_LABEL COMMAND_LINE_TOOLS_DIR
+    info() { :; }
+    run_privileged() {
+      shift
+      "$@"
+    }
+    die() {
+      printf "DIE:%s\n" "$*"
+      exit 1
+    }
+    install_apple_command_line_tools
+  ' sh "$TEST_ROOT/install-lib.sh" "$TEST_ROOT" 2>&1 || true
+)
+case $clt_failure in
+  *'DIE:No compatible Apple Command Line Tools package is available through Software Update.'*) ;;
+  *)
+    printf 'missing CLT update did not fail closed:\n%s\n' "$clt_failure" >&2
+    exit 1
+    ;;
+esac
+[ ! -e "$TEST_ROOT/clt-placeholder" ]
+if grep -q -- '--install' "$clt_log"; then
+  printf 'missing CLT update invoked the graphical xcode-select path:\n%s\n' "$(cat "$clt_log")" >&2
+  exit 1
+fi
 
 mkdir -p "$TEST_ROOT/root-bin" "$TEST_ROOT/root-home"
 printf '#!/bin/sh\nprintf "0\\n"\n' >"$TEST_ROOT/root-bin/id"
@@ -248,6 +432,7 @@ MACPORTS_LOG=$macports_log sh -c '
     shift
     "$@"
   }
+  apple_developer_tools_ready() { return 0; }
   install_macports
 ' sh "$TEST_ROOT/install-lib.sh" "$TEST_ROOT"
 grep -q '^PKGUTIL:--check-signature ' "$macports_log"

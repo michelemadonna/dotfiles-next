@@ -21,6 +21,12 @@ The host installer supports:
 - An Administrator account with `sudo` access. Run the installer as that normal user, never with `sudo` or as root.
 - `bash` on macOS if Homebrew must be installed automatically.
 
+With MacPorts selected, the installer installs missing Apple Command Line Tools
+headlessly through `softwareupdate` before installing or using MacPorts; it does
+not open the graphical `xcode-select --install` prompt. macOS uses
+`/usr/bin/git` from the selected Apple developer tools instead of installing
+Git with Homebrew or MacPorts.
+
 > ⚠️ **Homebrew on Intel Macs:** Since September 2026, Intel macOS is Homebrew Tier 3: it has no CI support and receives no new binary bottles, so formulae may compile from source, take considerably longer, or fail. The installer therefore recommends and defaults to MacPorts, but allows Homebrew as the primary provider. Homebrew can also be installed manually alongside MacPorts, mainly for casks and formulae unavailable in MacPorts. When MacPorts is selected and both managers are installed, the custom `z4h-pkgmng` plugin keeps MacPorts primary and exposes explicit Homebrew exceptions. See [Homebrew's support tiers](https://docs.brew.sh/Support-Tiers) for the current policy and timeline.
 
 If Zsh is missing, install it with the platform package manager:

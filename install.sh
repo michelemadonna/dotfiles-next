@@ -15,6 +15,12 @@ MACPORTS_PREFIX=/opt/local
 MACPORTS_PORT=/opt/local/bin/port
 MACPORTS_RELEASE_API=https://api.github.com/repos/macports/macports-base/releases/latest
 SYSTEM_INSTALLER=/usr/sbin/installer
+XCODE_SELECT=/usr/bin/xcode-select
+XCRUN=/usr/bin/xcrun
+SOFTWAREUPDATE=/usr/sbin/softwareupdate
+SYSTEM_GIT=/usr/bin/git
+COMMAND_LINE_TOOLS_DIR=/Library/Developer/CommandLineTools
+COMMAND_LINE_TOOLS_PLACEHOLDER=/tmp/.com.apple.dt.CommandLineTools.installondemand.in-progress
 
 COLOR_CYAN=$(printf '\033[36m')
 COLOR_YELLOW=$(printf '\033[33m')
@@ -67,6 +73,7 @@ UI_INNER_WIDTH=76
 UI_FDS_OPEN=false
 UI_TTY_STATE=
 TEMP_PACKAGE_FILE=
+TEMP_CLT_PLACEHOLDER=
 MENU_VALUE=
 UI_ERROR=
 
@@ -208,6 +215,10 @@ restore_terminal() {
 
 cleanup() {
   restore_terminal
+  if [ -n "${TEMP_CLT_PLACEHOLDER:-}" ]; then
+    sudo -n /bin/rm -f -- "$TEMP_CLT_PLACEHOLDER" >/dev/null 2>&1 || true
+    TEMP_CLT_PLACEHOLDER=
+  fi
   if [ -n "${TEMP_PACKAGE_FILE:-}" ]; then
     rm -f -- "$TEMP_PACKAGE_FILE"
     TEMP_PACKAGE_FILE=
@@ -579,10 +590,68 @@ activate_homebrew() {
   have brew
 }
 
+apple_developer_tools_ready() {
+  [ -x "$XCODE_SELECT" ] &&
+    "$XCODE_SELECT" -p >/dev/null 2>&1 &&
+    [ -x "$XCRUN" ] &&
+    "$XCRUN" --find clang >/dev/null 2>&1
+}
+
+remove_command_line_tools_placeholder() {
+  [ -n "${TEMP_CLT_PLACEHOLDER:-}" ] || return 0
+  run_privileged \
+    'remove the temporary Command Line Tools software-update marker' \
+    /bin/rm -f -- "$TEMP_CLT_PLACEHOLDER"
+  TEMP_CLT_PLACEHOLDER=
+}
+
+install_apple_command_line_tools() {
+  apple_developer_tools_ready && return 0
+
+  [ -x "$XCODE_SELECT" ] || die 'xcode-select is required to configure the Apple Command Line Tools.'
+  [ -x "$XCRUN" ] || die 'xcrun is required to verify the Apple Command Line Tools.'
+  [ -x "$SOFTWAREUPDATE" ] || die 'softwareupdate is required to install the Apple Command Line Tools.'
+
+  info 'Searching for the Apple Command Line Tools software update'
+  TEMP_CLT_PLACEHOLDER=$COMMAND_LINE_TOOLS_PLACEHOLDER
+  run_privileged \
+    'make the Command Line Tools package visible to Software Update' \
+    /usr/bin/touch "$TEMP_CLT_PLACEHOLDER"
+
+  if ! command_line_tools_updates=$("$SOFTWAREUPDATE" -l); then
+    remove_command_line_tools_placeholder || true
+    die 'Software Update could not list the available Apple Command Line Tools packages.'
+  fi
+
+  command_line_tools_label=$(
+    printf '%s\n' "$command_line_tools_updates" |
+      grep -B 1 -E 'Command Line Tools' |
+      awk -F '*' '/^[[:space:]]*\*/ { print $2 }' |
+      sed -e 's/^[[:space:]]*Label:[[:space:]]*//' -e 's/^[[:space:]]*//' |
+      sort -V |
+      tail -n 1
+  ) || command_line_tools_label=
+
+  if [ -z "$command_line_tools_label" ]; then
+    remove_command_line_tools_placeholder || true
+    die 'No compatible Apple Command Line Tools package is available through Software Update. The installer will not open the graphical xcode-select prompt.'
+  fi
+
+  info "Installing $command_line_tools_label without opening a graphical prompt"
+  run_privileged \
+    'install the Apple Command Line Tools with Software Update' \
+    "$SOFTWAREUPDATE" -i "$command_line_tools_label"
+  run_privileged \
+    'select the installed Apple Command Line Tools' \
+    "$XCODE_SELECT" --switch "$COMMAND_LINE_TOOLS_DIR"
+  remove_command_line_tools_placeholder
+
+  apple_developer_tools_ready ||
+    die 'Apple Command Line Tools installation completed, but xcrun cannot find clang.'
+}
+
 install_macports() {
-  have xcode-select || die 'xcode-select is required to verify the Command Line Tools installation.'
-  xcode-select -p >/dev/null 2>&1 ||
-    die 'Apple Command Line Tools are required before MacPorts. Run "xcode-select --install", complete the installation, then rerun this installer.'
+  install_apple_command_line_tools
   have sw_vers || die 'sw_vers is required to select the MacPorts package for this macOS release.'
   have pkgutil || die 'pkgutil is required to verify the MacPorts package signature.'
   have spctl || die 'spctl is required to assess the MacPorts package.'
@@ -644,6 +713,7 @@ setup_homebrew() {
 setup_platform() {
   case $PACKAGE_MANAGER in
     macports)
+      install_apple_command_line_tools
       [ -x "$MACPORTS_PORT" ] || install_macports
       PATH="$MACPORTS_PREFIX/bin:$MACPORTS_PREFIX/sbin:$PATH"
       export PATH
@@ -663,16 +733,22 @@ install_macports_ports() {
 }
 
 install_git() {
+  if [ "$PLATFORM" = macos ]; then
+    if [ ! -x "$SYSTEM_GIT" ] || ! "$SYSTEM_GIT" --version >/dev/null 2>&1; then
+      die 'Apple Git from the Command Line Tools is required, but /usr/bin/git is not usable.'
+    fi
+    return 0
+  fi
+
   have git && return 0
 
   info 'Installing Git'
   case $PACKAGE_MANAGER in
-    macports) install_macports_ports git ;;
-    homebrew) brew install -y git ;;
     apt)
       run_apt_get update
       run_apt_get install -y git
       ;;
+    *) die "Git is unavailable for package manager backend: $PACKAGE_MANAGER" ;;
   esac
   have git || die 'Git installation failed.'
 }
@@ -693,7 +769,11 @@ clone_repository() {
     die "$DOTFILES_DIR already exists and is not a Git repository."
 
   info "Cloning dotfiles into $DOTFILES_DIR"
-  git clone "$REPO_URL" "$DOTFILES_DIR"
+  if [ "$PLATFORM" = macos ]; then
+    "$SYSTEM_GIT" clone "$REPO_URL" "$DOTFILES_DIR"
+  else
+    git clone "$REPO_URL" "$DOTFILES_DIR"
+  fi
 }
 
 install_required_packages() {
@@ -701,12 +781,12 @@ install_required_packages() {
   if [ "$PACKAGE_MANAGER" = macports ]; then
     run_macports 'update the MacPorts index before installing required packages' selfupdate
     install_macports_ports \
-      coreutils bat eza fd git-delta htop ripgrep tmux tree wget git chafa \
+      bat eza fd git-delta htop ripgrep tmux tree wget chafa \
       mediainfo poppler file bind9
     mkdir -p "$HOME/Library/Fonts"
     cp "$DOTFILES_DIR"/fonts/* "$HOME/Library/Fonts/"
   elif [ "$PACKAGE_MANAGER" = homebrew ]; then
-    brew install -y coreutils bat eza fd git-delta htop ripgrep tmux tree wget git chafa mediainfo poppler file bind
+    brew install -y bat eza fd git-delta htop ripgrep tmux tree wget chafa mediainfo poppler file bind
     brew install -y --cask font-fira-code-nerd-font
   else
     run_apt_get update
@@ -1027,9 +1107,10 @@ show_installed_tool_versions() {
 
   ui_line '' ''
   ui_section 'Base command-line tools'
+  if [ "$PLATFORM" = macos ]; then
+    report_tool_version 'Git (Apple developer tools)' "$SYSTEM_GIT" 1 --version
+  fi
   if [ "$PACKAGE_MANAGER" = macports ]; then
-    report_macports_tool_version 'Git' git 1 --version
-    report_macports_tool_version 'GNU coreutils' gdate 1 --version
     report_macports_tool_version 'bat' bat 1 --version
     report_macports_tool_version 'eza' eza 2 --version
     report_macports_tool_version 'fd' fd 1 --version
@@ -1045,8 +1126,6 @@ show_installed_tool_versions() {
     report_macports_tool_version 'file' file 1 --version
     report_macports_tool_version 'DNS tools' dig 1 -v
   elif [ "$PACKAGE_MANAGER" = homebrew ]; then
-    report_homebrew_tool_version 'Git' git git 1 --version
-    report_homebrew_tool_version 'GNU coreutils' coreutils gdate 1 --version
     report_homebrew_tool_version 'bat' bat bat 1 --version
     report_homebrew_tool_version 'eza' eza eza 2 --version
     report_homebrew_tool_version 'fd' fd fd 1 --version
