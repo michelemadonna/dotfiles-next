@@ -7,7 +7,7 @@ DEFAULT_REPO_URL="https://github.com/michelemadonna/dotfiles-next.git"
 REPO_URL=${DOTFILES_REPO_URL:-$DEFAULT_REPO_URL}
 DOTFILES_DIR=${DOTFILES_DIR:-"$HOME/.dotfiles"}
 MODE=interactive
-BASE_PACKAGES_MARKER_VERSION=2
+BASE_PACKAGES_MARKER_VERSION=3
 PLATFORM=
 PACKAGE_MANAGER=
 MACOS_ARCH=
@@ -783,12 +783,12 @@ install_required_packages() {
   if [ "$PACKAGE_MANAGER" = macports ]; then
     run_macports 'update the MacPorts index before installing required packages' selfupdate
     install_macports_ports \
-      bat eza fd git-delta htop ripgrep tmux tree wget chafa \
+      bat eza fd git git-delta htop ripgrep tmux tree wget chafa \
       mediainfo poppler file bind9
     mkdir -p "$HOME/Library/Fonts"
     cp "$DOTFILES_DIR"/fonts/* "$HOME/Library/Fonts/"
   elif [ "$PACKAGE_MANAGER" = homebrew ]; then
-    brew install -y bat eza fd git-delta htop ripgrep tmux tree wget chafa mediainfo poppler file bind
+    brew install -y bat eza fd git git-delta htop ripgrep tmux tree wget chafa mediainfo poppler file bind
     brew install -y --cask font-fira-code-nerd-font
   else
     run_apt_get update
@@ -1109,10 +1109,8 @@ show_installed_tool_versions() {
 
   ui_line '' ''
   ui_section 'Base command-line tools'
-  if [ "$PLATFORM" = macos ]; then
-    report_tool_version 'Git (Apple developer tools)' "$SYSTEM_GIT" 1 --version
-  fi
   if [ "$PACKAGE_MANAGER" = macports ]; then
+    report_macports_tool_version 'Git' git 1 --version
     report_macports_tool_version 'bat' bat 1 --version
     report_macports_tool_version 'eza' eza 2 --version
     report_macports_tool_version 'fd' fd 1 --version
@@ -1128,6 +1126,7 @@ show_installed_tool_versions() {
     report_macports_tool_version 'file' file 1 --version
     report_macports_tool_version 'DNS tools' dig 1 -v
   elif [ "$PACKAGE_MANAGER" = homebrew ]; then
+    report_homebrew_tool_version 'Git' git git 1 --version
     report_homebrew_tool_version 'bat' bat bat 1 --version
     report_homebrew_tool_version 'eza' eza eza 2 --version
     report_homebrew_tool_version 'fd' fd fd 1 --version

@@ -29,9 +29,10 @@ installer when it is unavailable.
 
 With MacPorts selected, the installer installs missing Apple Command Line Tools
 headlessly through `softwareupdate` before installing or using MacPorts; it does
-not open the graphical `xcode-select --install` prompt. macOS uses
-`/usr/bin/git` from the selected Apple developer tools instead of installing
-Git with Homebrew or MacPorts.
+not open the graphical `xcode-select --install` prompt. The Apple-provided
+`/usr/bin/git` is used only to bootstrap and clone the repository; the base
+packages then install Git through MacPorts on Intel when selected, or through
+Homebrew on Intel and Apple Silicon.
 
 > ⚠️ **Homebrew on Intel Macs:** Since September 2026, Intel macOS is Homebrew Tier 3: it has no CI support and receives no new binary bottles, so formulae may compile from source, take considerably longer, or fail. The installer therefore recommends and defaults to MacPorts, but allows Homebrew as the primary provider. Homebrew can also be installed manually alongside MacPorts, mainly for casks and formulae unavailable in MacPorts. When MacPorts is selected and both managers are installed, the custom `z4h-pkgmng` plugin keeps MacPorts primary and exposes explicit Homebrew exceptions. See [Homebrew's support tiers](https://docs.brew.sh/Support-Tiers) for the current policy and timeline.
 
@@ -252,10 +253,7 @@ the selected installer may request privileges for its default prefix.
 To download and launch the interactive installer:
 
 ```sh
-curl -fsSL \
-  https://raw.githubusercontent.com/michelemadonna/dotfiles-next/main/install.sh \
-  -o /tmp/dotfiles-next-install.sh
-sh /tmp/dotfiles-next-install.sh
+curl -fsSL https://raw.githubusercontent.com/michelemadonna/dotfiles-next/main/install.sh -o /tmp/dotfiles-next-install.sh && sh /tmp/dotfiles-next-install.sh
 ```
 
 To run without prompts, use:
@@ -329,6 +327,7 @@ pkg-default <command> <brew|macports>
 pkg-which <command>
 pkg-list
 pkg-clean
+brew-bottle-check <formula> [formula ...]
 brew-shell
 ```
 
@@ -339,6 +338,15 @@ Homebrew defaults, while `brew-shell` provides a temporary full Homebrew
 environment. The installer never falls back from a missing MacPorts port to
 Homebrew. When Homebrew is selected as the primary provider, `/usr/local` is
 used normally and the MacPorts-primary coexistence plugin remains disabled.
+
+`brew-bottle-check` performs a metadata-only preflight for the requested
+formulae and their recursive required/recommended dependencies. It reports
+whether a normal Homebrew installation currently selects a bottle or a source
+archive without downloading or installing either. The check uses only Zsh and
+Homebrew; it does not require `jq`, Python, or another parser. Its exit status
+is `0` for bottles only, `1` when compilation would be required, and `2` for
+invalid input or a Homebrew query error. Formula completion and metadata
+preview work through fzf-tab.
 
 The installer manages those symbolic links:
 
