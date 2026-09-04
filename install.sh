@@ -703,7 +703,9 @@ setup_homebrew() {
 
   if ! activate_homebrew; then
     have bash || die 'bash is required to install Homebrew.'
-    info 'The official Homebrew installer may request your password to create and configure its default prefix (/opt/homebrew on Apple Silicon or /usr/local on Intel). Administrator privileges are required for those system locations.'
+    run_privileged \
+      'cache sudo authorization for the official Homebrew installer to create and configure its default prefix' \
+      /usr/bin/true
     NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
   fi
 

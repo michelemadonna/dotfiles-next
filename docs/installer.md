@@ -75,7 +75,11 @@ Supported hosts are macOS and Ubuntu 26.04. Apple Silicon uses Homebrew, Intel
 macOS chooses MacPorts from `/opt/local` or Homebrew from `/usr/local`, and
 Ubuntu uses APT. MacPorts is recommended on Intel because Homebrew is Tier 3,
 without CI support or new Intel bottles. A missing selected package manager is
-installed automatically. Before any MacPorts setup, missing Apple Command Line
+installed automatically. Before invoking Homebrew's official installer, an
+interactive run caches `sudo` authorization once and then keeps the upstream
+installer non-interactive so it does not repeat the already approved
+confirmation. A non-interactive run uses `sudo -n` and stops before downloading
+Homebrew if authorization is unavailable. Before any MacPorts setup, missing Apple Command Line
 Tools are installed headlessly through `softwareupdate`; the installer never
 opens the graphical `xcode-select --install` prompt. Interactive runs can still
 request the administrator password through `sudo`, while non-interactive runs

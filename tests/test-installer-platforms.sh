@@ -155,6 +155,76 @@ PRIVILEGE_LOG=$noninteractive_log sh -c '
 ' sh "$TEST_ROOT/install-lib.sh"
 grep -q '^SUDO:-n test-command$' "$noninteractive_log"
 
+homebrew_log=$TEST_ROOT/homebrew.log
+HOMEBREW_LOG=$homebrew_log sh -c '
+  . "$1"
+  MODE=interactive
+  PACKAGE_MANAGER=homebrew
+  activate_count=0
+  activate_homebrew() {
+    activate_count=$((activate_count + 1))
+    [ "$activate_count" -gt 1 ]
+  }
+  have() { [ "$1" = bash ]; }
+  info() { :; }
+  run_privileged() {
+    printf "PRIVILEGED:%s:%s\n" "$1" "$2" >>"$HOMEBREW_LOG"
+    [ "$2" = /usr/bin/true ]
+  }
+  curl() {
+    printf "%s\n" '\''printf "INSTALLER:NONINTERACTIVE=%s\n" "${NONINTERACTIVE:-}" >>"$HOMEBREW_LOG"'\''
+  }
+  export HOMEBREW_LOG
+  setup_homebrew
+' sh "$TEST_ROOT/install-lib.sh"
+homebrew_lines=$(sed -n '1p;2p' "$homebrew_log")
+case $homebrew_lines in
+  'PRIVILEGED:cache sudo authorization for the official Homebrew installer to create and configure its default prefix:/usr/bin/true
+INSTALLER:NONINTERACTIVE=1') ;;
+  *)
+    printf 'Homebrew was not preauthorized before its non-interactive installer:\n%s\n' "$homebrew_lines" >&2
+    exit 1
+    ;;
+esac
+
+homebrew_failure_log=$TEST_ROOT/homebrew-failure.log
+homebrew_failure=$(
+  HOMEBREW_LOG=$homebrew_failure_log sh -c '
+    . "$1"
+    MODE=non-interactive
+    PACKAGE_MANAGER=homebrew
+    activate_homebrew() { return 1; }
+    have() { [ "$1" = bash ]; }
+    info() { :; }
+    sudo() {
+      printf "SUDO:%s\n" "$*" >>"$HOMEBREW_LOG"
+      return 1
+    }
+    curl() {
+      printf "CURL:%s\n" "$*" >>"$HOMEBREW_LOG"
+      exit 99
+    }
+    die() {
+      printf "DIE:%s\n" "$*"
+      exit 1
+    }
+    export HOMEBREW_LOG
+    setup_homebrew
+  ' sh "$TEST_ROOT/install-lib.sh" 2>&1 || true
+)
+grep -q '^SUDO:-n /usr/bin/true$' "$homebrew_failure_log"
+if grep -q '^CURL:' "$homebrew_failure_log"; then
+  printf 'Homebrew download started without non-interactive sudo authorization\n' >&2
+  exit 1
+fi
+case $homebrew_failure in
+  *'DIE:The privileged command failed. Non-interactive mode cannot prompt for a sudo password: /usr/bin/true'*) ;;
+  *)
+    printf 'missing Homebrew sudo authorization did not fail clearly:\n%s\n' "$homebrew_failure" >&2
+    exit 1
+    ;;
+esac
+
 macports_command=$(
   sh -c '
     . "$1"
