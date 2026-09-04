@@ -59,11 +59,13 @@ Managed destinations are backed up as `.backup.YYYYMMDDhhmmss`; existing
 correct symbolic links are retained. Base packages and fonts are guarded by:
 
 ```text
-${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles-next/base-packages-v2-<platform>-<provider>.done
+${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles-next/base-packages-v3-<platform>-<provider>.done
 ```
 
-The marker is written only after success. Git remains a separate idempotent
-prerequisite; optional tools are reevaluated on every run.
+The marker is written only after success. On macOS, Apple Git remains a
+separate bootstrap prerequisite for cloning; the selected package manager's
+Git is part of the versioned base packages. Optional tools are reevaluated on
+every run.
 
 Fastfetch `first` counts distinct `ttys*` devices on macOS and `pts/*` devices
 on Linux. SSH sessions, IDE terminals, and other terminal applications also
@@ -93,8 +95,10 @@ mode so dependency and upgrade confirmations do not require repeated input.
 Ubuntu uses package names such as `poppler-utils`,
 `dnsutils`, `fd-find`, and `command-not-found`.
 On macOS the installer uses `/usr/bin/git` supplied by the selected Apple
-developer tools and does not install the Homebrew `git` formula or MacPorts
-`git` port. Linux still installs Git through APT when necessary.
+developer tools for its initial clone, then installs the Homebrew `git` formula
+on Intel and Apple Silicon when Homebrew is selected, or the MacPorts `git`
+port on Intel when MacPorts is selected. Linux still installs Git through APT
+when necessary.
 
 The Intel provider is persisted as `DOTFILES_INTEL_PACKAGE_MANAGER` so
 non-interactive startup repairs retain the approved provider. Users may install

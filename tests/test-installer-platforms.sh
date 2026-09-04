@@ -259,10 +259,13 @@ case $required_packages in
     exit 1
     ;;
 esac
-if printf '%s\n' "$required_packages" | grep -Eq '(^|[ :])git([ :]|$)'; then
-  printf 'Intel MacPorts packages unexpectedly include Git:\n%s\n' "$required_packages" >&2
-  exit 1
-fi
+case $required_packages in
+  *'PORTS:bat eza fd git git-delta '*) ;;
+  *)
+    printf 'Intel MacPorts packages do not include Git:\n%s\n' "$required_packages" >&2
+    exit 1
+    ;;
+esac
 
 required_packages=$(
   sh -c '
@@ -283,17 +286,33 @@ case $required_packages in
     exit 1
     ;;
 esac
-if printf '%s\n' "$required_packages" | grep -Eq '(^|[ :])git([ :]|$)'; then
-  printf 'Intel or Apple Silicon Homebrew packages unexpectedly include Git:\n%s\n' "$required_packages" >&2
-  exit 1
-fi
 case $required_packages in
-  *'BREW:x86_64:install -y bat '*'BREW:arm64:install -y bat '*) ;;
+  *'BREW:x86_64:install -y bat eza fd git git-delta '*'BREW:arm64:install -y bat eza fd git git-delta '*) ;;
   *)
-    printf 'Homebrew package coverage is incomplete:\n%s\n' "$required_packages" >&2
+    printf 'Intel or Apple Silicon Homebrew packages do not include Git:\n%s\n' "$required_packages" >&2
     exit 1
     ;;
 esac
+
+legacy_marker_root=$TEST_ROOT/legacy-marker-state
+mkdir -p "$legacy_marker_root/dotfiles-next"
+: >"$legacy_marker_root/dotfiles-next/base-packages-v2-macos-homebrew.done"
+marker_log=$TEST_ROOT/marker.log
+XDG_STATE_HOME=$legacy_marker_root MARKER_LOG=$marker_log sh -c '
+  . "$1"
+  PLATFORM=macos
+  PACKAGE_MANAGER=homebrew
+  info() { :; }
+  install_required_packages() { printf "INSTALL\n" >>"$MARKER_LOG"; }
+  export MARKER_LOG
+  install_required_packages_once
+  install_required_packages_once
+  [ -f "$XDG_STATE_HOME/dotfiles-next/base-packages-v3-macos-homebrew.done" ]
+' sh "$TEST_ROOT/install-lib.sh"
+assert_equal "$(cat "$marker_log")" 'INSTALL'
+
+grep -q "report_macports_tool_version 'Git' git 1 --version" "$ROOT/install.sh"
+grep -q "report_homebrew_tool_version 'Git' git git 1 --version" "$ROOT/install.sh"
 
 printf '#!/bin/sh\nprintf "git version 2.39.5 (Apple Git-154)\\n"\n' >"$TEST_ROOT/apple-git"
 chmod +x "$TEST_ROOT/apple-git"
