@@ -40,8 +40,7 @@ on subsequent installer runs, and its binary is copied to `~/.local/bin/fzf`.
 This path supplies the modern fzf actions used by the vendored fzf-git
 integration. Startup checks that this binary is at least fzf 0.66 and reruns
 the non-interactive updater when it is older.
-Mise uses Homebrew on
-macOS or the official installer on Linux, then prepares activation,
+Mise uses the official installer on macOS and Linux, then prepares activation,
 completion, and ASDF compatibility data. The startup helper can invoke the
 installer once when a selected tool is missing.
 

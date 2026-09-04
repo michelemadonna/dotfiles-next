@@ -532,13 +532,13 @@ clone_repository() {
 install_required_packages() {
   info 'Installing required packages'
   if [ "$PLATFORM" = macos ]; then
-    brew install -y coreutils bat eza fd git-delta htop ripgrep stow tmux tree wget git chafa mediainfo poppler file bind
+    brew install -y coreutils bat eza fd git-delta htop ripgrep tmux tree wget git chafa mediainfo poppler file bind
     brew install -y --cask font-fira-code-nerd-font
   else
     run_apt_get update
     run_apt_get install -y \
       bat eza chafa mediainfo poppler-utils tree file dnsutils fd-find wget \
-      stow grc ripgrep python3-pip command-not-found git-delta tmux htop unzip curl fontconfig
+      grc ripgrep python3-pip command-not-found git-delta tmux htop unzip curl fontconfig
 
     mkdir -p "$HOME/.local/bin"
     fdfind_path=$(command -v fdfind || true)
@@ -824,7 +824,6 @@ show_installed_tool_versions() {
     report_homebrew_tool_version 'delta' git-delta delta 1 --version
     report_homebrew_tool_version 'htop' htop htop 1 --version
     report_homebrew_tool_version 'ripgrep' ripgrep rg 1 --version
-    report_homebrew_tool_version 'GNU Stow' stow stow 1 --version
     report_homebrew_tool_version 'tmux' tmux tmux 1 -V
     report_homebrew_tool_version 'tree' tree tree 1 --version
     report_homebrew_tool_version 'Wget' wget wget 1 --version
@@ -841,7 +840,6 @@ show_installed_tool_versions() {
     report_tool_version 'delta' delta 1 --version
     report_tool_version 'htop' htop 1 --version
     report_tool_version 'ripgrep' rg 1 --version
-    report_tool_version 'GNU Stow' stow 1 --version
     report_tool_version 'tmux' tmux 1 -V
     report_tool_version 'tree' tree 1 --version
     report_tool_version 'Wget' wget 1 --version
@@ -1145,16 +1143,13 @@ install_fresh() {
 }
 
 install_mise() {
-  if command -v mise >/dev/null 2>&1 || [ -x "$HOME/.local/bin/mise" ]; then
-    info 'Mise already installed; skipping installation'
-  elif [ "$PLATFORM" = macos ]; then
-    brew install -y mise
-  else
-    mkdir -p "$HOME/.local/bin"
-    MISE_INSTALL_PATH="$HOME/.local/bin/mise"
-    export MISE_INSTALL_PATH
-    curl -fsSL https://mise.run | sh
-  fi
+  info 'Installing Mise with the official installer'
+  mkdir -p "$HOME/.local/bin"
+  MISE_INSTALL_PATH="$HOME/.local/bin/mise"
+  export MISE_INSTALL_PATH
+  curl -fsSL https://mise.run | sh
+  PATH="$HOME/.local/bin:$PATH"
+  export PATH
   command -v mise >/dev/null 2>&1 || [ -x "$HOME/.local/bin/mise" ] || return 1
   link_path "$DOTFILES_DIR/mise" "$HOME/.config/mise"
   info 'Preparing Mise shell caches'

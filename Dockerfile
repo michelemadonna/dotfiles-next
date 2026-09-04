@@ -30,7 +30,6 @@ RUN apt-get update \
       poppler-utils \
       python3-pip \
       ripgrep \
-      stow \
       sudo \
       tmux \
       tree \
