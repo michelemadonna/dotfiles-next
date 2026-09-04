@@ -38,13 +38,14 @@ pinned zsh4humans v5 `.zshenv` source and saved at that path before loading.
 ## Tools and state
 
 The selected editor may be `vim`, `nano`, `fresh`, or `micro`. macOS installs
-non-system editors with its architecture-selected package manager and Linux
+the selected editor with its architecture-selected package manager and Linux
 uses APT; the configuration is linked to
-`~/.config/nano` and its backups are stored in `~/.cache/nano/backups`. Vim is
-installed with APT on Linux, while macOS uses its system Vim; its configuration
-is linked to `~/.config/vim`. Fastfetch is
+`~/.config/nano` and its backups are stored in `~/.cache/nano/backups`. Vim's
+configuration is linked to `~/.config/vim`. Fastfetch is
 disabled, shown at every interactive startup, or shown only in the first
-active terminal. Mise and Oh My Posh are installed only when selected.
+active terminal. Mise and Oh My Posh are installed only when selected; an
+existing Mise executable is reused while its links and shell caches are still
+prepared.
 
 The latest fzf checkout is always kept in `~/.local/share/fzf`, fast-forwarded
 on subsequent installer runs, and its binary is copied to `~/.local/bin/fzf`.

@@ -22,6 +22,9 @@ Docker usage, or user-facing UX changes.
 - Completion generation is explicitly triggered with `Shift-Tab`.
 - Edit persistent repository sources, never generated files or cache artifacts.
 - Keep changes minimal and validate every change.
+- Keep changes local by default. Ask for explicit confirmation before every
+  commit, push, or pull-request operation (create, update, merge, or close);
+  approval for an earlier publication does not apply to later changes.
 
 ## Technical references
 

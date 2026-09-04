@@ -442,6 +442,113 @@ if grep -q -- '--install' "$clt_log"; then
   exit 1
 fi
 
+macports_editor_result=$(
+  sh -c '
+    . "$1"
+    PLATFORM=macos
+    PACKAGE_MANAGER=macports
+    MACPORTS_PREFIX=$2/editor-macports
+    editor=vim
+    info() { :; }
+    link_editor_config() { :; }
+    install_macports_ports() { printf "PORTS:%s\n" "$*"; }
+    brew() { printf "BREW:%s\n" "$*"; }
+    install_editor
+  ' sh "$TEST_ROOT/install-lib.sh" "$TEST_ROOT"
+)
+assert_equal "$macports_editor_result" 'PORTS:vim'
+
+homebrew_editor_result=$(
+  sh -c '
+    . "$1"
+    PLATFORM=macos
+    PACKAGE_MANAGER=homebrew
+    HOMEBREW_PREFIX=$2/editor-homebrew
+    editor=nano
+    info() { :; }
+    link_editor_config() { :; }
+    install_macports_ports() { printf "PORTS:%s\n" "$*"; }
+    brew() {
+      case $1 in
+        --prefix) printf "%s\n" "$HOMEBREW_PREFIX" ;;
+        install) printf "BREW:%s\n" "$*" ;;
+      esac
+    }
+    install_editor
+  ' sh "$TEST_ROOT/install-lib.sh" "$TEST_ROOT"
+)
+assert_equal "$homebrew_editor_result" 'BREW:install -y nano'
+
+bootstrap_root=$TEST_ROOT/editor-bootstrap
+bootstrap_log=$TEST_ROOT/editor-bootstrap.log
+mkdir -p "$bootstrap_root"
+# shellcheck disable=SC2016
+printf '%s\n' \
+  '#!/bin/sh' \
+  'printf "%s\n" "$*" >>"$BOOTSTRAP_LOG"' \
+  >"$bootstrap_root/install.sh"
+chmod +x "$bootstrap_root/install.sh"
+BOOTSTRAP_LOG=$bootstrap_log \
+  DOTFILES_DIR=$bootstrap_root \
+  MACPORTS_PREFIX=$TEST_ROOT/bootstrap-macports \
+  XDG_CONFIG_HOME=$TEST_ROOT/bootstrap-config \
+  /bin/zsh -dfc '
+    OSTYPE=darwin26.0
+    EDITOR=vim
+    DOTFILES_INTEL_PACKAGE_MANAGER=macports
+    Z4H_PROMPT=powerlevel10k
+    Z4H_SHOW_FASTFETCH=false
+    Z4H_USE_MISE=false
+    Z4H_USE_FZF_FROM_Z4H=true
+    uname() { print -r -- x86_64; }
+    source "$1"
+  ' zsh "$ROOT/zsh/helpers/tool-bootstrap.zsh"
+assert_equal "$(cat "$bootstrap_log")" 'non-interactive'
+
+mkdir -p "$TEST_ROOT/bootstrap-macports/bin"
+printf '#!/bin/sh\nexit 0\n' >"$TEST_ROOT/bootstrap-macports/bin/vim"
+chmod +x "$TEST_ROOT/bootstrap-macports/bin/vim"
+BOOTSTRAP_LOG=$bootstrap_log \
+  DOTFILES_DIR=$bootstrap_root \
+  MACPORTS_PREFIX=$TEST_ROOT/bootstrap-macports \
+  XDG_CONFIG_HOME=$TEST_ROOT/bootstrap-config \
+  /bin/zsh -dfc '
+    OSTYPE=darwin26.0
+    EDITOR=vim
+    DOTFILES_INTEL_PACKAGE_MANAGER=macports
+    Z4H_PROMPT=powerlevel10k
+    Z4H_SHOW_FASTFETCH=false
+    Z4H_USE_MISE=false
+    Z4H_USE_FZF_FROM_Z4H=true
+    source "$1"
+  ' zsh "$ROOT/zsh/helpers/tool-bootstrap.zsh"
+assert_equal "$(cat "$bootstrap_log")" 'non-interactive'
+
+mise_log=$TEST_ROOT/mise-install.log
+mkdir -p "$TEST_ROOT/mise-bin" "$TEST_ROOT/mise-home" "$TEST_ROOT/mise-dotfiles/mise"
+printf '#!/bin/sh\nexit 0\n' >"$TEST_ROOT/mise-bin/mise"
+chmod +x "$TEST_ROOT/mise-bin/mise"
+MISE_TEST_LOG=$mise_log PATH="$TEST_ROOT/mise-bin:$PATH" sh -c '
+  . "$1"
+  HOME=$2/mise-home
+  DOTFILES_DIR=$2/mise-dotfiles
+  export HOME DOTFILES_DIR
+  info() { :; }
+  curl() {
+    printf "CURL\n" >>"$MISE_TEST_LOG"
+    printf "exit 0\n"
+  }
+  link_path() { printf "LINK:%s:%s\n" "$1" "$2" >>"$MISE_TEST_LOG"; }
+  sh() { printf "PREPARE:%s\n" "$*" >>"$MISE_TEST_LOG"; }
+  install_mise
+' sh "$TEST_ROOT/install-lib.sh" "$TEST_ROOT"
+if grep -q '^CURL$' "$mise_log"; then
+  printf 'existing Mise unexpectedly invoked the official installer\n' >&2
+  exit 1
+fi
+grep -q '^LINK:.*mise:.*\.config/mise$' "$mise_log"
+grep -q '^PREPARE:.*prepare-mise-cache\.sh$' "$mise_log"
+
 mkdir -p "$TEST_ROOT/root-bin" "$TEST_ROOT/root-home"
 printf '#!/bin/sh\nprintf "0\\n"\n' >"$TEST_ROOT/root-bin/id"
 chmod +x "$TEST_ROOT/root-bin/id"

@@ -1391,20 +1391,16 @@ load_non_interactive_choices() {
 }
 
 install_editor() {
-  if [ "$editor" = vim ] && [ "$PLATFORM" = macos ]; then
-    info 'Using the Vim provided by macOS; skipping installation'
-    link_editor_config
-    return 0
-  fi
-
-  if command -v "$editor" >/dev/null 2>&1 || [ -x "$HOME/.local/bin/$editor" ]; then
+  if selected_editor_available; then
     info "$editor already installed; skipping installation"
     link_editor_config
     return 0
   fi
   case $editor in
     vim)
-      if [ "$PLATFORM" = macos ]; then
+      if [ "$PACKAGE_MANAGER" = macports ]; then
+        install_macports_ports vim
+      elif [ "$PACKAGE_MANAGER" = homebrew ]; then
         brew install -y vim
       else
         run_apt_get install -y vim
@@ -1423,6 +1419,27 @@ install_editor() {
     micro) install_micro ;;
   esac
   link_editor_config
+}
+
+selected_editor_available() {
+  if [ "$PLATFORM" != macos ] || { [ "$editor" != nano ] && [ "$editor" != vim ]; }; then
+    command -v "$editor" >/dev/null 2>&1 || [ -x "$HOME/.local/bin/$editor" ]
+    return
+  fi
+
+  case $PACKAGE_MANAGER in
+    macports)
+      [ -x "$MACPORTS_PREFIX/bin/$editor" ]
+      ;;
+    homebrew)
+      selected_homebrew_prefix=${HOMEBREW_PREFIX:-}
+      if [ -z "$selected_homebrew_prefix" ]; then
+        selected_homebrew_prefix=$(brew --prefix 2>/dev/null) || return 1
+      fi
+      [ -x "$selected_homebrew_prefix/bin/$editor" ]
+      ;;
+    *) return 1 ;;
+  esac
 }
 
 link_editor_config() {
@@ -1478,11 +1495,15 @@ install_fresh() {
 }
 
 install_mise() {
-  info 'Installing Mise with the official installer'
   mkdir -p "$HOME/.local/bin"
-  MISE_INSTALL_PATH="$HOME/.local/bin/mise"
-  export MISE_INSTALL_PATH
-  curl -fsSL https://mise.run | sh
+  if command -v mise >/dev/null 2>&1 || [ -x "$HOME/.local/bin/mise" ]; then
+    info 'Mise already installed; skipping installation'
+  else
+    info 'Installing Mise with the official installer'
+    MISE_INSTALL_PATH="$HOME/.local/bin/mise"
+    export MISE_INSTALL_PATH
+    curl -fsSL https://mise.run | sh
+  fi
   PATH="$HOME/.local/bin:$PATH"
   export PATH
   command -v mise >/dev/null 2>&1 || [ -x "$HOME/.local/bin/mise" ] || return 1
@@ -1582,7 +1603,7 @@ apply_installation() {
   fi
 
   if [ "$use_mise" = true ]; then
-    info 'Installing and preparing Mise'
+    info 'Preparing Mise integration'
     install_mise
     success 'Mise, shell cache, and asdf compatibility layer ready'
   fi

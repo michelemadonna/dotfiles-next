@@ -24,6 +24,27 @@ z4h_tool_available() {
   (( $+commands[$tool] )) || [[ -x $HOME/.local/bin/$tool ]]
 }
 
+z4h_selected_editor_available() {
+  local editor=$1 prefix
+
+  if [[ $OSTYPE != darwin* || $editor != (nano|vim) ]]; then
+    z4h_tool_available "$editor"
+    return
+  fi
+
+  if [[ $MACHTYPE == x86_64 && ${DOTFILES_INTEL_PACKAGE_MANAGER:-macports} == macports ]]; then
+    prefix=${MACPORTS_PREFIX:-/opt/local}
+  elif [[ -n ${HOMEBREW_PREFIX:-} ]]; then
+    prefix=$HOMEBREW_PREFIX
+  elif [[ $MACHTYPE == x86_64 ]]; then
+    prefix=/usr/local
+  else
+    prefix=/opt/homebrew
+  fi
+
+  [[ -x $prefix/bin/$editor ]]
+}
+
 z4h_fzf_is_current() {
   local fzf_bin=$HOME/.local/bin/fzf version
   [[ -d $HOME/.local/share/fzf/.git && -x $fzf_bin ]] || return 1
@@ -39,7 +60,7 @@ z4h_bootstrap_tools() {
   case $EDITOR in
     micro|fresh|vim|nano)
       editor_config="$DOTFILES_DIR/$EDITOR"
-      z4h_tool_available "$EDITOR" || needs_install=true
+      z4h_selected_editor_available "$EDITOR" || needs_install=true
       [[ -e $editor_config ]] && editor_configs+=("$editor_config:$XDG_CONFIG_HOME/$EDITOR")
       ;;
   esac
@@ -78,4 +99,5 @@ z4h_bootstrap_tools() {
 }
 
 z4h_bootstrap_tools
-unfunction z4h_link_config z4h_tool_available z4h_fzf_is_current z4h_bootstrap_tools
+unfunction z4h_link_config z4h_tool_available z4h_selected_editor_available \
+  z4h_fzf_is_current z4h_bootstrap_tools
