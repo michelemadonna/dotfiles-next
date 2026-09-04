@@ -22,7 +22,8 @@ Startup adds Homebrew paths on Apple Silicon, MacPorts paths on Intel, and
 `$HOME/.local/bin` everywhere, then bootstraps selected tools and links
 existing repository configurations for Fastfetch, Mise, and the selected
 editor. Intel startup excludes `/usr/local/bin` and `/usr/local/sbin`, then
-loads `pkgmng` interactively before completion initialization. Interactive startup restores
+loads `pkgmng` interactively before completion initialization only when both
+Homebrew and MacPorts are installed. Interactive startup restores
 `$HOME/.local/bin` before z4h initialization because macOS's `/etc/zprofile`
 can rebuild `PATH` after `.zshenv`. Mise activation/completion caches and ASDF
 plugin compatibility data are prepared by

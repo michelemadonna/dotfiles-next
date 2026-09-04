@@ -109,12 +109,9 @@ if [[ ${Z4H_USE_FZF_TAB} = true ]]; then
 	z4h install Aloxaf/fzf-tab || return
 fi
 
-# MacPorts is the primary provider on Intel Macs. Keep an existing Homebrew
-# installation outside the normal PATH and expose only explicitly managed
-# Homebrew commands through pkgmng wrappers.
-if [[ $OSTYPE == darwin* && $(uname -m) == x86_64 ]]; then
-	source "$DOTFILES_DIR/zsh/helpers/pkgmng"
-fi
+# Load the conditional Intel MacPorts/Homebrew plugin before z4h initializes
+# completion and before fzf-tab is loaded.
+z4h source "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-pkgmng.plugin.zsh"
 
 # Homebrew's native completion must be visible when z4h runs compinit. It
 # provides the formula and cask candidates for `brew install`, unlike a
