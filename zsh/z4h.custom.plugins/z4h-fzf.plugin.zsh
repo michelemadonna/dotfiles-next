@@ -588,29 +588,31 @@ zstyle ':fzf-tab:complete:(cd|pushd):*' \
 # Homebrew
 # ============================================================
 
-if (( $+commands[brew] )); then
+if (( $+commands[brew] || $+functions[brew] )); then
 
     # Homebrew 6 can return an empty list when its generated completion calls
     # `HOMEBREW_COMPLETION=1 brew formulae` on macOS Tahoe, even though the API
     # name index is populated. Serve that index only for Homebrew's internal
     # completion calls; all normal brew invocations still reach the binary.
-    if [[ -z ${Z4H_BREW_COMMAND:-} ]]; then
+    if [[ ${PKGMGR_BREW_MANAGED:-false} != true && -z ${Z4H_BREW_COMMAND:-} ]]; then
         typeset -g Z4H_BREW_COMMAND=${commands[brew]}
     fi
-    brew() {
-        if [[ ${HOMEBREW_COMPLETION:-} == 1 &&
-              ( ${1:-} == formulae || ${1:-} == casks ) ]]; then
-            local kind=${1%?}
-            local api_dir=${HOMEBREW_CACHE:-$HOME/Library/Caches/Homebrew}/api
-            local names_file=$api_dir/${kind}_names.txt
-            [[ -s $names_file ]] || names_file=$api_dir/${kind}_names.before.txt
-            if [[ -s $names_file ]]; then
-                command cat -- "$names_file"
-                return
+    if [[ ${PKGMGR_BREW_MANAGED:-false} != true ]]; then
+        brew() {
+            if [[ ${HOMEBREW_COMPLETION:-} == 1 &&
+                  ( ${1:-} == formulae || ${1:-} == casks ) ]]; then
+                local kind=${1%?}
+                local api_dir=${HOMEBREW_CACHE:-$HOME/Library/Caches/Homebrew}/api
+                local names_file=$api_dir/${kind}_names.txt
+                [[ -s $names_file ]] || names_file=$api_dir/${kind}_names.before.txt
+                if [[ -s $names_file ]]; then
+                    command cat -- "$names_file"
+                    return
+                fi
             fi
-        fi
-        command "$Z4H_BREW_COMMAND" "$@"
-    }
+            command "$Z4H_BREW_COMMAND" "$@"
+        }
+    fi
 
     # Discard only the tiny serialized empty lists produced by the failure
     # above. Native completion recreates these runtime caches on first use.
@@ -648,6 +650,34 @@ if (( $+commands[brew] )); then
                         --formula \
                         -- "$word" \
                         2>/dev/null
+                    ;;
+
+                *)
+                    ;;
+
+            esac
+        '
+
+fi
+
+# ============================================================
+# MacPorts
+# ============================================================
+#
+# Any port subcommand whose completion group contains available or installed
+# ports receives the same package metadata preview.
+#
+# ============================================================
+
+if (( $+commands[port] )); then
+
+    zstyle ':fzf-tab:complete:port:*' \
+        fzf-preview '
+            case "$group" in
+
+                ports|*[Aa]vailable*[Pp]orts*|*[Ii]nstalled*[Pp]orts*)
+
+                    exec port info "$word" 2>/dev/null
                     ;;
 
                 *)

@@ -109,10 +109,14 @@ if [[ ${Z4H_USE_FZF_TAB} = true ]]; then
 	z4h install Aloxaf/fzf-tab || return
 fi
 
+# Load the conditional Intel MacPorts/Homebrew plugin before z4h initializes
+# completion and before fzf-tab is loaded.
+z4h source "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-pkgmng.plugin.zsh"
+
 # Homebrew's native completion must be visible when z4h runs compinit. It
 # provides the formula and cask candidates for `brew install`, unlike a
 # completion generated from `brew --help`.
-if (( $+commands[brew] )); then
+if (( $+commands[brew] )) || [[ -x ${HOMEBREW_BREW:-} ]]; then
 	typeset _z4h_brew_prefix=${HOMEBREW_PREFIX:-${commands[brew]:A:h:h}}
 	fpath=(
 		$_z4h_brew_prefix/share/zsh/site-functions(N-/)
@@ -155,10 +159,13 @@ z4h init || return
 # A cached compinit dump can predate Homebrew's addition to fpath. Register
 # its native completion explicitly so formula/cask candidates and the
 # brew-install fzf-tab context are available without clearing user caches.
-if (( $+commands[brew] )); then
+if (( $+commands[brew] )) || [[ -x ${HOMEBREW_BREW:-} ]]; then
 	autoload -Uz _brew
 	typeset -gA _comps
 	_comps[brew]=_brew
+fi
+if (( $+functions[_pkgmgr_setup_completions] )); then
+	_pkgmgr_setup_completions
 fi
 
 if (( $+commands[git] )); then

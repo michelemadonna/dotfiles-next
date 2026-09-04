@@ -16,6 +16,7 @@ if [ -n "${ZSH_VERSION-}" ]; then
   export Z4H_MISE_REFRESH_SECONDS=${Z4H_MISE_REFRESH_SECONDS:=5} #0 checks every prompt
   export Z4H_USE_MISE=${Z4H_USE_MISE:=true} #true/false
   export Z4H_USE_FZF_FROM_Z4H=false
+  export DOTFILES_INTEL_PACKAGE_MANAGER=${DOTFILES_INTEL_PACKAGE_MANAGER:=macports} #macports/homebrew
   
   export DOTFILES_DIR="$HOME/.dotfiles" #${DOTFILES_DIR:="$HOME/.dotfiles"}
   export XDG_CACHE_HOME=${XDG_CACHE_HOME:="$HOME/.cache"}
@@ -27,9 +28,27 @@ if [ -n "${ZSH_VERSION-}" ]; then
   export ZSH_COMPDUMP=${ZSH_COMPDUMP:="$XDG_CACHE_HOME/zsh/.zcompdump-${HOST}-${ZSH_VERSION}"}
 
   # macOS may start Zsh without loading the user's login profile.
-  # Keep Homebrew available before the interactive tool bootstrap runs.
+  # On Intel Macs, use the package manager selected by the installer. When
+  # MacPorts is primary, keep Homebrew isolated for the pkgmng coexistence
+  # layer.
   if [[ $OSTYPE == darwin* ]]; then
-    path=(/opt/homebrew/bin /opt/homebrew/sbin /usr/local/bin /usr/local/sbin $path)
+    if [[ $(uname -m) == x86_64 ]]; then
+      if [[ $DOTFILES_INTEL_PACKAGE_MANAGER == homebrew ]]; then
+        path=(
+          /usr/local/bin /usr/local/sbin
+          ${path:#/opt/local/bin}
+          ${path:#/opt/local/sbin}
+        )
+      else
+        path=(
+          /opt/local/bin /opt/local/sbin
+          ${path:#/usr/local/bin}
+          ${path:#/usr/local/sbin}
+        )
+      fi
+    else
+      path=(/opt/homebrew/bin /opt/homebrew/sbin /usr/local/bin /usr/local/sbin $path)
+    fi
   fi
   path=("$HOME/.local/bin" $path)
   typeset -gU path PATH
