@@ -155,6 +155,18 @@ PRIVILEGE_LOG=$noninteractive_log sh -c '
 ' sh "$TEST_ROOT/install-lib.sh"
 grep -q '^SUDO:test-command$' "$noninteractive_log"
 
+cleanup_log=$TEST_ROOT/cleanup.log
+CLEANUP_LOG=$cleanup_log sh -c '
+  . "$1"
+  TEMP_CLT_PLACEHOLDER=/tmp/.com.apple.dt.CommandLineTools.test
+  info() { printf "INFO:%s\n" "$*" >>"$CLEANUP_LOG"; }
+  sudo() { printf "SUDO:%s\n" "$*" >>"$CLEANUP_LOG"; }
+  cleanup
+  [ -z "$TEMP_CLT_PLACEHOLDER" ]
+' sh "$TEST_ROOT/install-lib.sh"
+grep -q '^INFO:Administrator privileges are required to remove the temporary Apple Command Line Tools marker' "$cleanup_log"
+grep -q '^SUDO:/bin/rm -f -- /tmp/.com.apple.dt.CommandLineTools.test$' "$cleanup_log"
+
 homebrew_log=$TEST_ROOT/homebrew.log
 HOMEBREW_LOG=$homebrew_log sh -c '
   . "$1"

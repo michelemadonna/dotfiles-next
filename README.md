@@ -254,7 +254,7 @@ To download and launch the interactive installer:
 curl -fsSL https://raw.githubusercontent.com/michelemadonna/dotfiles-next/main/install.sh -o /tmp/dotfiles-next-install.sh && sh /tmp/dotfiles-next-install.sh
 ```
 
-To run without prompts, use:
+To run without installer questions, use:
 
 ```sh
 sh /tmp/dotfiles-next-install.sh non-interactive

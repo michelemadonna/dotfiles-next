@@ -216,9 +216,10 @@ restore_terminal() {
 cleanup() {
   restore_terminal
   if [ -n "${TEMP_CLT_PLACEHOLDER:-}" ]; then
-    info "Administrator privileges are required to remove the temporary Apple Command Line Tools marker.\nCommand: /bin/rm -f -- $TEMP_CLT_PLACEHOLDER\nYou may be asked for your account password."
-    sudo /bin/rm -f -- "$TEMP_CLT_PLACEHOLDER" || true
+    cleanup_clt_placeholder=$TEMP_CLT_PLACEHOLDER
     TEMP_CLT_PLACEHOLDER=
+    info "Administrator privileges are required to remove the temporary Apple Command Line Tools marker.\nCommand: /bin/rm -f -- $cleanup_clt_placeholder\nYou may be asked for your account password."
+    sudo /bin/rm -f -- "$cleanup_clt_placeholder" || true
   fi
   if [ -n "${TEMP_PACKAGE_FILE:-}" ]; then
     rm -f -- "$TEMP_PACKAGE_FILE"
