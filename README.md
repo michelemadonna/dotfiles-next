@@ -21,11 +21,9 @@ The host installer supports:
 - An Administrator account with `sudo` access. Run the installer as that normal user, never with `sudo` or as root.
 - `bash` on macOS if Homebrew must be installed automatically.
 
-When Homebrew must be installed, the approved interactive run asks once for
-the administrator password before starting Homebrew's official installer
-without its additional confirmation prompt. Non-interactive runs require
-existing non-prompting `sudo` authorization and fail before downloading the
-installer when it is unavailable.
+When Homebrew must be installed, the installer asks for the administrator
+password before starting Homebrew's official installer without its additional
+confirmation prompt. This also applies to non-interactive runs.
 
 With MacPorts selected, the installer installs missing Apple Command Line Tools
 headlessly through `softwareupdate` before installing or using MacPorts; it does

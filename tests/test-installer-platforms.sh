@@ -153,7 +153,7 @@ PRIVILEGE_LOG=$noninteractive_log sh -c '
   sudo() { printf "SUDO:%s\n" "$*" >>"$PRIVILEGE_LOG"; }
   run_privileged "refresh the package index" test-command
 ' sh "$TEST_ROOT/install-lib.sh"
-grep -q '^SUDO:-n test-command$' "$noninteractive_log"
+grep -q '^SUDO:test-command$' "$noninteractive_log"
 
 homebrew_log=$TEST_ROOT/homebrew.log
 HOMEBREW_LOG=$homebrew_log sh -c '
@@ -212,13 +212,13 @@ homebrew_failure=$(
     setup_homebrew
   ' sh "$TEST_ROOT/install-lib.sh" 2>&1 || true
 )
-grep -q '^SUDO:-n /usr/bin/true$' "$homebrew_failure_log"
+grep -q '^SUDO:/usr/bin/true$' "$homebrew_failure_log"
 if grep -q '^CURL:' "$homebrew_failure_log"; then
-  printf 'Homebrew download started without non-interactive sudo authorization\n' >&2
+  printf 'Homebrew download started without sudo authorization\n' >&2
   exit 1
 fi
 case $homebrew_failure in
-  *'DIE:The privileged command failed. Non-interactive mode cannot prompt for a sudo password: /usr/bin/true'*) ;;
+  *'DIE:The privileged command failed: /usr/bin/true'*) ;;
   *)
     printf 'missing Homebrew sudo authorization did not fail clearly:\n%s\n' "$homebrew_failure" >&2
     exit 1

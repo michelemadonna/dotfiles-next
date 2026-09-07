@@ -216,7 +216,8 @@ restore_terminal() {
 cleanup() {
   restore_terminal
   if [ -n "${TEMP_CLT_PLACEHOLDER:-}" ]; then
-    sudo -n /bin/rm -f -- "$TEMP_CLT_PLACEHOLDER" >/dev/null 2>&1 || true
+    info "Administrator privileges are required to remove the temporary Apple Command Line Tools marker.\nCommand: /bin/rm -f -- $TEMP_CLT_PLACEHOLDER\nYou may be asked for your account password."
+    sudo /bin/rm -f -- "$TEMP_CLT_PLACEHOLDER" || true
     TEMP_CLT_PLACEHOLDER=
   fi
   if [ -n "${TEMP_PACKAGE_FILE:-}" ]; then
@@ -428,12 +429,7 @@ run_privileged() {
   [ "$#" -gt 0 ] || die 'A command is required for a privileged operation.'
 
   info "Administrator privileges are required to $privilege_reason.\nCommand: $*\nYou may be asked for your account password."
-  #if is_non_interactive; then
-  #  sudo -n "$@" ||
-  #    die "The privileged command failed. Non-interactive mode cannot prompt for a sudo password: $*"
-  #else
-    sudo "$@"
-  #fi
+  sudo "$@" || die "The privileged command failed: $*"
 }
 
 run_apt_get() {
