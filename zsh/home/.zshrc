@@ -316,14 +316,14 @@ alias tree='tree -a -I .git'
 alias ls="${aliases[ls]:-ls} -A"
 
 # Set shell options: http://zsh.sourceforge.net/Doc/Release/Options.html.
-setopt glob_dots     # no special treatment for file names with a leading dot
-setopt no_auto_menu  # require an extra TAB press to open the completion menu
+setopt glob_dots     		# no special treatment for file names with a leading dot
+setopt no_auto_menu  		# require an extra TAB press to open the completion menu
 
-setopt AUTO_CD  # If a command is issued that can’t be executed as a normal command,
-								# and the command is the name of a directory, perform the cd command
-								# to that directory.
-setopt AUTO_PARAM_SLASH  # If completed parameter is a directory, add a trailing slash.
-setopt COMPLETE_IN_WORD  # Complete from both ends of a word.
+setopt AUTO_CD  			# If a command is issued that can’t be executed as a normal command,
+							# and the command is the name of a directory, perform the cd command
+							# to that directory.
+setopt AUTO_PARAM_SLASH		# If completed parameter is a directory, add a trailing slash.
+setopt COMPLETE_IN_WORD		# Complete from both ends of a word.
 setopt pushd_ignore_dups
 setopt interactive_comments
 

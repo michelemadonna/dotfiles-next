@@ -12,8 +12,8 @@ Docker usage, or user-facing UX changes.
 ## Non-negotiable contracts
 
 - Preserve Powerlevel10k as the default; Oh My Posh is optional.
-- Preserve installer modes, prompts, environment contracts, idempotency, and
-  non-interactive no-prompt behavior.
+- Preserve installer modes, environment contracts, and idempotency.
+  Non-interactive mode skips installer questions but may request a sudo password.
 - Preserve Docker remote/local source behavior and cache boundaries.
 - z4h supplies fzf and native `Ctrl-T`, `Ctrl-R`, and `Alt-C`; do not restore
   `unixorn/fzf-zsh-plugin`.

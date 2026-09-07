@@ -5,7 +5,8 @@
 The installer must be launched as a normal user. It refuses UID 0, including
 invocation through `sudo`. Each privileged operation is routed through one
 helper that first explains why administrator access is needed and shows the
-command. Non-interactive mode uses `sudo -n` and fails instead of prompting.
+command. Privileged operations can request the administrator password in both
+interactive and non-interactive modes.
 
 With no argument, `install.sh` runs the full-screen single-key wizard. It
 shows a review screen and changes nothing until approval. It supports:
@@ -24,10 +25,10 @@ checkout, and Oh My Zsh helpers are always enabled and are not prompted.
 `q` exits without changes; `a` or `Enter` accepts the review;
 `r` restarts the wizard.
 
-Non-interactive mode never reads `/dev/tty`, opens menus, clears the screen,
-asks questions, or installs Mise because of an environment override. It uses
-non-prompting package operations (`sudo -n` on Ubuntu) and fails when required
-credentials are unavailable. Remaining user choices come from
+Non-interactive mode never opens menus, clears the screen, asks installer
+questions, or installs Mise because of an environment override. Privileged
+package operations can still request the administrator password through
+`sudo`. Remaining user choices come from
 `zsh/home/.zshenv`; the three fixed integration flags are always normalized.
 Intel defaults to MacPorts; `DOTFILES_INTEL_PACKAGE_MANAGER=homebrew` selects
 Homebrew, and an existing generated preference is reused when the environment
@@ -81,12 +82,12 @@ without CI support or new Intel bottles. A missing selected package manager is
 installed automatically. Before invoking Homebrew's official installer, an
 interactive run caches `sudo` authorization once and then keeps the upstream
 installer non-interactive so it does not repeat the already approved
-confirmation. A non-interactive run uses `sudo -n` and stops before downloading
-Homebrew if authorization is unavailable. Before any MacPorts setup, missing Apple Command Line
+confirmation. A non-interactive run can request the administrator password
+before downloading Homebrew. Before any MacPorts setup, missing Apple Command Line
 Tools are installed headlessly through `softwareupdate`; the installer never
 opens the graphical `xcode-select --install` prompt. Interactive runs can still
-request the administrator password through `sudo`, while non-interactive runs
-use `sudo -n` and fail if authorization is unavailable. A missing Intel
+request the administrator password through `sudo`, including non-interactive
+runs. A missing Intel
 MacPorts installation is downloaded from the official release, checked with
 `pkgutil`, Gatekeeper, and the macOS Installer compatibility query, then
 installed with one explained privileged command. Required Intel ports include

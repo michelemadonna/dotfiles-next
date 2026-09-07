@@ -153,7 +153,19 @@ PRIVILEGE_LOG=$noninteractive_log sh -c '
   sudo() { printf "SUDO:%s\n" "$*" >>"$PRIVILEGE_LOG"; }
   run_privileged "refresh the package index" test-command
 ' sh "$TEST_ROOT/install-lib.sh"
-grep -q '^SUDO:-n test-command$' "$noninteractive_log"
+grep -q '^SUDO:test-command$' "$noninteractive_log"
+
+cleanup_log=$TEST_ROOT/cleanup.log
+CLEANUP_LOG=$cleanup_log sh -c '
+  . "$1"
+  TEMP_CLT_PLACEHOLDER=/tmp/.com.apple.dt.CommandLineTools.test
+  info() { printf "INFO:%s\n" "$*" >>"$CLEANUP_LOG"; }
+  sudo() { printf "SUDO:%s\n" "$*" >>"$CLEANUP_LOG"; }
+  cleanup
+  [ -z "$TEMP_CLT_PLACEHOLDER" ]
+' sh "$TEST_ROOT/install-lib.sh"
+grep -q '^INFO:Administrator privileges are required to remove the temporary Apple Command Line Tools marker' "$cleanup_log"
+grep -q '^SUDO:/bin/rm -f -- /tmp/.com.apple.dt.CommandLineTools.test$' "$cleanup_log"
 
 homebrew_log=$TEST_ROOT/homebrew.log
 HOMEBREW_LOG=$homebrew_log sh -c '
@@ -212,13 +224,13 @@ homebrew_failure=$(
     setup_homebrew
   ' sh "$TEST_ROOT/install-lib.sh" 2>&1 || true
 )
-grep -q '^SUDO:-n /usr/bin/true$' "$homebrew_failure_log"
+grep -q '^SUDO:/usr/bin/true$' "$homebrew_failure_log"
 if grep -q '^CURL:' "$homebrew_failure_log"; then
-  printf 'Homebrew download started without non-interactive sudo authorization\n' >&2
+  printf 'Homebrew download started without sudo authorization\n' >&2
   exit 1
 fi
 case $homebrew_failure in
-  *'DIE:The privileged command failed. Non-interactive mode cannot prompt for a sudo password: /usr/bin/true'*) ;;
+  *'DIE:The privileged command failed: /usr/bin/true'*) ;;
   *)
     printf 'missing Homebrew sudo authorization did not fail clearly:\n%s\n' "$homebrew_failure" >&2
     exit 1
@@ -458,6 +470,75 @@ macports_editor_result=$(
 )
 assert_equal "$macports_editor_result" 'PORTS:vim'
 
+alternate_brew_prefix=$TEST_ROOT/alternate-homebrew
+mkdir -p "$alternate_brew_prefix/bin"
+for tool in fresh fastfetch oh-my-posh; do
+  printf '#!/bin/sh\nexit 0\n' >"$alternate_brew_prefix/bin/$tool"
+  chmod +x "$alternate_brew_prefix/bin/$tool"
+done
+
+macports_fresh_result=$(
+  HOMEBREW_PREFIX=$alternate_brew_prefix sh -c '
+    . "$1"
+    PLATFORM=macos
+    PACKAGE_MANAGER=macports
+    MACPORTS_PREFIX=$2/editor-macports
+    editor=fresh
+    info() { printf "INFO:%s\n" "$*"; }
+    link_editor_config() { :; }
+    install_macports_ports() { printf "PORTS:%s\n" "$*"; }
+    install_editor
+  ' sh "$TEST_ROOT/install-lib.sh" "$TEST_ROOT"
+)
+assert_equal "$macports_fresh_result" 'INFO:fresh already installed; skipping installation'
+
+macports_fresh_install_result=$(
+  sh -c '
+    . "$1"
+    PLATFORM=macos
+    PACKAGE_MANAGER=macports
+    editor=fresh
+    selected_tool_available() { return 1; }
+    link_editor_config() { :; }
+    install_macports_ports() { printf "PORTS:%s\n" "$*"; }
+    install_editor
+  ' sh "$TEST_ROOT/install-lib.sh"
+)
+assert_equal "$macports_fresh_install_result" 'PORTS:fresh'
+
+macports_optional_tools_result=$(
+  HOMEBREW_PREFIX=$alternate_brew_prefix sh -c '
+    . "$1"
+    PLATFORM=macos
+    PACKAGE_MANAGER=macports
+    MACPORTS_PREFIX=$2/optional-macports
+    DOTFILES_DIR=$2/dotfiles
+    HOME=$2/home
+    info() { printf "INFO:%s\n" "$*"; }
+    link_path() { :; }
+    install_macports_ports() { printf "PORTS:%s\n" "$*"; }
+    install_fastfetch
+    install_oh_my_posh
+  ' sh "$TEST_ROOT/install-lib.sh" "$TEST_ROOT"
+)
+assert_equal "$macports_optional_tools_result" 'INFO:Fastfetch already installed; skipping installation
+INFO:Oh My Posh already installed; skipping installation'
+
+arbitrary_bin=$TEST_ROOT/arbitrary-bin
+mkdir -p "$arbitrary_bin"
+printf '#!/bin/sh\nexit 0\n' >"$arbitrary_bin/tool-only-on-path"
+chmod +x "$arbitrary_bin/tool-only-on-path"
+arbitrary_path_result=$(
+  PATH="$arbitrary_bin:$PATH" sh -c '
+    . "$1"
+    PLATFORM=macos
+    MACPORTS_PREFIX=$2/missing-macports
+    HOMEBREW_PREFIX=$2/missing-homebrew
+    selected_tool_available tool-only-on-path && printf "found\n" || printf "missing\n"
+  ' sh "$TEST_ROOT/install-lib.sh" "$TEST_ROOT"
+)
+assert_equal "$arbitrary_path_result" missing
+
 homebrew_editor_result=$(
   sh -c '
     . "$1"
@@ -523,6 +604,36 @@ BOOTSTRAP_LOG=$bootstrap_log \
     source "$1"
   ' zsh "$ROOT/zsh/helpers/tool-bootstrap.zsh"
 assert_equal "$(cat "$bootstrap_log")" 'non-interactive'
+
+optional_bootstrap_root=$TEST_ROOT/optional-bootstrap
+optional_bootstrap_log=$TEST_ROOT/optional-bootstrap.log
+optional_macports_prefix=$TEST_ROOT/optional-bootstrap-macports
+optional_homebrew_prefix=$TEST_ROOT/optional-bootstrap-homebrew
+mkdir -p "$optional_bootstrap_root" "$optional_macports_prefix/bin" "$optional_homebrew_prefix/bin"
+printf '#!/bin/sh\nexit 0\n' >"$optional_macports_prefix/bin/vim"
+chmod +x "$optional_macports_prefix/bin/vim"
+for tool in fastfetch oh-my-posh; do
+  printf '#!/bin/sh\nexit 0\n' >"$optional_homebrew_prefix/bin/$tool"
+  chmod +x "$optional_homebrew_prefix/bin/$tool"
+done
+cp "$bootstrap_root/install.sh" "$optional_bootstrap_root/install.sh"
+BOOTSTRAP_LOG=$optional_bootstrap_log \
+  DOTFILES_DIR=$optional_bootstrap_root \
+  MACPORTS_PREFIX=$optional_macports_prefix \
+  HOMEBREW_PREFIX=$optional_homebrew_prefix \
+  XDG_CONFIG_HOME=$TEST_ROOT/optional-bootstrap-config \
+  /bin/zsh -dfc '
+    OSTYPE=darwin26.0
+    MACHTYPE=x86_64
+    EDITOR=vim
+    DOTFILES_INTEL_PACKAGE_MANAGER=macports
+    Z4H_PROMPT=ohmyposh
+    Z4H_SHOW_FASTFETCH=true
+    Z4H_USE_MISE=false
+    Z4H_USE_FZF_FROM_Z4H=true
+    source "$1"
+  ' zsh "$ROOT/zsh/helpers/tool-bootstrap.zsh"
+[ ! -e "$optional_bootstrap_log" ]
 
 mise_log=$TEST_ROOT/mise-install.log
 mkdir -p "$TEST_ROOT/mise-bin" "$TEST_ROOT/mise-home" "$TEST_ROOT/mise-dotfiles/mise"

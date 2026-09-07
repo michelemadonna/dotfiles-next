@@ -24,25 +24,28 @@ z4h_tool_available() {
   (( $+commands[$tool] )) || [[ -x $HOME/.local/bin/$tool ]]
 }
 
-z4h_selected_editor_available() {
-  local editor=$1 prefix
+z4h_selected_tool_available() {
+  local tool=$1 prefix brew_bin
 
-  if [[ $OSTYPE != darwin* || $editor != (nano|vim) ]]; then
-    z4h_tool_available "$editor"
+  if [[ $OSTYPE != darwin* ]]; then
+    z4h_tool_available "$tool"
     return
   fi
 
-  if [[ $MACHTYPE == x86_64 && ${DOTFILES_INTEL_PACKAGE_MANAGER:-macports} == macports ]]; then
-    prefix=${MACPORTS_PREFIX:-/opt/local}
-  elif [[ -n ${HOMEBREW_PREFIX:-} ]]; then
-    prefix=$HOMEBREW_PREFIX
-  elif [[ $MACHTYPE == x86_64 ]]; then
-    prefix=/usr/local
-  else
-    prefix=/opt/homebrew
-  fi
+  prefix=${MACPORTS_PREFIX:-/opt/local}
+  [[ -x $prefix/bin/$tool ]] && return 0
+  [[ $prefix == /opt/local || ! -x /opt/local/bin/$tool ]] || return 0
 
-  [[ -x $prefix/bin/$editor ]]
+  [[ -z ${HOMEBREW_PREFIX:-} || ! -x $HOMEBREW_PREFIX/bin/$tool ]] || return 0
+  [[ ! -x /opt/homebrew/bin/$tool ]] || return 0
+  [[ ! -x /usr/local/bin/$tool ]] || return 0
+
+  brew_bin=${commands[brew]:-}
+  if [[ -n $brew_bin ]]; then
+    prefix=$($brew_bin --prefix 2>/dev/null) || prefix=
+    [[ -z $prefix || ! -x $prefix/bin/$tool ]] || return 0
+  fi
+  return 1
 }
 
 z4h_fzf_is_current() {
@@ -60,16 +63,16 @@ z4h_bootstrap_tools() {
   case $EDITOR in
     micro|fresh|vim|nano)
       editor_config="$DOTFILES_DIR/$EDITOR"
-      z4h_selected_editor_available "$EDITOR" || needs_install=true
+      z4h_selected_tool_available "$EDITOR" || needs_install=true
       [[ -e $editor_config ]] && editor_configs+=("$editor_config:$XDG_CONFIG_HOME/$EDITOR")
       ;;
   esac
 
-  if [[ $Z4H_PROMPT == ohmyposh ]] && ! z4h_tool_available oh-my-posh; then
+  if [[ $Z4H_PROMPT == ohmyposh ]] && ! z4h_selected_tool_available oh-my-posh; then
     needs_install=true
   fi
   if [[ $Z4H_SHOW_FASTFETCH == true || $Z4H_SHOW_FASTFETCH == first ]] &&
-    ! z4h_tool_available fastfetch; then
+    ! z4h_selected_tool_available fastfetch; then
     needs_install=true
   fi
   if [[ $Z4H_USE_MISE == true ]] && ! z4h_tool_available mise; then
@@ -99,5 +102,5 @@ z4h_bootstrap_tools() {
 }
 
 z4h_bootstrap_tools
-unfunction z4h_link_config z4h_tool_available z4h_selected_editor_available \
+unfunction z4h_link_config z4h_tool_available z4h_selected_tool_available \
   z4h_fzf_is_current z4h_bootstrap_tools
