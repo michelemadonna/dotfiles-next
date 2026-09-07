@@ -1337,7 +1337,7 @@ generate_zshenv() {
       /^  export Z4H_SSH_LOAD_KEY=/ { $0 = "  export Z4H_SSH_LOAD_KEY=" load_ssh_key; }
       /^  export Z4H_SSH_SHOW_KEY=/ { $0 = "  export Z4H_SSH_SHOW_KEY=" show_ssh_key; }
       /^  export Z4H_SSH_ASKPASS_REQUIRE=/ { $0 = "  export Z4H_SSH_ASKPASS_REQUIRE=" askpass_require; }
-      /^[[:space:]]*export EDITOR=/ { $0 = "  export EDITOR=\"" editor "\""; }
+      /^  export EDITOR=/ { $0 = "  export EDITOR=\"" editor "\""; }
       { print }
     ' "$source_file" >| "$temporary_file" || {
     rm -f "$temporary_file"
@@ -1368,14 +1368,9 @@ load_non_interactive_choices() {
 
   value_from_choices() {
     awk -v variable="$1" '
-      $0 ~ "^[[:space:]]*export " variable "=" {
-        sub("^[[:space:]]*export " variable "=", "")
+      $0 ~ "^  export " variable "=" {
+        sub("^  export " variable "=", "")
         sub(/[[:space:]]+#.*/, "")
-        default_prefix = "${" variable ":="
-        if (index($0, default_prefix) == 1 && substr($0, length($0), 1) == "}") {
-          $0 = substr($0, length(default_prefix) + 1,
-                      length($0) - length(default_prefix) - 1)
-        }
         gsub(/^"|"$/, "")
         print
         exit
@@ -1396,7 +1391,7 @@ load_non_interactive_choices() {
 }
 
 install_editor() {
-  if selected_editor_available; then
+  if selected_tool_available "$editor"; then
     info "$editor already installed; skipping installation"
     link_editor_config
     return 0
@@ -1426,25 +1421,31 @@ install_editor() {
   link_editor_config
 }
 
-selected_editor_available() {
-  if [ "$PLATFORM" != macos ] || { [ "$editor" != nano ] && [ "$editor" != vim ]; }; then
-    command -v "$editor" >/dev/null 2>&1 || [ -x "$HOME/.local/bin/$editor" ]
+selected_tool_available() {
+  selected_tool=$1
+  if [ "$PLATFORM" != macos ]; then
+    command -v "$selected_tool" >/dev/null 2>&1 || [ -x "$HOME/.local/bin/$selected_tool" ]
     return
   fi
 
-  case $PACKAGE_MANAGER in
-    macports)
-      [ -x "$MACPORTS_PREFIX/bin/$editor" ]
-      ;;
-    homebrew)
-      selected_homebrew_prefix=${HOMEBREW_PREFIX:-}
-      if [ -z "$selected_homebrew_prefix" ]; then
-        selected_homebrew_prefix=$(brew --prefix 2>/dev/null) || return 1
-      fi
-      [ -x "$selected_homebrew_prefix/bin/$editor" ]
-      ;;
-    *) return 1 ;;
-  esac
+  selected_macports_prefix=${MACPORTS_PREFIX:-/opt/local}
+  [ -x "$selected_macports_prefix/bin/$selected_tool" ] && return 0
+  [ "$selected_macports_prefix" = /opt/local ] ||
+    [ ! -x "/opt/local/bin/$selected_tool" ] || return 0
+
+  selected_homebrew_prefix=${HOMEBREW_PREFIX:-}
+  [ -z "$selected_homebrew_prefix" ] ||
+    [ ! -x "$selected_homebrew_prefix/bin/$selected_tool" ] || return 0
+  [ ! -x "/opt/homebrew/bin/$selected_tool" ] || return 0
+  [ ! -x "/usr/local/bin/$selected_tool" ] || return 0
+
+  selected_brew=$(command -v brew 2>/dev/null || true)
+  if [ -n "$selected_brew" ]; then
+    selected_homebrew_prefix=$($selected_brew --prefix 2>/dev/null || true)
+    [ -z "$selected_homebrew_prefix" ] ||
+      [ ! -x "$selected_homebrew_prefix/bin/$selected_tool" ] || return 0
+  fi
+  return 1
 }
 
 link_editor_config() {
@@ -1518,7 +1519,7 @@ install_mise() {
 }
 
 install_fastfetch() {
-  if command -v fastfetch >/dev/null 2>&1 || [ -x "$HOME/.local/bin/fastfetch" ]; then
+  if selected_tool_available fastfetch; then
     info 'Fastfetch already installed; skipping installation'
     link_path "$DOTFILES_DIR/fastfetch" "$HOME/.config/fastfetch"
     return 0
@@ -1534,7 +1535,7 @@ install_fastfetch() {
 }
 
 install_oh_my_posh() {
-  if command -v oh-my-posh >/dev/null 2>&1 || [ -x "$HOME/.local/bin/oh-my-posh" ]; then
+  if selected_tool_available oh-my-posh; then
     info 'Oh My Posh already installed; skipping installation'
     link_path "$DOTFILES_DIR/oh-my-posh" "$HOME/.config/oh-my-posh"
     return 0
