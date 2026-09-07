@@ -127,6 +127,26 @@ DOTFILES_DIR="$TEST_ROOT/generated-dotfiles" sh -c '
   grep -q "^  export DOTFILES_INTEL_PACKAGE_MANAGER=homebrew$" "$DOTFILES_DIR/zsh/home/.zshenv"
 ' sh "$TEST_ROOT/install-lib.sh"
 
+bootstrap_editor_result=$(
+  DOTFILES_DIR="$TEST_ROOT/generated-dotfiles" DOTFILES_BOOTSTRAP_EDITOR=fresh sh -c '
+    . "$1"
+    configure_non_interactive
+    load_non_interactive_choices
+    apply_bootstrap_overrides
+    printf "%s\n" "$editor"
+  ' sh "$TEST_ROOT/install-lib.sh"
+)
+assert_equal "$bootstrap_editor_result" fresh
+
+invalid_bootstrap_editor=$(
+  DOTFILES_BOOTSTRAP_EDITOR=unsupported sh -c '
+    . "$1"
+    die() { printf "DIE:%s\n" "$*"; exit 1; }
+    apply_bootstrap_overrides
+  ' sh "$TEST_ROOT/install-lib.sh" 2>&1 || true
+)
+assert_equal "$invalid_bootstrap_editor" 'DIE:Unsupported DOTFILES_BOOTSTRAP_EDITOR value: unsupported'
+
 privilege_log=$TEST_ROOT/privilege.log
 PRIVILEGE_LOG=$privilege_log sh -c '
   . "$1"
@@ -485,7 +505,7 @@ mkdir -p "$bootstrap_root"
 # shellcheck disable=SC2016
 printf '%s\n' \
   '#!/bin/sh' \
-  'printf "%s\n" "$*" >>"$BOOTSTRAP_LOG"' \
+  'printf "%s:%s\n" "${DOTFILES_BOOTSTRAP_EDITOR-}" "$*" >>"$BOOTSTRAP_LOG"' \
   >"$bootstrap_root/install.sh"
 chmod +x "$bootstrap_root/install.sh"
 BOOTSTRAP_LOG=$bootstrap_log \
@@ -503,7 +523,7 @@ BOOTSTRAP_LOG=$bootstrap_log \
     uname() { print -r -- x86_64; }
     source "$1"
   ' zsh "$ROOT/zsh/helpers/tool-bootstrap.zsh"
-assert_equal "$(cat "$bootstrap_log")" 'non-interactive'
+assert_equal "$(cat "$bootstrap_log")" 'vim:non-interactive'
 
 mkdir -p "$TEST_ROOT/bootstrap-macports/bin"
 printf '#!/bin/sh\nexit 0\n' >"$TEST_ROOT/bootstrap-macports/bin/vim"
@@ -522,7 +542,7 @@ BOOTSTRAP_LOG=$bootstrap_log \
     Z4H_USE_FZF_FROM_Z4H=true
     source "$1"
   ' zsh "$ROOT/zsh/helpers/tool-bootstrap.zsh"
-assert_equal "$(cat "$bootstrap_log")" 'non-interactive'
+assert_equal "$(cat "$bootstrap_log")" 'vim:non-interactive'
 
 mise_log=$TEST_ROOT/mise-install.log
 mkdir -p "$TEST_ROOT/mise-bin" "$TEST_ROOT/mise-home" "$TEST_ROOT/mise-dotfiles/mise"

@@ -1390,6 +1390,14 @@ load_non_interactive_choices() {
   done
 }
 
+apply_bootstrap_overrides() {
+  case ${DOTFILES_BOOTSTRAP_EDITOR-} in
+    '') ;;
+    micro | fresh | vim | nano) editor=$DOTFILES_BOOTSTRAP_EDITOR ;;
+    *) die "Unsupported DOTFILES_BOOTSTRAP_EDITOR value: $DOTFILES_BOOTSTRAP_EDITOR" ;;
+  esac
+}
+
 install_editor() {
   if selected_editor_available; then
     info "$editor already installed; skipping installation"
@@ -1583,6 +1591,7 @@ apply_installation() {
 
   if is_non_interactive; then
     load_non_interactive_choices
+    apply_bootstrap_overrides
   fi
   set_fixed_preferences
 
