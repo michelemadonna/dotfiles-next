@@ -304,6 +304,14 @@ Shell startup puts `$HOME/.local/bin` at the front of `PATH`; `.zshrc` reapplies
 it before z4h initialization so macOS login-shell startup cannot discard it.
 Cached Mise activation also preserves the current startup paths.
 
+The installer persists `Z4H_STARTUP_PROFILE_DEFAULT=default`. The default
+profile is the normal as-is startup path, including z4h's bundled fzf and the
+eager fzf-tab and picker integrations. Set `Z4H_STARTUP_PROFILE=fast` for an
+opt-in faster shell; this leaves the persisted default unchanged and defers
+fzf-tab, pickers, fzf-git, syntax highlighting, autosuggestions, history
+search, and generated completions until first use. Fastfetch and SSH remain
+synchronous in both profiles.
+
 ### Intel macOS package providers
 
 The Intel installer asks which package manager should provide the base tools.
@@ -373,6 +381,8 @@ When `python3` is available, the generated environment also defines `python`
 as an alias for `python3`.
 
 * `Z4H_PROMPT` Selects the prompt theme. Supported values are `powerlevel10k`, `ohmyposh`, and `minimal`.
+* `Z4H_STARTUP_PROFILE_DEFAULT` Selects the persisted startup profile. The installer default is `default`; supported values are `default` and `fast`.
+* `Z4H_STARTUP_PROFILE` Temporarily overrides the persisted profile for the current shell. Set it to `fast` to enable deferred feature loading without rewriting the installer preference.
 * `DOTFILES_INTEL_PACKAGE_MANAGER` selects `macports` or `homebrew` as the Intel macOS installer and shell provider. It defaults to `macports` and has no effect on Apple Silicon or Linux.
 * `Z4H_SHOW_FASTFETCH` Controls when Fastfetch is displayed. Set it to `false` to disable Fastfetch, `true` to display it at every interactive terminal startup, or `first` to display it only in the first active terminal session.
 * `Z4H_ENABLE_AUTO_GENCOMP` Enables on-demand generation of Zsh completions for commands that do not already provide them. Completions are generated from the command’s `--help` output.

@@ -33,6 +33,10 @@ package operations can still request the administrator password through
 Intel defaults to MacPorts; `DOTFILES_INTEL_PACKAGE_MANAGER=homebrew` selects
 Homebrew, and an existing generated preference is reused when the environment
 does not override it.
+The generated preferences persist `Z4H_STARTUP_PROFILE_DEFAULT=default`.
+Set `Z4H_STARTUP_PROFILE=fast` in the environment to use the deferred startup
+profile for a shell without changing that persisted default; the installer
+does not replace the default with this runtime override.
 At shell startup, a missing `zsh/home/.zshenv_z4h` is downloaded from the
 pinned zsh4humans v5 `.zshenv` source and saved at that path before loading.
 

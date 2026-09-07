@@ -10,8 +10,8 @@
   zsh4humans v5 raw source before being sourced.
 - `zsh/home/.zshenv` is generated or retained preferences; `~/.zshenv` points
   to it. `.zshenv_z4h` loads z4h; `.zshrc` loads interactive helpers/plugins.
-- `zsh/helpers/` owns SSH, Fastfetch, tool bootstrap, fzf state/preview, and
-  Mise cache preparation. `zsh/z4h.custom.plugins/` owns repository plugins,
+- `zsh/helpers/` owns SSH, Fastfetch, tool bootstrap, fzf state/preview, lazy
+  startup wrappers, and Mise cache preparation. `zsh/z4h.custom.plugins/` owns repository plugins,
   including the self-contained Intel MacPorts/Homebrew coexistence layer.
 - Powerlevel10k is the default prompt. Oh My Posh is optional and uses the
   repository JSON theme when selected.
@@ -56,12 +56,22 @@ artifacts and must not be edited as source.
 Mise/ASDF project runtimes are shown in the right prompt. Each active runtime
 has its own light capsule; the right prompt is hidden when it cannot fit.
 
+`default` is the compatibility profile and keeps the existing z4h startup
+order, including z4h's bundled fzf. `fast` applies
+`zstyle ':z4h:fzf' channel none` before `z4h init`, then uses the installer-
+managed local fzf and loads fzf-tab, picker widgets, fzf-git, and optional ZLE
+features on first use. Its initial fallback for `Tab` is normal completion;
+the first `Ctrl-R`, `Ctrl-T`, `Alt-C`, `Ctrl-G`, or `Shift-Tab` loads the
+corresponding local integration.
+
 ## Shell contracts
 
-z4h supplies fzf and native `Ctrl-T`, `Ctrl-R`, and `Alt-C`. fzf-tab and native
-file widgets share hidden-file and preview state: `Ctrl-P` cycles preview
-layout and `Ctrl-H` toggles hidden files. Completion generation is explicitly
-requested with `Shift-Tab`.
+In `default`, z4h supplies fzf and native `Ctrl-T`, `Ctrl-R`, and `Alt-C`. In
+`fast`, the same user-facing actions are provided by the installer-managed
+local fzf after their lazy loader runs. fzf-tab and native file widgets share
+hidden-file and preview state: `Ctrl-P` cycles preview layout and `Ctrl-H`
+toggles hidden files. Completion generation is explicitly requested with
+`Shift-Tab`.
 
 The vendored `fzf-git.sh` integration is loaded after fzf and fzf-tab, then the
 local adapter adds command-aware Git dispatch before the final `z4h-fzf`

@@ -64,6 +64,11 @@ zstyle ':completion:*' list-colors ${(s.:.)LS_COLORS}
 zstyle ':completion:*:descriptions' format '[%d]'
 zstyle ':completion:*:git-checkout:*' sort false
 
+if [[ ${Z4H_STARTUP_PROFILE} == fast ]]; then
+	# The fast profile uses the repository-managed fzf on first use instead of
+	# z4h's bundled fzf package and widgets.
+	zstyle ':z4h:fzf' channel none
+fi
 
 if [[ ${Z4H_USE_FZF_TAB} = true ]]; then
 	# These z4h components are replaced below so that their ZLE load order matches
@@ -101,19 +106,23 @@ fi
 #z4h install StackExchange/blackbox || return
 #z4h install sharat87/pip-app || return
 if [[ ${Z4H_ENABLE_AUTO_GENCOMP} = true ]]; then
-	[[ -d $Z4H/RobSis/zsh-completion-generator ]] || \
-		z4h install RobSis/zsh-completion-generator || return #only install
+	if [[ ${Z4H_STARTUP_PROFILE} != fast ]]; then
+		[[ -d $Z4H/RobSis/zsh-completion-generator ]] || \
+			z4h install RobSis/zsh-completion-generator || return #only install
+	fi
 fi
 
 
 if [[ ${Z4H_USE_FZF_TAB} = true ]]; then
-	[[ -d $Z4H/zdharma-continuum/fast-syntax-highlighting ]] || \
-		z4h install zdharma-continuum/fast-syntax-highlighting || return
-	[[ -d $Z4H/zsh-users/zsh-history-substring-search ]] || \
-		z4h install zsh-users/zsh-history-substring-search || return
-	[[ -d $Z4H/zsh-users/zsh-autosuggestions ]] || \
-		z4h install zsh-users/zsh-autosuggestions || return
-	[[ -d $Z4H/Aloxaf/fzf-tab ]] || z4h install Aloxaf/fzf-tab || return
+	if [[ ${Z4H_STARTUP_PROFILE} != fast ]]; then
+		[[ -d $Z4H/zdharma-continuum/fast-syntax-highlighting ]] || \
+			z4h install zdharma-continuum/fast-syntax-highlighting || return
+		[[ -d $Z4H/zsh-users/zsh-history-substring-search ]] || \
+			z4h install zsh-users/zsh-history-substring-search || return
+		[[ -d $Z4H/zsh-users/zsh-autosuggestions ]] || \
+			z4h install zsh-users/zsh-autosuggestions || return
+		[[ -d $Z4H/Aloxaf/fzf-tab ]] || z4h install Aloxaf/fzf-tab || return
+	fi
 fi
 
 # Load the conditional Intel MacPorts/Homebrew plugin before z4h initializes
@@ -230,7 +239,7 @@ if [[ ${Z4H_ENABLE_OH_MY_ZSH} = true ]]; then
 	fi
 fi
 
-if [[ ${Z4H_USE_FZF_TAB} = true ]]; then
+if [[ ${Z4H_USE_FZF_TAB} = true && ${Z4H_STARTUP_PROFILE} != fast ]]; then
 	# Prefer the locally built fzf; retain the z4h fallback if bootstrap failed.
 	export FZF_PATH="${FZF_PATH:=${XDG_CACHE_HOME}/zsh4humans/v5/fzf}"
 	source "$FZF_PATH/shell/key-bindings.zsh"
@@ -244,6 +253,10 @@ if [[ ${Z4H_USE_FZF_TAB} = true ]]; then
 	fi
 	z4h source --compile "$DOTFILES_DIR/zsh/helpers/fzf-git.zsh"
 	z4h source --compile "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-fzf.plugin.zsh"
+fi
+
+if [[ ${Z4H_USE_FZF_TAB} = true && ${Z4H_STARTUP_PROFILE} == fast ]]; then
+	source "$DOTFILES_DIR/zsh/helpers/fast-startup.zsh"
 fi
 
 #z4h source -c unixorn/jpb.zshplugin/jpb.plugin.zsh
@@ -267,7 +280,7 @@ if [[ ${Z4H_USE_MISE} = true ]]; then
 	z4h source --compile "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-mise.plugin.zsh"
 fi
 
-if [[ ${Z4H_ENABLE_AUTO_GENCOMP} = true ]]; then
+if [[ ${Z4H_ENABLE_AUTO_GENCOMP} = true && ${Z4H_STARTUP_PROFILE} != fast ]]; then
 	z4h source --compile "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-gencomp-lazy.plugin.zsh"
 fi
 
@@ -277,7 +290,7 @@ if [[ "${Z4H_PROMPT}" == "ohmyposh" ]]; then
 	z4h-init-oh-my-posh
 fi
 
-if [[ ${Z4H_USE_FZF_TAB} = true ]]; then
+if [[ ${Z4H_USE_FZF_TAB} = true && ${Z4H_STARTUP_PROFILE} != fast ]]; then
 	# Plugins that wrap ZLE widgets are deliberately loaded last.
 	z4h load -c zdharma-continuum/fast-syntax-highlighting
 	z4h load -c zsh-users/zsh-history-substring-search

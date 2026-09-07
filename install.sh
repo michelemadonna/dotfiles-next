@@ -840,6 +840,7 @@ install_base_links() {
 
 set_interactive_defaults() {
   prompt=powerlevel10k
+  startup_profile_default=default
   editor=micro
   show_fastfetch=false
   use_mise=true
@@ -1303,6 +1304,7 @@ generate_zshenv() {
 
   awk \
     -v intel_package_manager="$generated_intel_package_manager" \
+    -v startup_profile_default="$startup_profile_default" \
     -v prompt="$prompt" \
     -v editor="$editor" \
     -v show_fastfetch="$show_fastfetch" \
@@ -1314,8 +1316,19 @@ generate_zshenv() {
     -v load_ssh_key="$load_ssh_key" \
     -v show_ssh_key="$show_ssh_key" \
     -v askpass_require="$askpass_require" '
+      BEGIN { fixed_startup_profile = 0 }
       /^  export DOTFILES_INTEL_PACKAGE_MANAGER=/ { $0 = "  export DOTFILES_INTEL_PACKAGE_MANAGER=" intel_package_manager; }
-      /^  export Z4H_PROMPT=/ { $0 = "  export Z4H_PROMPT=\"" prompt "\""; }
+      /^  export Z4H_STARTUP_PROFILE_DEFAULT=/ {
+        $0 = "  export Z4H_STARTUP_PROFILE_DEFAULT=" startup_profile_default
+        fixed_startup_profile = 1
+      }
+      /^  export Z4H_PROMPT=/ {
+        if (!fixed_startup_profile) {
+          print "  export Z4H_STARTUP_PROFILE_DEFAULT=" startup_profile_default
+          fixed_startup_profile = 1
+        }
+        $0 = "  export Z4H_PROMPT=\"" prompt "\""
+      }
       /^  export Z4H_SHOW_FASTFETCH=/ { $0 = "  export Z4H_SHOW_FASTFETCH=" show_fastfetch; }
       /^  export Z4H_USE_FZF_TAB=/ {
         if (++fixed_fzf_tab > 1) next
@@ -1336,6 +1349,9 @@ generate_zshenv() {
       /^  export Z4H_SSH_ASKPASS_REQUIRE=/ { $0 = "  export Z4H_SSH_ASKPASS_REQUIRE=" askpass_require; }
       /^  export EDITOR=/ { $0 = "  export EDITOR=\"" editor "\""; }
       { print }
+      END {
+        if (!fixed_startup_profile) print "  export Z4H_STARTUP_PROFILE_DEFAULT=" startup_profile_default
+      }
     ' "$source_file" >| "$temporary_file" || {
     rm -f "$temporary_file"
     die "Cannot generate Zsh environment file: $generated_file"
@@ -1349,6 +1365,7 @@ generate_zshenv() {
 configure_non_interactive() {
   # Keep package selection aligned with the defaults in zsh/.zshenv.init.
   prompt=powerlevel10k
+  startup_profile_default=default
   editor=micro
   show_fastfetch=first
   use_mise=true
@@ -1376,6 +1393,7 @@ load_non_interactive_choices() {
   }
 
   for choice in \
+    'startup_profile_default Z4H_STARTUP_PROFILE_DEFAULT' \
     'prompt Z4H_PROMPT' 'editor EDITOR' 'show_fastfetch Z4H_SHOW_FASTFETCH' \
     'use_mise Z4H_USE_MISE' 'enable_auto_gencomp Z4H_ENABLE_AUTO_GENCOMP' \
     'load_ssh_key Z4H_SSH_LOAD_KEY' \

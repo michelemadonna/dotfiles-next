@@ -125,6 +125,7 @@ DOTFILES_DIR="$TEST_ROOT/generated-dotfiles" sh -c '
   info() { :; }
   generate_zshenv
   grep -q "^  export DOTFILES_INTEL_PACKAGE_MANAGER=homebrew$" "$DOTFILES_DIR/zsh/home/.zshenv"
+  grep -q "^  export Z4H_STARTUP_PROFILE_DEFAULT=default$" "$DOTFILES_DIR/zsh/home/.zshenv"
 ' sh "$TEST_ROOT/install-lib.sh"
 
 privilege_log=$TEST_ROOT/privilege.log
