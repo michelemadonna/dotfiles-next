@@ -121,11 +121,11 @@ fi
 
 
 if [[ ${Z4H_USE_FZF_TAB} = true ]]; then
+	[[ -d $Z4H/zdharma-continuum/fast-syntax-highlighting ]] || \
+		z4h install zdharma-continuum/fast-syntax-highlighting || return
+	[[ -d $Z4H/zsh-users/zsh-history-substring-search ]] || \
+		z4h install zsh-users/zsh-history-substring-search || return
 	if [[ ${Z4H_STARTUP_PROFILE} != fast ]]; then
-		[[ -d $Z4H/zdharma-continuum/fast-syntax-highlighting ]] || \
-			z4h install zdharma-continuum/fast-syntax-highlighting || return
-		[[ -d $Z4H/zsh-users/zsh-history-substring-search ]] || \
-			z4h install zsh-users/zsh-history-substring-search || return
 		[[ -d $Z4H/Aloxaf/fzf-tab ]] || z4h install Aloxaf/fzf-tab || return
 	fi
 fi
@@ -146,6 +146,19 @@ if (( $+commands[brew] )) || [[ -x ${HOMEBREW_BREW:-} ]]; then
 	)
 	typeset -gU fpath
 	unset _z4h_brew_prefix
+fi
+
+# The fast profile loads these ZLE plugins from zle-line-init while z4h can
+# still be building its completion dump in the background. Keep their function
+# directories in fpath from the start so that compinit's cache signature cannot
+# change during that race; the plugins themselves remain lazily loaded.
+if [[ ${Z4H_STARTUP_PROFILE} == fast ]]; then
+	fpath=(
+		$Z4H/zdharma-continuum/fast-syntax-highlighting(N-/)
+		$Z4H/zsh-users/zsh-history-substring-search(N-/)
+		$fpath
+	)
+	typeset -gU fpath
 fi
 
 # Start or reuse an SSH agent and load local private keys.

@@ -711,6 +711,11 @@ mise will be automatically installed at shell startup if it is not already prese
 My mise configuration in `$HOME/.dotfiles/mise` will be automatically linked to `$HOME/.config/mise` during the installation process.
 
 This will load the customized mise integration (with Powerlevel10k segments support and a more convenient completion for using the various runtimes versions) before your plugins.
+Unless `ASDF_DATA_DIR` points to a custom location, Powerlevel10k reads a
+lightweight cache under `${XDG_CACHE_HOME:-$HOME/.cache}/zsh/mise-asdf`
+containing only ASDF-compatible installed Mise runtimes. Successful Mise
+commands that install, select, upgrade, prune, or uninstall runtimes refresh it
+automatically.
 
 If you want to use your own custom mise configuration, remove the symlink or point it to your custom configuration directory.
 

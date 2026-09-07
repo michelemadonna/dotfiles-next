@@ -12,8 +12,13 @@ if (( ! $+commands[mise] )); then
   fi
 fi
 
-#this is needed by powerlevel10k to show the mise segment using asdf segment configuration
-export ASDF_DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/asdf"
+# This lightweight compatibility tree lets Powerlevel10k's asdf segment show
+# ASDF-compatible Mise runtimes without scanning the complete plugin registry.
+local mise_asdf_compat_dir="${XDG_CACHE_HOME:-$HOME/.cache}/zsh/mise-asdf"
+local mise_legacy_asdf_dir="${XDG_DATA_HOME:-$HOME/.local/share}/asdf"
+if [[ -z ${ASDF_DATA_DIR:-} || $ASDF_DATA_DIR == $mise_legacy_asdf_dir ]]; then
+  export ASDF_DATA_DIR=$mise_asdf_compat_dir
+fi
 
 # Cache mise's static activation script. The sourced script still installs the
 # normal precmd/chpwd hook, so hook-env keeps running when the environment may
@@ -34,7 +39,7 @@ _zqs_mise_tool_versions_active() {
 
   [[ -r $file ]] || return 1
   while IFS= read -r line; do
-    line=${line%%#*}
+    line=${line%%\#*}
     fields=(${=line})
     (( $#fields == 0 )) && continue
     (( $#fields == 2 && $fields[2] == system )) || return 0
@@ -42,9 +47,39 @@ _zqs_mise_tool_versions_active() {
   return 1
 }
 
+_zqs_mise_config_needs_activation() {
+  emulate -L zsh
+  setopt extended_glob
+  local file=$1 line value
+  local in_tools=0 saw_tool=0
+
+  [[ -r $file ]] || return 1
+  while IFS= read -r line; do
+    line=${line%%"#"*}
+    line=${${line##[[:space:]]#}%%[[:space:]]#}
+    [[ -n $line ]] || continue
+
+    if [[ $line == '[tools]' ]]; then
+      in_tools=1
+      continue
+    fi
+    [[ $line != \[*\] ]] || return 0
+    (( in_tools )) || return 0
+    [[ $line == *'='* ]] || return 0
+
+    value=${line#*=}
+    value=${${value##[[:space:]]#}%%[[:space:]]#}
+    (( saw_tool = 1 ))
+    [[ $value == '"system"' || $value == "'system'" || $value == system ]] || return 0
+  done < "$file"
+  (( saw_tool )) && return 1
+  return 1
+}
+
 _zqs_mise_context_needs_activation() {
   emulate -L zsh
   local context_dir=$PWD file
+  local global_config=${MISE_GLOBAL_CONFIG_FILE:-${XDG_CONFIG_HOME:-$HOME/.config}/mise/config.toml}
   local -a local_files=(
     .mise.toml
     mise.toml
@@ -70,8 +105,10 @@ _zqs_mise_context_needs_activation() {
     context_dir=${context_dir:h}
   done
 
-  [[ -n ${MISE_CONFIG_FILE:-} || -n ${MISE_ENV:-} ]] && return 0
-  [[ -s ${XDG_CONFIG_HOME:-$HOME/.config}/mise/config.toml ]] && return 0
+  [[ -n ${MISE_CONFIG_FILE:-} || -n ${MISE_ENV:-} ||
+     -n ${MISE_DEFAULT_CONFIG_FILENAME:-} ||
+     -n ${MISE_OVERRIDE_CONFIG_FILENAMES:-} ]] && return 0
+  _zqs_mise_config_needs_activation "$global_config" && return 0
   _zqs_mise_tool_versions_active "$HOME/.tool-versions"
 }
 
@@ -187,7 +224,9 @@ fi
 
 unset mise_binary mise_cache_dir mise_activate_cache mise_activate_tmp mise_activate_raw_tmp
 unset mise_initial_hook_deferred mise_refresh_seconds mise_path_before_activation
-unfunction _zqs_mise_tool_versions_active _zqs_mise_context_needs_activation 2>/dev/null
+unset mise_asdf_compat_dir mise_legacy_asdf_dir
+unfunction _zqs_mise_tool_versions_active _zqs_mise_config_needs_activation \
+  _zqs_mise_context_needs_activation 2>/dev/null
 
 asdf() {
   command mise --quiet "$@"
@@ -345,9 +384,14 @@ _mise_runtime_to_asdf() {
 
   print -r -- "$runtime $version" >> "$file"
 }
+
+_zqs_refresh_mise_asdf_compat() {
+  command sh "$DOTFILES_DIR/zsh/helpers/prepare-mise-cache.sh" --asdf-only
+}
+
 export MISE_QUIET=1
 mise () {
-  if [[ "$1" == "use" ]]; then
+  if [[ "$1" == use || "$1" == u ]]; then
     shift
     local global_flag=""
     if [[ "$1" == "-g" ]]; then
@@ -362,13 +406,18 @@ mise () {
     if [[ -n "$runtime_spec" ]]; then
       _mise_runtime_to_asdf "$runtime_spec" "$global_flag"
     fi
+    _zqs_refresh_mise_asdf_compat || return
     typeset -gi _ZQS_MISE_REFRESH_REQUIRED=1
-  elif [[ "$1" == "install" ]]; then
+  elif [[ "$1" == install || "$1" == i || "$1" == uninstall ||
+          "$1" == prune || "$1" == upgrade || "$1" == up ]]; then
     export MISE_QUIET=0
     mise_orig "$@"
     local mise_status=$?
     export MISE_QUIET=1
-    (( mise_status == 0 )) && typeset -gi _ZQS_MISE_REFRESH_REQUIRED=1
+    if (( mise_status == 0 )); then
+      _zqs_refresh_mise_asdf_compat || return
+      typeset -gi _ZQS_MISE_REFRESH_REQUIRED=1
+    fi
     return $mise_status
   else
     mise_orig "$@"

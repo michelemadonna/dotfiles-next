@@ -28,9 +28,9 @@ initialization only when both Homebrew and MacPorts are installed. The
 persisted `DOTFILES_INTEL_PACKAGE_MANAGER` preference also keeps automatic
 non-interactive tool installation on the selected backend. Interactive startup restores
 `$HOME/.local/bin` before z4h initialization because macOS's `/etc/zprofile`
-can rebuild `PATH` after `.zshenv`. Mise activation/completion caches and ASDF
-plugin compatibility data are prepared by
-`zsh/helpers/prepare-mise-cache.sh`.
+can rebuild `PATH` after `.zshenv`. Mise activation/completion caches and a
+minimal ASDF compatibility tree for ASDF-compatible installed Mise runtimes
+are prepared by `zsh/helpers/prepare-mise-cache.sh`.
 Loading the cached Mise activation preserves any entries already present in
 the current startup `PATH`, since the generated activation script contains the
 environment that was active when the cache was created.
