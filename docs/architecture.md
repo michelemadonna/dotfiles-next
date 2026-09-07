@@ -62,7 +62,9 @@ order, including z4h's bundled fzf. `fast` applies
 managed local fzf and loads fzf-tab, picker widgets, fzf-git, and optional ZLE
 features on first use. Its initial fallback for `Tab` is normal completion;
 the first `Ctrl-R`, `Ctrl-T`, `Alt-C`, `Ctrl-G`, or `Shift-Tab` loads the
-corresponding local integration.
+corresponding local integration. z4h owns autosuggestions and their redraw
+state in both profiles; only syntax highlighting and history substring search
+are replaced by separately loaded plugins.
 
 ## Shell contracts
 

@@ -87,12 +87,8 @@ z4h_fast_load_zle_features() {
 	if [[ ! -d $Z4H/zsh-users/zsh-history-substring-search ]]; then
 		z4h install zsh-users/zsh-history-substring-search || return 1
 	fi
-	if [[ ! -d $Z4H/zsh-users/zsh-autosuggestions ]]; then
-		z4h install zsh-users/zsh-autosuggestions || return 1
-	fi
 	z4h load -c zdharma-continuum/fast-syntax-highlighting || return 1
 	z4h load -c zsh-users/zsh-history-substring-search || return 1
-	z4h load -c zsh-users/zsh-autosuggestions || return 1
 
 	typeset -g Z4H_FAST_ZLE_LOADED=true
 	return 0

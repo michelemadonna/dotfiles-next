@@ -308,9 +308,10 @@ The installer persists `Z4H_STARTUP_PROFILE_DEFAULT=default`. The default
 profile is the normal as-is startup path, including z4h's bundled fzf and the
 eager fzf-tab and picker integrations. Set `Z4H_STARTUP_PROFILE=fast` for an
 opt-in faster shell; this leaves the persisted default unchanged and defers
-fzf-tab, pickers, fzf-git, syntax highlighting, autosuggestions, history
-search, and generated completions until first use. Fastfetch and SSH remain
-synchronous in both profiles.
+fzf-tab, pickers, fzf-git, syntax highlighting, history search, and generated
+completions until first use. Autosuggestions remain managed natively by z4h in
+both profiles so their ghost text stays synchronized with z4h's redraw cycle.
+Fastfetch and SSH remain synchronous in both profiles.
 
 ### Intel macOS package providers
 

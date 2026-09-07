@@ -72,10 +72,17 @@ fi
 
 if [[ ${Z4H_USE_FZF_TAB} = true ]]; then
 	# These z4h components are replaced below so that their ZLE load order matches
-	# the former Quickstart configuration. z4h still supplies fzf and completions.
+	# the former Quickstart configuration. z4h still supplies fzf, completions,
+	# and its redraw-integrated autosuggestions.
 	zstyle ':z4h:zsh-syntax-highlighting' channel none
 	zstyle ':z4h:zsh-history-substring-search' channel none
-	zstyle ':z4h:zsh-autosuggestions' channel none
+fi
+
+# `channel none` creates an empty package directory. Remove that legacy
+# placeholder once so z4h can install its native autosuggestions below.
+if [[ -d $Z4H/zsh-autosuggestions &&
+	! -f $Z4H/zsh-autosuggestions/zsh-autosuggestions.zsh ]]; then
+	rmdir -- "$Z4H/zsh-autosuggestions" 2>/dev/null || return
 fi
 
 
@@ -119,8 +126,6 @@ if [[ ${Z4H_USE_FZF_TAB} = true ]]; then
 			z4h install zdharma-continuum/fast-syntax-highlighting || return
 		[[ -d $Z4H/zsh-users/zsh-history-substring-search ]] || \
 			z4h install zsh-users/zsh-history-substring-search || return
-		[[ -d $Z4H/zsh-users/zsh-autosuggestions ]] || \
-			z4h install zsh-users/zsh-autosuggestions || return
 		[[ -d $Z4H/Aloxaf/fzf-tab ]] || z4h install Aloxaf/fzf-tab || return
 	fi
 fi
@@ -294,7 +299,6 @@ if [[ ${Z4H_USE_FZF_TAB} = true && ${Z4H_STARTUP_PROFILE} != fast ]]; then
 	# Plugins that wrap ZLE widgets are deliberately loaded last.
 	z4h load -c zdharma-continuum/fast-syntax-highlighting
 	z4h load -c zsh-users/zsh-history-substring-search
-	z4h load -c zsh-users/zsh-autosuggestions
 
 	#bindkey '^I' fzf_tab_no_space_after_at
 fi
