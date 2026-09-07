@@ -967,7 +967,7 @@ _z4h_fzf_git_context() {
             elif [[ $source_set == true ]]; then
                 _z4h_fzf_git_set_context files files true path
             else
-                _z4h_fzf_git_set_context all files,branches,tags,hashes,refs false restore
+                _z4h_fzf_git_set_context files files true restore
             fi
             ;;
         add)

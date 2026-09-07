@@ -514,6 +514,8 @@ refspecs after a remote; Hashes for show, log, reset, cherry-pick, and revert;
 and Files for pathspec
 contexts. Branch deletion, upstream and description operands use Branches;
 worktree removal, locking, unlocking, and moving use Worktrees. Plain
+`git restore TAB` starts Files, while `git restore --source TAB` starts
+Each-ref before returning to file selection. Plain
 `git branch TAB` and `git worktree TAB` still delegate to normal completion
 because Git expects a new branch name or a worktree subcommand there.
 

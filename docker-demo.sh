@@ -28,5 +28,5 @@ case $source_mode in
     exit 2
     ;;
 esac
-
+#
 exec docker run --rm -it "$image_name"
