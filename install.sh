@@ -1337,7 +1337,7 @@ generate_zshenv() {
       /^  export Z4H_SSH_LOAD_KEY=/ { $0 = "  export Z4H_SSH_LOAD_KEY=" load_ssh_key; }
       /^  export Z4H_SSH_SHOW_KEY=/ { $0 = "  export Z4H_SSH_SHOW_KEY=" show_ssh_key; }
       /^  export Z4H_SSH_ASKPASS_REQUIRE=/ { $0 = "  export Z4H_SSH_ASKPASS_REQUIRE=" askpass_require; }
-      /^  export EDITOR=/ { $0 = "  export EDITOR=\"" editor "\""; }
+      /^[[:space:]]*export EDITOR=/ { $0 = "  export EDITOR=\"" editor "\""; }
       { print }
     ' "$source_file" >| "$temporary_file" || {
     rm -f "$temporary_file"
@@ -1368,8 +1368,8 @@ load_non_interactive_choices() {
 
   value_from_choices() {
     awk -v variable="$1" '
-      $0 ~ "^  export " variable "=" {
-        sub("^  export " variable "=", "")
+      $0 ~ "^[[:space:]]*export " variable "=" {
+        sub("^[[:space:]]*export " variable "=", "")
         sub(/[[:space:]]+#.*/, "")
         gsub(/^"|"$/, "")
         print
@@ -1388,14 +1388,6 @@ load_non_interactive_choices() {
     choice_value=$(value_from_choices "$choice_variable")
     [ -n "$choice_value" ] && eval "$choice_name=\$choice_value"
   done
-}
-
-apply_bootstrap_overrides() {
-  case ${DOTFILES_BOOTSTRAP_EDITOR-} in
-    '') ;;
-    micro | fresh | vim | nano) editor=$DOTFILES_BOOTSTRAP_EDITOR ;;
-    *) die "Unsupported DOTFILES_BOOTSTRAP_EDITOR value: $DOTFILES_BOOTSTRAP_EDITOR" ;;
-  esac
 }
 
 install_editor() {
@@ -1591,7 +1583,6 @@ apply_installation() {
 
   if is_non_interactive; then
     load_non_interactive_choices
-    apply_bootstrap_overrides
   fi
   set_fixed_preferences
 

@@ -54,8 +54,7 @@ integration. Startup checks that this binary is at least fzf 0.66 and reruns
 the non-interactive updater when it is older.
 Mise uses the official installer on macOS and Linux, then prepares activation,
 completion, and ASDF compatibility data. The startup helper can invoke the
-installer once when a selected tool is missing and passes its active editor
-selection to that repair run.
+installer once when a selected tool is missing.
 
 Managed destinations are backed up as `.backup.YYYYMMDDhhmmss`; existing
 correct symbolic links are retained. Base packages and fonts are guarded by:

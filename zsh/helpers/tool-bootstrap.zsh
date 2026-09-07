@@ -81,7 +81,7 @@ z4h_bootstrap_tools() {
 
   if [[ $needs_install == true && -f $DOTFILES_DIR/install.sh ]]; then
     z4h_bootstrap_log "$Z4H_BOOTSTRAP_CYAN" '●' 'INFO' 'A selected tool is missing; starting non-interactive installation.'
-    if DOTFILES_BOOTSTRAP_EDITOR=$EDITOR command sh "$DOTFILES_DIR/install.sh" non-interactive; then
+    if command sh "$DOTFILES_DIR/install.sh" non-interactive; then
       z4h_bootstrap_log "$Z4H_BOOTSTRAP_GREEN" '✓' 'DONE' 'Non-interactive installation completed.'
     else
       z4h_bootstrap_log "$Z4H_BOOTSTRAP_RED" '✕' 'ERROR' 'Non-interactive installation failed; continuing Zsh startup.'

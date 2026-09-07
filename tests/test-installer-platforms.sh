@@ -127,25 +127,23 @@ DOTFILES_DIR="$TEST_ROOT/generated-dotfiles" sh -c '
   grep -q "^  export DOTFILES_INTEL_PACKAGE_MANAGER=homebrew$" "$DOTFILES_DIR/zsh/home/.zshenv"
 ' sh "$TEST_ROOT/install-lib.sh"
 
-bootstrap_editor_result=$(
-  DOTFILES_DIR="$TEST_ROOT/generated-dotfiles" DOTFILES_BOOTSTRAP_EDITOR=fresh sh -c '
+sed 's/^  export EDITOR=.*/export EDITOR=fresh/' \
+  "$TEST_ROOT/generated-dotfiles/zsh/home/.zshenv" \
+  >"$TEST_ROOT/generated-dotfiles/zsh/home/.zshenv.edited"
+mv "$TEST_ROOT/generated-dotfiles/zsh/home/.zshenv.edited" \
+  "$TEST_ROOT/generated-dotfiles/zsh/home/.zshenv"
+editor_install_result=$(
+  DOTFILES_DIR="$TEST_ROOT/generated-dotfiles" sh -c '
     . "$1"
     configure_non_interactive
     load_non_interactive_choices
-    apply_bootstrap_overrides
-    printf "%s\n" "$editor"
+    selected_editor_available() { return 1; }
+    install_fresh() { printf "INSTALL:%s\n" "$editor"; }
+    link_editor_config() { :; }
+    install_editor
   ' sh "$TEST_ROOT/install-lib.sh"
 )
-assert_equal "$bootstrap_editor_result" fresh
-
-invalid_bootstrap_editor=$(
-  DOTFILES_BOOTSTRAP_EDITOR=unsupported sh -c '
-    . "$1"
-    die() { printf "DIE:%s\n" "$*"; exit 1; }
-    apply_bootstrap_overrides
-  ' sh "$TEST_ROOT/install-lib.sh" 2>&1 || true
-)
-assert_equal "$invalid_bootstrap_editor" 'DIE:Unsupported DOTFILES_BOOTSTRAP_EDITOR value: unsupported'
+assert_equal "$editor_install_result" 'INSTALL:fresh'
 
 privilege_log=$TEST_ROOT/privilege.log
 PRIVILEGE_LOG=$privilege_log sh -c '
@@ -505,7 +503,7 @@ mkdir -p "$bootstrap_root"
 # shellcheck disable=SC2016
 printf '%s\n' \
   '#!/bin/sh' \
-  'printf "%s:%s\n" "${DOTFILES_BOOTSTRAP_EDITOR-}" "$*" >>"$BOOTSTRAP_LOG"' \
+  'printf "%s\n" "$*" >>"$BOOTSTRAP_LOG"' \
   >"$bootstrap_root/install.sh"
 chmod +x "$bootstrap_root/install.sh"
 BOOTSTRAP_LOG=$bootstrap_log \
@@ -523,7 +521,7 @@ BOOTSTRAP_LOG=$bootstrap_log \
     uname() { print -r -- x86_64; }
     source "$1"
   ' zsh "$ROOT/zsh/helpers/tool-bootstrap.zsh"
-assert_equal "$(cat "$bootstrap_log")" 'vim:non-interactive'
+assert_equal "$(cat "$bootstrap_log")" 'non-interactive'
 
 mkdir -p "$TEST_ROOT/bootstrap-macports/bin"
 printf '#!/bin/sh\nexit 0\n' >"$TEST_ROOT/bootstrap-macports/bin/vim"
@@ -542,7 +540,7 @@ BOOTSTRAP_LOG=$bootstrap_log \
     Z4H_USE_FZF_FROM_Z4H=true
     source "$1"
   ' zsh "$ROOT/zsh/helpers/tool-bootstrap.zsh"
-assert_equal "$(cat "$bootstrap_log")" 'vim:non-interactive'
+assert_equal "$(cat "$bootstrap_log")" 'non-interactive'
 
 mise_log=$TEST_ROOT/mise-install.log
 mkdir -p "$TEST_ROOT/mise-bin" "$TEST_ROOT/mise-home" "$TEST_ROOT/mise-dotfiles/mise"
