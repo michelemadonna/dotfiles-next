@@ -1371,6 +1371,11 @@ load_non_interactive_choices() {
       $0 ~ "^[[:space:]]*export " variable "=" {
         sub("^[[:space:]]*export " variable "=", "")
         sub(/[[:space:]]+#.*/, "")
+        default_prefix = "${" variable ":="
+        if (index($0, default_prefix) == 1 && substr($0, length($0), 1) == "}") {
+          $0 = substr($0, length(default_prefix) + 1,
+                      length($0) - length(default_prefix) - 1)
+        }
         gsub(/^"|"$/, "")
         print
         exit

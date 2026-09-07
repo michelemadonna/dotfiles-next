@@ -59,11 +59,7 @@ if [ -n "${ZSH_VERSION-}" ]; then
   
   
 
-  case ${EDITOR:-} in
-    vim|nano|fresh|micro) ;;
-    *) EDITOR=micro ;;
-  esac
-  export EDITOR=${EDITOR:="micro"}
+  export EDITOR="micro"
   export VISUAL="$EDITOR"
 
   export VIMINIT='source ~/.config/vim/vimrc'

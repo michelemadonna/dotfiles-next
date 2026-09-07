@@ -127,7 +127,8 @@ DOTFILES_DIR="$TEST_ROOT/generated-dotfiles" sh -c '
   grep -q "^  export DOTFILES_INTEL_PACKAGE_MANAGER=homebrew$" "$DOTFILES_DIR/zsh/home/.zshenv"
 ' sh "$TEST_ROOT/install-lib.sh"
 
-sed 's/^  export EDITOR=.*/export EDITOR=fresh/' \
+# shellcheck disable=SC2016
+sed 's/^  export EDITOR=.*/  export EDITOR=${EDITOR:="fresh"}/' \
   "$TEST_ROOT/generated-dotfiles/zsh/home/.zshenv" \
   >"$TEST_ROOT/generated-dotfiles/zsh/home/.zshenv.edited"
 mv "$TEST_ROOT/generated-dotfiles/zsh/home/.zshenv.edited" \
