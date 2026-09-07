@@ -480,6 +480,20 @@ macports_fresh_result=$(
 )
 assert_equal "$macports_fresh_result" 'INFO:fresh already installed; skipping installation'
 
+macports_fresh_install_result=$(
+  sh -c '
+    . "$1"
+    PLATFORM=macos
+    PACKAGE_MANAGER=macports
+    editor=fresh
+    selected_tool_available() { return 1; }
+    link_editor_config() { :; }
+    install_macports_ports() { printf "PORTS:%s\n" "$*"; }
+    install_editor
+  ' sh "$TEST_ROOT/install-lib.sh"
+)
+assert_equal "$macports_fresh_install_result" 'PORTS:fresh'
+
 macports_optional_tools_result=$(
   HOMEBREW_PREFIX=$alternate_brew_prefix sh -c '
     . "$1"

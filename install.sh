@@ -1477,7 +1477,7 @@ install_micro() {
 
 install_fresh() {
   if [ "$PACKAGE_MANAGER" = macports ]; then
-    install_macports_ports fresh-editor
+    install_macports_ports fresh
   elif [ "$PACKAGE_MANAGER" = homebrew ]; then
     brew install -y fresh-editor
   else
