@@ -8,7 +8,10 @@
 # user-local bin directory before z4h installs or initializes any plugins.
 path=("$HOME/.local/bin" $path)
 typeset -gU path PATH
-rehash
+if [[ ${_Z4H_PATH_SNAPSHOT-} != "$PATH" ]]; then
+	rehash
+	typeset -g _Z4H_PATH_SNAPSHOT="$PATH"
+fi
 
 if [[ -z ${TMUX:-} ]]; then
   export TERM=xterm-256color
@@ -84,7 +87,7 @@ fi
 # example. If you don't plan to use Oh My Zsh, delete this line.
 
 if [[ ${Z4H_ENABLE_OH_MY_ZSH} = true ]]; then
-	z4h install ohmyzsh/ohmyzsh || return
+	[[ -d $Z4H/ohmyzsh/ohmyzsh ]] || z4h install ohmyzsh/ohmyzsh || return
 fi
 
 #z4h install unixorn/jpb.zshplugin@main || return
@@ -98,20 +101,24 @@ fi
 #z4h install StackExchange/blackbox || return
 #z4h install sharat87/pip-app || return
 if [[ ${Z4H_ENABLE_AUTO_GENCOMP} = true ]]; then
-	z4h install RobSis/zsh-completion-generator || return #only install
+	[[ -d $Z4H/RobSis/zsh-completion-generator ]] || \
+		z4h install RobSis/zsh-completion-generator || return #only install
 fi
 
 
 if [[ ${Z4H_USE_FZF_TAB} = true ]]; then
-	z4h install zdharma-continuum/fast-syntax-highlighting || return
-	z4h install zsh-users/zsh-history-substring-search || return
-	z4h install zsh-users/zsh-autosuggestions || return
-	z4h install Aloxaf/fzf-tab || return
+	[[ -d $Z4H/zdharma-continuum/fast-syntax-highlighting ]] || \
+		z4h install zdharma-continuum/fast-syntax-highlighting || return
+	[[ -d $Z4H/zsh-users/zsh-history-substring-search ]] || \
+		z4h install zsh-users/zsh-history-substring-search || return
+	[[ -d $Z4H/zsh-users/zsh-autosuggestions ]] || \
+		z4h install zsh-users/zsh-autosuggestions || return
+	[[ -d $Z4H/Aloxaf/fzf-tab ]] || z4h install Aloxaf/fzf-tab || return
 fi
 
 # Load the conditional Intel MacPorts/Homebrew plugin before z4h initializes
 # completion and before fzf-tab is loaded.
-z4h source "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-pkgmng.plugin.zsh"
+z4h source --compile "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-pkgmng.plugin.zsh"
 
 # Homebrew's native completion must be visible when z4h runs compinit. It
 # provides the formula and cask candidates for `brew install`, unlike a
@@ -233,10 +240,10 @@ if [[ ${Z4H_USE_FZF_TAB} = true ]]; then
 
 	if [[ ${Z4H_FZF_GIT_VENDOR_LOADED:-false} != true ]]; then
 		typeset -g Z4H_FZF_GIT_VENDOR_LOADED=true
-		z4h source "$DOTFILES_DIR/zsh/vendor/fzf-git.sh"
+		z4h source --compile "$DOTFILES_DIR/zsh/vendor/fzf-git.sh"
 	fi
-	z4h source "$DOTFILES_DIR/zsh/helpers/fzf-git.zsh"
-	z4h source "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-fzf.plugin.zsh"
+	z4h source --compile "$DOTFILES_DIR/zsh/helpers/fzf-git.zsh"
+	z4h source --compile "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-fzf.plugin.zsh"
 fi
 
 #z4h source -c unixorn/jpb.zshplugin/jpb.plugin.zsh
@@ -253,20 +260,20 @@ fi
 #z4h source -c sharat87/pip-app/pip-app.sh
 
 # Local plugins. The last file applies final widget and environment settings.
-z4h source "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-eza.plugin.zsh"
-z4h source "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-misc.plugin.zsh"
-z4h source "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-containers.plugin.zsh"
+z4h source --compile "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-eza.plugin.zsh"
+z4h source --compile "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-misc.plugin.zsh"
+z4h source --compile "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-containers.plugin.zsh"
 if [[ ${Z4H_USE_MISE} = true ]]; then
-	z4h source "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-mise.plugin.zsh"
+	z4h source --compile "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-mise.plugin.zsh"
 fi
 
 if [[ ${Z4H_ENABLE_AUTO_GENCOMP} = true ]]; then
-	z4h source "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-gencomp-lazy.plugin.zsh"
+	z4h source --compile "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-gencomp-lazy.plugin.zsh"
 fi
 
 if [[ "${Z4H_PROMPT}" == "ohmyposh" ]]; then
 	export Z4H_OH_MY_POSH_CONFIG=${Z4H_OH_MY_POSH_CONFIG:="$HOME/.config/oh-my-posh/custom.omp.json"}
-	z4h source "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-oh-my-posh.plugin.zsh"
+	z4h source --compile "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-oh-my-posh.plugin.zsh"
 	z4h-init-oh-my-posh
 fi
 

@@ -25,6 +25,55 @@ local mise_activate_tmp="$mise_activate_cache.${$}.tmp"
 local mise_activate_raw_tmp="$mise_activate_cache.${$}.raw"
 local mise_initial_hook_deferred=0
 local -a mise_path_before_activation=($path)
+local mise_path_before_rehash=$PATH
+
+_zqs_mise_tool_versions_active() {
+  emulate -L zsh
+  local file=$1 line
+  local -a fields
+
+  [[ -r $file ]] || return 1
+  while IFS= read -r line; do
+    line=${line%%#*}
+    fields=(${=line})
+    (( $#fields == 0 )) && continue
+    (( $#fields == 2 && $fields[2] == system )) || return 0
+  done < "$file"
+  return 1
+}
+
+_zqs_mise_context_needs_activation() {
+  emulate -L zsh
+  local context_dir=$PWD file
+  local -a local_files=(
+    .mise.toml
+    mise.toml
+    mise.local.toml
+    .node-version
+    .nvmrc
+    .ruby-version
+    .python-version
+    .java-version
+    .go-version
+    .terraform-version
+  )
+
+  while [[ -n $context_dir ]]; do
+    for file in ${local_files[@]}; do
+      [[ -f $context_dir/$file ]] && return 0
+    done
+    if [[ -f $context_dir/.tool-versions ]] &&
+       _zqs_mise_tool_versions_active "$context_dir/.tool-versions"; then
+      return 0
+    fi
+    [[ $context_dir == / ]] && break
+    context_dir=${context_dir:h}
+  done
+
+  [[ -n ${MISE_CONFIG_FILE:-} || -n ${MISE_ENV:-} ]] && return 0
+  [[ -s ${XDG_CONFIG_HOME:-$HOME/.config}/mise/config.toml ]] && return 0
+  _zqs_mise_tool_versions_active "$HOME/.tool-versions"
+}
 
 if [[ ! -s $mise_activate_cache || $mise_binary -nt $mise_activate_cache ]]; then
   [[ -d $mise_cache_dir ]] || command mkdir -p "$mise_cache_dir"
@@ -46,6 +95,7 @@ fi
 if [[ -s $mise_activate_cache ]]; then
   source "$mise_activate_cache"
   mise_initial_hook_deferred=1
+  _zqs_mise_context_needs_activation || mise_initial_hook_deferred=0
 else
   eval "$(command "$mise_binary" --quiet activate zsh)"
 fi
@@ -55,7 +105,8 @@ fi
 # later by shell startup (notably ~/.local/bin and Homebrew on macOS).
 path=(${path:|mise_path_before_activation} $mise_path_before_activation)
 typeset -gU path PATH
-rehash
+[[ $PATH == $mise_path_before_rehash ]] || rehash
+unset mise_path_before_rehash
 
 typeset -ga precmd_functions chpwd_functions
 if (( $+functions[_mise_hook_precmd] && $+functions[_mise_hook_chpwd] )); then
@@ -136,6 +187,7 @@ fi
 
 unset mise_binary mise_cache_dir mise_activate_cache mise_activate_tmp mise_activate_raw_tmp
 unset mise_initial_hook_deferred mise_refresh_seconds mise_path_before_activation
+unfunction _zqs_mise_tool_versions_active _zqs_mise_context_needs_activation 2>/dev/null
 
 asdf() {
   command mise --quiet "$@"
@@ -229,7 +281,9 @@ _zqs_mise_completion() {
 
       if (( $+commands[fzf] )); then
         chosen=$(print -r -- "$versions" |
-          fzf --ansi --prompt="Select version > " --height=20 --reverse)
+          FZF_DEFAULT_OPTS= command fzf \
+            --ansi --prompt="Select version > " --height=20 --reverse --cycle \
+            --bind='tab:down,btab:up')
         if [[ -n $chosen ]]; then
           compadd -Q -S '' -- "${runtime}@${chosen}"
         fi

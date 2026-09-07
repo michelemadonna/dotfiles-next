@@ -52,7 +52,7 @@ if [ -n "${ZSH_VERSION-}" ]; then
   fi
   path=("$HOME/.local/bin" $path)
   typeset -gU path PATH
-  rehash
+  typeset -g _Z4H_PATH_SNAPSHOT="$PATH"
 
   (( $+commands[python3] )) && alias python='command python3'
 
