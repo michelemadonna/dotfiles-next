@@ -390,10 +390,10 @@
     fi
 
     # Styling for different parts of Git status.
-    local       meta='%F{#E0DEF4}'
+    local       meta='%F{#262B44}'
     local      clean='%F{#262B44}'
     local   modified='%F{#262B44}'
-    local conflicted='%F{#D81E5B}'
+    local conflicted='%F{#262B44}'
 
     local res
 
@@ -1874,7 +1874,7 @@
   typeset -g POWERLEVEL9K_VCS_MODIFIED_BACKGROUND='#F3AE35'
   typeset -g POWERLEVEL9K_VCS_CONFLICTED_BACKGROUND='#D81E5B'
   typeset -g POWERLEVEL9K_VCS_LOADING_BACKGROUND='#262B44'
-  typeset -g POWERLEVEL9K_VCS_{CLEAN,UNTRACKED,MODIFIED,CONFLICTED}_FOREGROUND='#262B44'
+  typeset -g POWERLEVEL9K_VCS_{CLEAN,UNTRACKED,MODIFIED,CONFLICTED,LOADING}_FOREGROUND='#262B44'
   typeset -g POWERLEVEL9K_VCS_GIT_GITHUB_ICON=$'\uF408'
   typeset -g POWERLEVEL9K_VCS_BRANCH_ICON=$'\uE0A0'
   typeset -g POWERLEVEL9K_VCS_LEFT_SEGMENT_SEPARATOR='%k\uE0B0'
