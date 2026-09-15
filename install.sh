@@ -1439,6 +1439,12 @@ install_editor() {
 selected_tool_available() {
   selected_tool=$1
   if [ "$PLATFORM" != macos ]; then
+    if [ "$selected_tool" = vim ]; then
+      selected_vim=$(command -v vim 2>/dev/null || true)
+      [ -n "$selected_vim" ] &&
+        "$selected_vim" --version 2>/dev/null | grep -q -- '+eval'
+      return
+    fi
     command -v "$selected_tool" >/dev/null 2>&1 || [ -x "$HOME/.local/bin/$selected_tool" ]
     return
   fi

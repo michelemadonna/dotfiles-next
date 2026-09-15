@@ -44,6 +44,10 @@ zstyle ':z4h:autosuggestions' forward-char 'accept'
 # Recursively traverse directories when TAB-completing files.
 zstyle ':z4h:fzf-complete' recurse-dirs 'no'
 
+# Keep z4h's generated completion dump out of ZDOTDIR, which points to the
+# repository's persistent shell sources.
+zstyle ':z4h:compinit' dump-path "${XDG_CACHE_HOME:-$HOME/.cache}/zsh/zcompdump-${EUID}-${ZSH_VERSION}"
+
 # Enable direnv to automatically source .envrc files.
 zstyle ':z4h:direnv'         enable 'no'
 # Show "loading" and "unloading" notifications from direnv.

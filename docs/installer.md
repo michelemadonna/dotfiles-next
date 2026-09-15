@@ -42,7 +42,9 @@ pinned zsh4humans v5 `.zshenv` source and saved at that path before loading.
 
 ## Tools and state
 
-The selected editor may be `vim`, `nano`, `fresh`, or `micro`. macOS installs
+The selected editor may be `vim`, `nano`, `fresh`, or `micro`. The Vim choice
+requires the full Vim package (`+eval`); Ubuntu's `vi`/`vim-tiny` is not
+supported. macOS installs
 the selected editor with its architecture-selected package manager and Linux
 uses APT; the configuration is linked to
 `~/.config/nano` and its backups are stored in `~/.cache/nano/backups`. Vim's
