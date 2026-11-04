@@ -2,6 +2,7 @@
 # This only works if it's at the top of ssh_config (before any Host blocks).
 # This won't be added again if you remove it.
 Include ~/.orbstack/ssh/config
+Include ~/.ssh/local.sshconfig
 
 # Default settings for all SSH connections
 Host *
@@ -17,5 +18,4 @@ Host *
     ControlPath ~/.ssh/control-%r@%h:%p  # Socket for multiplexing
     ControlPersist 10m        # Keep connection open for 10 minutes after use
 
-Include ~/.ssh/local.sshconfig
 
