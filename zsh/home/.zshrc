@@ -393,7 +393,6 @@ if [[ ${Z4H_SSH_SHOW_KEY:-false} == true ]]; then
 fi
 unset _ZQS_SSH_KEYS _ZQS_SSH_KEYS_STATUS _ZQS_SSH_KEYS_VALID
 
-
 if [[ -f ${HOME}/.z4h-zprof-enabled ]]; then
   zprof
 fi

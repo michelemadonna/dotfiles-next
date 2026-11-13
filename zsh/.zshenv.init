@@ -1,11 +1,11 @@
-
+# zshenv useb by installer
 if [[ -f ${HOME}/.z4h-zprof-enabled ]]; then
   zmodload zsh/zprof
 fi
 
 if [ -n "${ZSH_VERSION-}" ]; then
   export Z4H_PROMPT=${Z4H_PROMPT:="powerlevel10k"} # powerlevel10k/ohmyposh/minimal
-  export Z4H_STARTUP_PROFILE_DEFAULT=${Z4H_STARTUP_PROFILE_DEFAULT:=default} # default/fast
+  export Z4H_STARTUP_PROFILE_DEFAULT=${Z4H_STARTUP_PROFILE_DEFAULT:=fast} # fast/default
   case $Z4H_STARTUP_PROFILE_DEFAULT in
     default|fast) ;;
     *) export Z4H_STARTUP_PROFILE_DEFAULT=default ;;
