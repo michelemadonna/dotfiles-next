@@ -234,3 +234,45 @@ EOF
   zle -N __keybinds
   bindkey '^K' __keybinds
 fi
+
+function app-reset-permissions() {
+  if (( $# == 0 )); then
+    echo "Usage: app-reset-permissions <App Name|/path/App.app>"
+    return 1
+  fi
+
+  local app="$*"
+  local app_path bundle_id
+
+  if [[ "$app" == *.app && -d "$app" ]]; then
+    app_path="$app"
+  else
+    app_path=$(mdfind "kMDItemContentType == 'com.apple.application-bundle' && kMDItemDisplayName == '$app'" | head -n 1)
+
+    if [[ -z "$app_path" ]]; then
+      app_path="/Applications/${app}.app"
+    fi
+  fi
+
+  if [[ ! -d "$app_path" ]]; then
+    echo "Application not found: $app"
+    return 1
+  fi
+
+  bundle_id=$(
+    /usr/libexec/PlistBuddy \
+      -c 'Print :CFBundleIdentifier' \
+      "$app_path/Contents/Info.plist" 2>/dev/null
+  )
+
+  if [[ -z "$bundle_id" ]]; then
+    echo "Unable to determine Bundle ID for: $app_path"
+    return 1
+  fi
+
+  echo "App:       $app_path"
+  echo "Bundle ID: $bundle_id"
+  echo "Resetting TCC permissions..."
+
+  tccutil reset All "$bundle_id"
+}

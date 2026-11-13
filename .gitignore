@@ -39,3 +39,6 @@ zsh/home/.zsh_history
 zsh/home/.zshenv
 vim/autoload/plug.vim
 zsh/home/.zshenv_z4h
+fresh/tsconfig.json
+fresh/types/fresh.d.ts
+fresh/types/plugins.d.ts

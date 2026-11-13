@@ -14,7 +14,7 @@ z4h_bootstrap_log() {
 z4h_link_config() {
   local source_path=$1 destination=$2
   [[ -e $source_path ]] || return 0
-  command mkdir -p -- "${destination:h}" 2>/dev/null || return 0
+  [[ -d ${destination:h} ]] || command mkdir -p -- "${destination:h}" 2>/dev/null || return 0
   [[ -L $destination && $destination:A == $source_path:A ]] && return 0
   command ln -sfn -- "$source_path" "$destination" 2>/dev/null || true
 }
@@ -49,11 +49,20 @@ z4h_selected_tool_available() {
 }
 
 z4h_fzf_is_current() {
-  local fzf_bin=$HOME/.local/bin/fzf version
+  local fzf_bin=$HOME/.local/bin/fzf version marker marker_dir
   [[ -d $HOME/.local/share/fzf/.git && -x $fzf_bin ]] || return 1
-  version=$($fzf_bin --version 2>/dev/null) || return 1
+  marker="${ZSH_CACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/zsh}/dotfiles-next/fzf-version"
+  if [[ ! -s $marker || $fzf_bin -nt $marker ]]; then
+    version=$($fzf_bin --version 2>/dev/null) || return 1
+    marker_dir=${marker:h}
+    if [[ -d $marker_dir ]] || command mkdir -p -- "$marker_dir" 2>/dev/null; then
+      print -r -- "${version%% *}" >| "$marker" 2>/dev/null || true
+    fi
+  else
+    version=$(<"$marker")
+  fi
   autoload -Uz is-at-least
-  is-at-least 0.66.0 ${version%% *}
+  is-at-least 0.66.0 "$version"
 }
 
 z4h_bootstrap_tools() {

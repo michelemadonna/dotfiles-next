@@ -8,7 +8,10 @@
 # user-local bin directory before z4h installs or initializes any plugins.
 path=("$HOME/.local/bin" $path)
 typeset -gU path PATH
-rehash
+if [[ ${_Z4H_PATH_SNAPSHOT-} != "$PATH" ]]; then
+	rehash
+	typeset -g _Z4H_PATH_SNAPSHOT="$PATH"
+fi
 
 if [[ -z ${TMUX:-} ]]; then
   export TERM=xterm-256color
@@ -41,6 +44,10 @@ zstyle ':z4h:autosuggestions' forward-char 'accept'
 # Recursively traverse directories when TAB-completing files.
 zstyle ':z4h:fzf-complete' recurse-dirs 'no'
 
+# Keep z4h's generated completion dump out of ZDOTDIR, which points to the
+# repository's persistent shell sources.
+zstyle ':z4h:compinit' dump-path "${XDG_CACHE_HOME:-$HOME/.cache}/zsh/zcompdump-${EUID}-${ZSH_VERSION}"
+
 # Enable direnv to automatically source .envrc files.
 zstyle ':z4h:direnv'         enable 'no'
 # Show "loading" and "unloading" notifications from direnv.
@@ -61,13 +68,25 @@ zstyle ':completion:*' list-colors ${(s.:.)LS_COLORS}
 zstyle ':completion:*:descriptions' format '[%d]'
 zstyle ':completion:*:git-checkout:*' sort false
 
+if [[ ${Z4H_STARTUP_PROFILE} == fast ]]; then
+	# The fast profile uses the repository-managed fzf on first use instead of
+	# z4h's bundled fzf package and widgets.
+	zstyle ':z4h:fzf' channel none
+fi
 
 if [[ ${Z4H_USE_FZF_TAB} = true ]]; then
 	# These z4h components are replaced below so that their ZLE load order matches
-	# the former Quickstart configuration. z4h still supplies fzf and completions.
+	# the former Quickstart configuration. z4h still supplies fzf, completions,
+	# and its redraw-integrated autosuggestions.
 	zstyle ':z4h:zsh-syntax-highlighting' channel none
 	zstyle ':z4h:zsh-history-substring-search' channel none
-	zstyle ':z4h:zsh-autosuggestions' channel none
+fi
+
+# `channel none` creates an empty package directory. Remove that legacy
+# placeholder once so z4h can install its native autosuggestions below.
+if [[ -d $Z4H/zsh-autosuggestions &&
+	! -f $Z4H/zsh-autosuggestions/zsh-autosuggestions.zsh ]]; then
+	rmdir -- "$Z4H/zsh-autosuggestions" 2>/dev/null || return
 fi
 
 
@@ -84,7 +103,7 @@ fi
 # example. If you don't plan to use Oh My Zsh, delete this line.
 
 if [[ ${Z4H_ENABLE_OH_MY_ZSH} = true ]]; then
-	z4h install ohmyzsh/ohmyzsh || return
+	[[ -d $Z4H/ohmyzsh/ohmyzsh ]] || z4h install ohmyzsh/ohmyzsh || return
 fi
 
 #z4h install unixorn/jpb.zshplugin@main || return
@@ -98,20 +117,26 @@ fi
 #z4h install StackExchange/blackbox || return
 #z4h install sharat87/pip-app || return
 if [[ ${Z4H_ENABLE_AUTO_GENCOMP} = true ]]; then
-	z4h install RobSis/zsh-completion-generator || return #only install
+	if [[ ${Z4H_STARTUP_PROFILE} != fast ]]; then
+		[[ -d $Z4H/RobSis/zsh-completion-generator ]] || \
+			z4h install RobSis/zsh-completion-generator || return #only install
+	fi
 fi
 
 
 if [[ ${Z4H_USE_FZF_TAB} = true ]]; then
-	z4h install zdharma-continuum/fast-syntax-highlighting || return
-	z4h install zsh-users/zsh-history-substring-search || return
-	z4h install zsh-users/zsh-autosuggestions || return
-	z4h install Aloxaf/fzf-tab || return
+	[[ -d $Z4H/zdharma-continuum/fast-syntax-highlighting ]] || \
+		z4h install zdharma-continuum/fast-syntax-highlighting || return
+	[[ -d $Z4H/zsh-users/zsh-history-substring-search ]] || \
+		z4h install zsh-users/zsh-history-substring-search || return
+	if [[ ${Z4H_STARTUP_PROFILE} != fast ]]; then
+		[[ -d $Z4H/Aloxaf/fzf-tab ]] || z4h install Aloxaf/fzf-tab || return
+	fi
 fi
 
 # Load the conditional Intel MacPorts/Homebrew plugin before z4h initializes
 # completion and before fzf-tab is loaded.
-z4h source "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-pkgmng.plugin.zsh"
+z4h source --compile "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-pkgmng.plugin.zsh"
 
 # Homebrew's native completion must be visible when z4h runs compinit. It
 # provides the formula and cask candidates for `brew install`, unlike a
@@ -125,6 +150,19 @@ if (( $+commands[brew] )) || [[ -x ${HOMEBREW_BREW:-} ]]; then
 	)
 	typeset -gU fpath
 	unset _z4h_brew_prefix
+fi
+
+# The fast profile loads these ZLE plugins from zle-line-init while z4h can
+# still be building its completion dump in the background. Keep their function
+# directories in fpath from the start so that compinit's cache signature cannot
+# change during that race; the plugins themselves remain lazily loaded.
+if [[ ${Z4H_STARTUP_PROFILE} == fast ]]; then
+	fpath=(
+		$Z4H/zdharma-continuum/fast-syntax-highlighting(N-/)
+		$Z4H/zsh-users/zsh-history-substring-search(N-/)
+		$fpath
+	)
+	typeset -gU fpath
 fi
 
 # Start or reuse an SSH agent and load local private keys.
@@ -223,7 +261,7 @@ if [[ ${Z4H_ENABLE_OH_MY_ZSH} = true ]]; then
 	fi
 fi
 
-if [[ ${Z4H_USE_FZF_TAB} = true ]]; then
+if [[ ${Z4H_USE_FZF_TAB} = true && ${Z4H_STARTUP_PROFILE} != fast ]]; then
 	# Prefer the locally built fzf; retain the z4h fallback if bootstrap failed.
 	export FZF_PATH="${FZF_PATH:=${XDG_CACHE_HOME}/zsh4humans/v5/fzf}"
 	source "$FZF_PATH/shell/key-bindings.zsh"
@@ -233,10 +271,14 @@ if [[ ${Z4H_USE_FZF_TAB} = true ]]; then
 
 	if [[ ${Z4H_FZF_GIT_VENDOR_LOADED:-false} != true ]]; then
 		typeset -g Z4H_FZF_GIT_VENDOR_LOADED=true
-		z4h source "$DOTFILES_DIR/zsh/vendor/fzf-git.sh"
+		z4h source --compile "$DOTFILES_DIR/zsh/vendor/fzf-git.sh"
 	fi
-	z4h source "$DOTFILES_DIR/zsh/helpers/fzf-git.zsh"
-	z4h source "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-fzf.plugin.zsh"
+	z4h source --compile "$DOTFILES_DIR/zsh/helpers/fzf-git.zsh"
+	z4h source --compile "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-fzf.plugin.zsh"
+fi
+
+if [[ ${Z4H_USE_FZF_TAB} = true && ${Z4H_STARTUP_PROFILE} == fast ]]; then
+	source "$DOTFILES_DIR/zsh/helpers/fast-startup.zsh"
 fi
 
 #z4h source -c unixorn/jpb.zshplugin/jpb.plugin.zsh
@@ -253,28 +295,27 @@ fi
 #z4h source -c sharat87/pip-app/pip-app.sh
 
 # Local plugins. The last file applies final widget and environment settings.
-z4h source "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-eza.plugin.zsh"
-z4h source "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-misc.plugin.zsh"
-z4h source "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-containers.plugin.zsh"
+z4h source --compile "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-eza.plugin.zsh"
+z4h source --compile "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-misc.plugin.zsh"
+z4h source --compile "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-containers.plugin.zsh"
 if [[ ${Z4H_USE_MISE} = true ]]; then
-	z4h source "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-mise.plugin.zsh"
+	z4h source --compile "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-mise.plugin.zsh"
 fi
 
-if [[ ${Z4H_ENABLE_AUTO_GENCOMP} = true ]]; then
-	z4h source "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-gencomp-lazy.plugin.zsh"
+if [[ ${Z4H_ENABLE_AUTO_GENCOMP} = true && ${Z4H_STARTUP_PROFILE} != fast ]]; then
+	z4h source --compile "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-gencomp-lazy.plugin.zsh"
 fi
 
 if [[ "${Z4H_PROMPT}" == "ohmyposh" ]]; then
 	export Z4H_OH_MY_POSH_CONFIG=${Z4H_OH_MY_POSH_CONFIG:="$HOME/.config/oh-my-posh/custom.omp.json"}
-	z4h source "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-oh-my-posh.plugin.zsh"
+	z4h source --compile "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-oh-my-posh.plugin.zsh"
 	z4h-init-oh-my-posh
 fi
 
-if [[ ${Z4H_USE_FZF_TAB} = true ]]; then
+if [[ ${Z4H_USE_FZF_TAB} = true && ${Z4H_STARTUP_PROFILE} != fast ]]; then
 	# Plugins that wrap ZLE widgets are deliberately loaded last.
 	z4h load -c zdharma-continuum/fast-syntax-highlighting
 	z4h load -c zsh-users/zsh-history-substring-search
-	z4h load -c zsh-users/zsh-autosuggestions
 
 	#bindkey '^I' fzf_tab_no_space_after_at
 fi
@@ -351,7 +392,6 @@ if [[ ${Z4H_SSH_SHOW_KEY:-false} == true ]]; then
 	print
 fi
 unset _ZQS_SSH_KEYS _ZQS_SSH_KEYS_STATUS _ZQS_SSH_KEYS_VALID
-
 
 if [[ -f ${HOME}/.z4h-zprof-enabled ]]; then
   zprof

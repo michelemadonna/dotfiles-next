@@ -1,10 +1,19 @@
-
+# zshenv useb by installer
 if [[ -f ${HOME}/.z4h-zprof-enabled ]]; then
   zmodload zsh/zprof
 fi
 
 if [ -n "${ZSH_VERSION-}" ]; then
   export Z4H_PROMPT=${Z4H_PROMPT:="powerlevel10k"} # powerlevel10k/ohmyposh/minimal
+  export Z4H_STARTUP_PROFILE_DEFAULT=${Z4H_STARTUP_PROFILE_DEFAULT:=fast} # fast/default
+  case $Z4H_STARTUP_PROFILE_DEFAULT in
+    default|fast) ;;
+    *) export Z4H_STARTUP_PROFILE_DEFAULT=default ;;
+  esac
+  case ${Z4H_STARTUP_PROFILE:-$Z4H_STARTUP_PROFILE_DEFAULT} in
+    default|fast) export Z4H_STARTUP_PROFILE=${Z4H_STARTUP_PROFILE:-$Z4H_STARTUP_PROFILE_DEFAULT} ;;
+    *) export Z4H_STARTUP_PROFILE=$Z4H_STARTUP_PROFILE_DEFAULT ;;
+  esac
   export Z4H_SHOW_FASTFETCH=${Z4H_SHOW_FASTFETCH:=first} #false/true/first
   export Z4H_ENABLE_ALLAFINE=false
   export Z4H_USE_FZF_TAB=true
@@ -52,7 +61,7 @@ if [ -n "${ZSH_VERSION-}" ]; then
   fi
   path=("$HOME/.local/bin" $path)
   typeset -gU path PATH
-  rehash
+  typeset -g _Z4H_PATH_SNAPSHOT="$PATH"
 
   (( $+commands[python3] )) && alias python='command python3'
 

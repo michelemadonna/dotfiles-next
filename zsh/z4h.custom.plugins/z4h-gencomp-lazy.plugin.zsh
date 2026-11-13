@@ -12,14 +12,30 @@ typeset -gA _ZQS_GENCOMP_FAILED
 # but detach only RobSis-generated definitions so TAB retains its normal
 # fallback and Shift-TAB remains the explicit activation path.
 typeset _zqs_gencomp_legacy_file _zqs_gencomp_legacy_program
-for _zqs_gencomp_legacy_file in "$ZSH_CACHE_DIR/completions"/_*(N-.); do
-  command grep -q \
-    'automatically generated with http://github.com/RobSis/zsh-completion-generator' \
-    "$_zqs_gencomp_legacy_file" 2>/dev/null || continue
-  _zqs_gencomp_legacy_program=${${_zqs_gencomp_legacy_file:t}#_}
-  compdef -d "$_zqs_gencomp_legacy_program"
-done
+typeset _zqs_gencomp_migration_index="$ZSH_CACHE_DIR/.gencomp-legacy-programs-v1"
+if [[ -s $_zqs_gencomp_migration_index ]]; then
+  while IFS= read -r _zqs_gencomp_legacy_program; do
+    [[ -n $_zqs_gencomp_legacy_program ]] && compdef -d "$_zqs_gencomp_legacy_program"
+  done < "$_zqs_gencomp_migration_index"
+else
+  typeset _zqs_gencomp_migration_tmp="$_zqs_gencomp_migration_index.${$}.tmp"
+  : >| "$_zqs_gencomp_migration_tmp" 2>/dev/null || true
+  for _zqs_gencomp_legacy_file in "$ZSH_CACHE_DIR/completions"/_*(N-.); do
+    command grep -q \
+      'automatically generated with http://github.com/RobSis/zsh-completion-generator' \
+      "$_zqs_gencomp_legacy_file" 2>/dev/null || continue
+    _zqs_gencomp_legacy_program=${${_zqs_gencomp_legacy_file:t}#_}
+    compdef -d "$_zqs_gencomp_legacy_program"
+    print -r -- "$_zqs_gencomp_legacy_program" >> "$_zqs_gencomp_migration_tmp" 2>/dev/null || true
+  done
+  if [[ -s $_zqs_gencomp_migration_tmp ]]; then
+    command mv -f -- "$_zqs_gencomp_migration_tmp" "$_zqs_gencomp_migration_index"
+  else
+    command rm -f -- "$_zqs_gencomp_migration_tmp"
+  fi
+fi
 unset _zqs_gencomp_legacy_file _zqs_gencomp_legacy_program
+unset _zqs_gencomp_migration_index _zqs_gencomp_migration_tmp
 
 _zqs_gencomp_generate() {
   emulate -L zsh
