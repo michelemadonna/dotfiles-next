@@ -162,7 +162,7 @@ if (( $+functions[_mise_hook_precmd] && $+functions[_mise_hook_chpwd] )); then
   # chpwd immediate, refresh after every Mise command, detect PATH changes,
   # and retain a short periodic check for externally edited configs or env.
   zmodload zsh/datetime
-  local mise_refresh_seconds=${Z4H_MISE_REFRESH_SECONDS:-5}
+  local mise_refresh_seconds=${DOTSH_MISE_REFRESH_SECONDS:-5}
   [[ $mise_refresh_seconds == <-> ]] || mise_refresh_seconds=5
   typeset -gi _ZQS_MISE_REFRESH_SECONDS=$mise_refresh_seconds
   typeset -gi _ZQS_MISE_REFRESH_REQUIRED=$mise_initial_hook_deferred

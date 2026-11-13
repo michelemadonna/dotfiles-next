@@ -1,6 +1,7 @@
 # Repository instructions
 
-`dotfiles-next` is a Zsh for Humans environment for macOS and Ubuntu 26.04,
+This configuration uses the standalone `dotsh` runtime extracted from the local
+upstream reference, with pinned independent plugins, for macOS and Ubuntu 26.04,
 with an interactive/non-interactive installer, custom Zsh plugins,
 Powerlevel10k as the default prompt, optional Oh My Posh, and Docker demos.
 
@@ -15,12 +16,18 @@ Docker usage, or user-facing UX changes.
 - Preserve installer modes, environment contracts, and idempotency.
   Non-interactive mode skips installer questions but may request a sudo password.
 - Preserve Docker remote/local source behavior and cache boundaries.
-- z4h supplies fzf and native `Ctrl-T`, `Ctrl-R`, and `Alt-C`; do not restore
+- Independent fzf supplies `Ctrl-T`, `Ctrl-R`, and `Alt-C`; do not restore
   `unixorn/fzf-zsh-plugin`.
 - fzf-tab, `Ctrl-T`, and `Alt-C` share preview/hidden-file state. `Ctrl-P`
   cycles preview layout and `Ctrl-H` toggles hidden files.
 - Completion generation is explicitly triggered with `Shift-Tab`.
 - Edit persistent repository sources, never generated files or cache artifacts.
+- Source `zsh/dotsh-startup.zsh` first in `.zshrc`; preserve its options,
+  deferred completion, redraw, and autosuggestion integration. Prepare pinned
+  dependencies explicitly; never install or update them during shell startup.
+- Use `DOTSH_*` for preferences and `dotsh` for helper/plugin names. Custom
+  plugins live in `zsh/dotsh.custom.plugins`. Import old preference names only
+  through the installer's one-time conversion; do not export runtime aliases.
 - Keep changes minimal and validate every change.
 - Keep changes local by default. Ask for explicit confirmation before every
   commit, push, or pull-request operation (create, update, merge, or close);
@@ -28,6 +35,8 @@ Docker usage, or user-facing UX changes.
 
 ## Technical references
 
+- [Standalone migration](docs/standalone-zsh.md): runtime ownership, preparation,
+  compatibility, and strict benchmark comparison.
 - [Architecture](docs/architecture.md): component ownership and startup flow.
 - [Installer](docs/installer.md): modes, tools, state, links, and contracts.
 - [Docker](docs/docker.md): demo images, source modes, and test container.

@@ -1,0 +1,19 @@
+#!/usr/bin/env zsh
+
+emulate -L zsh -o no_prompt_bang -o prompt_subst -o prompt_percent
+
+local title=$1
+shift
+print -Prnv title -- $title
+if [[ ${_dotsh_terminal_dirty:-1} == 0 && $title == ${_dotsh_last_term_title-} ]] &&
+   (( ! ${#jobstates} )); then
+  return 0
+fi
+typeset -g _dotsh_last_term_title=$title
+printf -v title '\e]0;%s\a' "${(V)title}"
+
+if [[ -v _dotsh_tty_fd ]]; then
+  print -rnu $_dotsh_tty_fd -- $title
+elif [[ -t 1 ]]; then
+  print -rn -- $title
+fi

@@ -122,8 +122,8 @@ RUN mkdir -p /home/demo/.local/state/dotfiles-next \
     && if [ "$DOTFILES_SOURCE_MODE" = local ]; then \
       cd /home/demo/.dotfiles \
       && EDITOR=micro \
-        Z4H_PROMPT=powerlevel10k \
-        Z4H_SHOW_FASTFETCH=false \
+        DOTSH_PROMPT=powerlevel10k \
+        DOTSH_SHOW_FASTFETCH=false \
         sh ./install.sh non-interactive; \
     fi
 

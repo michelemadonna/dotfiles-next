@@ -7,7 +7,7 @@
 # fzf-tab configuration
 # ============================================================
 
-if [[ ${Z4H_USE_FZF_FROM_Z4H:-true} == false && -x ${FZF_LOCAL_BIN:-$HOME/.local/bin/fzf} ]]; then
+if [[ -x ${FZF_LOCAL_BIN:-$HOME/.local/bin/fzf} ]]; then
     zstyle ':fzf-tab:*' fzf-command "${FZF_LOCAL_BIN:-$HOME/.local/bin/fzf}"
 fi
 #
@@ -336,7 +336,7 @@ _fzf_widget_refresh_flags() {
     export FZF_ALT_C_OPTS="--no-sort --height=${fzf_height} --header='TAB/SHIFT-TAB move  ·  CTRL-J/K preview scroll  ·  CTRL-P preview  ·  CTRL-H hidden  ·  ENTER cd  ·  ESC close' --preview '$FZF_TAB_PREVIEW_COMMAND {}' --preview-window=${preview_window} --bind='ctrl-j:preview-down,ctrl-k:preview-up,ctrl-p:execute-silent(${state_command_q} ${state_helper_q} cycle-preview ${preview_state_q})+change-preview-window(${preview_cycle})+refresh-preview,ctrl-h:execute-silent(${toggle_hidden_command})+reload(${list_directories_command})'"
 }
 
-_z4h_fzf_file_widget() {
+_dotsh_fzf_file_widget() {
     _fzf_widget_refresh_flags
     fzf-file-widget
     local widget_status=$?
@@ -344,7 +344,7 @@ _z4h_fzf_file_widget() {
     return widget_status
 }
 
-_z4h_fzf_cd_widget() {
+_dotsh_fzf_cd_widget() {
     _fzf_widget_refresh_flags
     fzf-cd-widget
     local widget_status=$?
@@ -375,13 +375,13 @@ _fzf_cycle_height() {
 }
 
 _fzf_widget_refresh_flags
-zle -N _z4h_fzf_file_widget
-zle -N _z4h_fzf_cd_widget
+zle -N _dotsh_fzf_file_widget
+zle -N _dotsh_fzf_cd_widget
 zle -N _fzf_cycle_height
-bindkey -M emacs '^T' _z4h_fzf_file_widget
-bindkey -M viins '^T' _z4h_fzf_file_widget
-bindkey -M emacs '^[c' _z4h_fzf_cd_widget
-bindkey -M viins '^[c' _z4h_fzf_cd_widget
+bindkey -M emacs '^T' _dotsh_fzf_file_widget
+bindkey -M viins '^T' _dotsh_fzf_file_widget
+bindkey -M emacs '^[c' _dotsh_fzf_cd_widget
+bindkey -M viins '^[c' _dotsh_fzf_cd_widget
 bindkey -M emacs '^F' _fzf_cycle_height
 bindkey -M viins '^F' _fzf_cycle_height
 
@@ -407,9 +407,9 @@ _fzf_tab_complete_with_dots() {
     emulate -L zsh
     setopt local_options extended_glob
 
-    if [[ ${Z4H_FZF_GIT_UPSTREAM:-false} == true ]] &&
-        (( $+functions[_z4h_fzf_git_complete] )) &&
-        _z4h_fzf_git_complete; then
+    if [[ ${DOTSH_FZF_GIT_UPSTREAM:-false} == true ]] &&
+        (( $+functions[_dotsh_fzf_git_complete] )) &&
+        _dotsh_fzf_git_complete; then
         return 0
     fi
 
@@ -428,7 +428,7 @@ _fzf_tab_complete_with_dots() {
         fi
     fi
 
-    # Match z4h's native AUTO_CD behavior before fzf-tab takes over command
+    # Match dotsh's native AUTO_CD behavior before fzf-tab takes over command
     # completion. Complete a unique local directory prefix directly, including
     # an explicitly typed dot-directory prefix.
     if [[ $autocd_enabled == on && -z $RBUFFER && -n $LBUFFER &&
@@ -467,10 +467,10 @@ _fzf_tab_complete_with_dots() {
         fi
     fi
 
-    # z4h initializes compsys lazily. Complete that initialization before
+    # dotsh initializes compsys lazily. Complete that initialization before
     # registering the native AUTO_CD completer for command position.
-    if [[ -v _z4h_compinit_fd ]]; then
-        -z4h-compinit || true
+    if [[ -v _dotsh_compinit_fd ]]; then
+        -dotsh-compinit || true
     fi
     _comps[-command-]=_fzf_tab_autocd
 
@@ -594,8 +594,8 @@ if (( $+commands[brew] || $+functions[brew] )); then
     # `HOMEBREW_COMPLETION=1 brew formulae` on macOS Tahoe, even though the API
     # name index is populated. Serve that index only for Homebrew's internal
     # completion calls; all normal brew invocations still reach the binary.
-    if [[ ${PKGMGR_BREW_MANAGED:-false} != true && -z ${Z4H_BREW_COMMAND:-} ]]; then
-        typeset -g Z4H_BREW_COMMAND=${commands[brew]}
+    if [[ ${PKGMGR_BREW_MANAGED:-false} != true && -z ${DOTSH_BREW_COMMAND:-} ]]; then
+        typeset -g DOTSH_BREW_COMMAND=${commands[brew]}
     fi
     if [[ ${PKGMGR_BREW_MANAGED:-false} != true ]]; then
         brew() {
@@ -610,7 +610,7 @@ if (( $+commands[brew] || $+functions[brew] )); then
                     return
                 fi
             fi
-            command "$Z4H_BREW_COMMAND" "$@"
+            command "$DOTSH_BREW_COMMAND" "$@"
         }
     fi
 

@@ -2,81 +2,71 @@
 
 ## Components
 
-- `install.sh` is the only installer and owns package installation, choices,
-  generated preferences, backups, links, and z4h-style logs.
-- `zsh/.zshenv.init` defines defaults, paths, environment variables, and
-  sources `zsh/helpers/tool-bootstrap.zsh` before `.zshenv_z4h`. If
-  `zsh/home/.zshenv_z4h` is missing, it is fetched atomically from the pinned
-  zsh4humans v5 raw source before being sourced.
-- `zsh/home/.zshenv` is generated or retained preferences; `~/.zshenv` points
-  to it. `.zshenv_z4h` loads z4h; `.zshrc` loads interactive helpers/plugins.
-- `zsh/helpers/` owns SSH, Fastfetch, tool bootstrap, fzf state/preview, lazy
-  startup wrappers, and Mise cache preparation. `zsh/z4h.custom.plugins/` owns repository plugins,
-  including the self-contained Intel MacPorts/Homebrew coexistence layer.
-- Powerlevel10k is the default prompt. Oh My Posh is optional and uses the
-  repository JSON theme when selected.
+- `install.sh` owns installation, preferences, links, and explicit dependency preparation.
+- `zsh/.zshenv.init` defines the environment without a framework bootstrap.
+- `zsh/home/.zshrc` sources `zsh/dotsh-startup.zsh` first, configures the
+  local runtime, and loads the existing custom plugins and helpers.
+- `zsh/runtime` contains the attributed runtime extraction; it has no package
+  manager, updater, chsh, SSH teleportation, or tmux launcher.
+- `zsh/vendor/packages.lock` pins independent plugins installed by
+  `zsh/helpers/prepare-shell-dependencies.sh`. They are not fetched during startup.
+- Powerlevel10k remains the default prompt; Oh My Posh is optional.
+
+See [Standalone Zsh migration](standalone-zsh.md) for runtime boundaries,
+performance mechanisms, compatibility, and verification.
 
 ## Startup and state
 
 Startup adds Homebrew paths on Apple Silicon, the installer-selected Homebrew
 or MacPorts paths on Intel, and
-`$HOME/.local/bin` everywhere, then bootstraps selected tools and links
-existing repository configurations for Fastfetch, Mise, and the selected
+`$HOME/.local/bin` everywhere. Explicit preparation/installation owns tool
+installation and configuration links for Fastfetch, Mise, and the selected
 editor. In a MacPorts-primary Intel setup, startup excludes `/usr/local/bin`
-and `/usr/local/sbin`, then loads the `z4h-pkgmng` plugin before completion
+and `/usr/local/sbin`, then loads the `dotsh-pkgmng` plugin before completion
 initialization only when both Homebrew and MacPorts are installed. The
-persisted `DOTFILES_INTEL_PACKAGE_MANAGER` preference also keeps automatic
-non-interactive tool installation on the selected backend. Interactive startup restores
-`$HOME/.local/bin` before z4h initialization because macOS's `/etc/zprofile`
-can rebuild `PATH` after `.zshenv`. Mise activation/completion caches and a
+persisted `DOTFILES_INTEL_PACKAGE_MANAGER` preference also keeps explicit
+non-interactive tool installation on the selected backend. Interactive startup
+restores `$HOME/.local/bin` before runtime initialization. Mise activation/completion caches and a
 minimal ASDF compatibility tree for ASDF-compatible installed Mise runtimes
 are prepared by `zsh/helpers/prepare-mise-cache.sh`.
 Loading the cached Mise activation preserves any entries already present in
 the current startup `PATH`, since the generated activation script contains the
 environment that was active when the cache was created.
-After z4h initializes completion, `.zshrc` explicitly registers Homebrew's
+After the local runtime initializes completion, `.zshrc` explicitly registers Homebrew's
 native `_brew` function so an older compinit dump cannot suppress formula and
 cask completion or its fzf-tab preview context.
 On macOS Tahoe, the fzf plugin also supplies Homebrew's generated completion
 with the local API name indexes when Homebrew 6 returns an empty completion
 list, and invalidates only previously serialized empty brew completion caches.
-On Intel, `z4h-pkgmng` owns Brew execution and provider wrappers; the fzf plugin
+On Intel, `dotsh-pkgmng` owns Brew execution and provider wrappers; the fzf plugin
 owns only completion fallback and previews. The plugin also provides the
 metadata-only `brew-bottle-check` preflight for requested formulae and their
 recursive required/recommended dependencies. Provider state is stored under
 `${XDG_STATE_HOME:-$HOME/.local/state}/zsh` and explicit MacPorts selections
 survive Homebrew rescans, upgrades, and cleanup.
 
-Persistent sources live in the repository. The zsh4humans bootstrap file is
-kept at `zsh/home/.zshenv_z4h`; a missing copy is restored from
-`https://raw.githubusercontent.com/romkatv/zsh4humans/v5/.zshenv`. Generated preferences, z4h data,
-completion data, compiled files, state markers, and runtime caches are derived
-artifacts and must not be edited as source.
+Persistent sources live in the repository. Generated preferences, completion
+caches, compiled files, and state are derived artifacts. The extracted runtime
+uses XDG Zsh cache/state paths, independently of the former dotsh cache.
 
 Mise/ASDF project runtimes are shown in the right prompt. Each active runtime
 has its own light capsule; the right prompt is hidden when it cannot fit.
 
-`default` is the compatibility profile and keeps the existing z4h startup
-order, including z4h's bundled fzf. `fast` applies
-`zstyle ':z4h:fzf' channel none` before `z4h init`, then uses the installer-
-managed local fzf and loads fzf-tab, picker widgets, fzf-git, and optional ZLE
-features on first use. Its initial fallback for `Tab` is normal completion;
-the first `Ctrl-R`, `Ctrl-T`, `Alt-C`, `Ctrl-G`, or `Shift-Tab` loads the
-corresponding local integration. z4h owns autosuggestions and their redraw
-state in both profiles; only syntax highlighting and history substring search
-are replaced by separately loaded plugins.
+`default` loads the independent fzf/fzf-tab integrations during initialization.
+`fast` defers fzf-tab, picker widgets, fzf-git, and generated completion until
+first use; highlighting and history substring search load at the first ZLE
+line. Both use the local runtime for autosuggestions and redraw. No profile
+loads the framework or performs dependency installation.
 
 ## Shell contracts
 
-In `default`, z4h supplies fzf and native `Ctrl-T`, `Ctrl-R`, and `Alt-C`. In
-`fast`, the same user-facing actions are provided by the installer-managed
-local fzf after their lazy loader runs. fzf-tab and native file widgets share
-hidden-file and preview state: `Ctrl-P` cycles preview layout and `Ctrl-H`
-toggles hidden files. Completion generation is explicitly requested with
-`Shift-Tab`.
+Both profiles provide `Ctrl-T`, `Ctrl-R`, and `Alt-C` through independent fzf.
+fzf-tab and the file widgets share hidden-file and preview state: `Ctrl-P`
+cycles preview layout and `Ctrl-H` toggles hidden files. Completion generation
+is explicitly requested with `Shift-Tab`.
 
 The vendored `fzf-git.sh` integration is loaded after fzf and fzf-tab, then the
-local adapter adds command-aware Git dispatch before the final `z4h-fzf`
+local adapter adds command-aware Git dispatch before the final `dotsh-fzf`
 widget bindings. Upstream owns picker UI, previews, parsing, and `Ctrl-G`
 widgets. A documented vendor patch adds `become` transitions, while the adapter
 provides the foreground bridge used by every transition and by contextual TAB.

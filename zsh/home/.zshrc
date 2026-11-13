@@ -1,198 +1,60 @@
-# Personal Zsh configuration file. It is strongly recommended to keep all
-# shell customization and configuration (including exported environment
-# variables such as PATH) in this file or in files sourced from it.
-#
-# Documentation: https://github.com/romkatv/zsh4humans/blob/v5/README.md.
+# Load the extracted startup options and performance runtime first.
+source "$DOTFILES_DIR/zsh/dotsh-startup.zsh" || return
 
-# macOS's /etc/zprofile can rebuild PATH after .zshenv has run. Restore the
-# user-local bin directory before z4h installs or initializes any plugins.
 path=("$HOME/.local/bin" $path)
 typeset -gU path PATH
-if [[ ${_Z4H_PATH_SNAPSHOT-} != "$PATH" ]]; then
-	rehash
-	typeset -g _Z4H_PATH_SNAPSHOT="$PATH"
+if [[ ${_DOTSH_PATH_SNAPSHOT-} != "$PATH" ]]; then
+  rehash
+  typeset -g _DOTSH_PATH_SNAPSHOT="$PATH"
 fi
-
-if [[ -z ${TMUX:-} ]]; then
-  export TERM=xterm-256color
-fi
+[[ -n ${TMUX:-} ]] || export TERM=xterm-256color
 [[ -n ${TERM_PROGRAM:-} ]] || export TERM_PROGRAM=xterm
-
 alias tmux='TERM=screen-256color-bce tmux'
 typeset -g TMUX_DEFAULT_SESSION=tmux
 alias t='tmux a -d -t ${TMUX_DEFAULT_SESSION} 2>/dev/null || tmux new -s ${TMUX_DEFAULT_SESSION}'
 
-# Periodic auto-update on Zsh startup: 'ask' or 'no'.
-# You can manually run `z4h update` to update everything.
-zstyle ':z4h:' auto-update      'no'
-# Ask whether to auto-update this often; has no effect if auto-update is 'no'.
-zstyle ':z4h:' auto-update-days '28'
-
-# Keyboard type: 'mac' or 'pc'.
-zstyle ':z4h:bindkey' keyboard  'mac'
-
-# Don't start tmux.
-zstyle ':z4h:' start-tmux       no
-
-# Mark up shell's output with semantic information.
-zstyle ':z4h:' term-shell-integration 'yes'
-
-# Right-arrow key accepts one character ('partial-accept') from
-# command autosuggestions or the whole thing ('accept')?
-zstyle ':z4h:autosuggestions' forward-char 'accept'
-
-# Recursively traverse directories when TAB-completing files.
-zstyle ':z4h:fzf-complete' recurse-dirs 'no'
-
-# Keep z4h's generated completion dump out of ZDOTDIR, which points to the
-# repository's persistent shell sources.
-zstyle ':z4h:compinit' dump-path "${XDG_CACHE_HOME:-$HOME/.cache}/zsh/zcompdump-${EUID}-${ZSH_VERSION}"
-
-# Enable direnv to automatically source .envrc files.
-zstyle ':z4h:direnv'         enable 'no'
-# Show "loading" and "unloading" notifications from direnv.
-zstyle ':z4h:direnv:success' notify 'yes'
-
-# Enable ('yes') or disable ('no') automatic teleportation of z4h over
-# SSH when connecting to these hosts.
-#zstyle ':z4h:ssh:example-hostname1'   enable 'yes'
-#zstyle ':z4h:ssh:*.example-hostname2' enable 'no'
-# The default value if none of the overrides above match the hostname.
-#zstyle ':z4h:ssh:*'                   enable 'no'
-
-# Send these files over to the remote host when connecting over SSH to the
-# enabled hosts.
-#zstyle ':z4h:ssh:*' send-extra-files '~/.nanorc' '~/.env.zsh'
-
+dotsh_configure_keyboard || return
+zstyle ':dotsh:' term-shell-integration yes
+zstyle ':dotsh:autosuggestions' forward-char accept
+zstyle ':dotsh:fzf-complete' recurse-dirs no
+zstyle ':dotsh:compinit' dump-path "$XDG_CACHE_HOME/zsh/zcompdump-${EUID}-${ZSH_VERSION}"
 zstyle ':completion:*' list-colors ${(s.:.)LS_COLORS}
 zstyle ':completion:*:descriptions' format '[%d]'
 zstyle ':completion:*:git-checkout:*' sort false
 
-if [[ ${Z4H_STARTUP_PROFILE} == fast ]]; then
-	# The fast profile uses the repository-managed fzf on first use instead of
-	# z4h's bundled fzf package and widgets.
-	zstyle ':z4h:fzf' channel none
+if [[ $DOTSH_STARTUP_PROFILE == fast ]]; then
+  zstyle ':dotsh:fzf' channel none
 fi
-
-if [[ ${Z4H_USE_FZF_TAB} = true ]]; then
-	# These z4h components are replaced below so that their ZLE load order matches
-	# the former Quickstart configuration. z4h still supplies fzf, completions,
-	# and its redraw-integrated autosuggestions.
-	zstyle ':z4h:zsh-syntax-highlighting' channel none
-	zstyle ':z4h:zsh-history-substring-search' channel none
+if [[ $DOTSH_USE_FZF_TAB == true ]]; then
+  zstyle ':dotsh:zsh-syntax-highlighting' channel none
+  zstyle ':dotsh:zsh-history-substring-search' channel none
 fi
+[[ $DOTSH_PROMPT != ohmyposh ]] || zstyle ':dotsh:powerlevel10k' channel none
 
-# `channel none` creates an empty package directory. Remove that legacy
-# placeholder once so z4h can install its native autosuggestions below.
-if [[ -d $Z4H/zsh-autosuggestions &&
-	! -f $Z4H/zsh-autosuggestions/zsh-autosuggestions.zsh ]]; then
-	rmdir -- "$Z4H/zsh-autosuggestions" 2>/dev/null || return
-fi
-
-
-if [[ ${Z4H_PROMPT} == "ohmyposh" ]]; then
-	zstyle ':z4h:powerlevel10k' channel none
-else
-	typeset -g POWERLEVEL9K_CONFIG_FILE="$POWERLEVEL9K_CONFIG_FILE"  
-fi
-
-# Clone additional Git repositories from GitHub.
-#
-# This doesn't do anything apart from cloning the repository and keeping it
-# up-to-date. Cloned files can be used after `z4h init`. This is just an
-# example. If you don't plan to use Oh My Zsh, delete this line.
-
-if [[ ${Z4H_ENABLE_OH_MY_ZSH} = true ]]; then
-	[[ -d $Z4H/ohmyzsh/ohmyzsh ]] || z4h install ohmyzsh/ohmyzsh || return
-fi
-
-#z4h install unixorn/jpb.zshplugin@main || return
-#z4h install unixorn/warhol.plugin.zsh@main || return
-#z4h install unixorn/tumult.plugin.zsh@main || return
-#z4h install eventi/noreallyjustfuckingstopalready || return
-#z4h install djui/alias-tips || return
-#z4h install unixorn/git-extra-commands@main || return
-#z4h install skx/sysadmin-util || return
-#z4h install peterhurford/git-it-on.zsh || return
-#z4h install StackExchange/blackbox || return
-#z4h install sharat87/pip-app || return
-if [[ ${Z4H_ENABLE_AUTO_GENCOMP} = true ]]; then
-	if [[ ${Z4H_STARTUP_PROFILE} != fast ]]; then
-		[[ -d $Z4H/RobSis/zsh-completion-generator ]] || \
-			z4h install RobSis/zsh-completion-generator || return #only install
-	fi
-fi
-
-
-if [[ ${Z4H_USE_FZF_TAB} = true ]]; then
-	[[ -d $Z4H/zdharma-continuum/fast-syntax-highlighting ]] || \
-		z4h install zdharma-continuum/fast-syntax-highlighting || return
-	[[ -d $Z4H/zsh-users/zsh-history-substring-search ]] || \
-		z4h install zsh-users/zsh-history-substring-search || return
-	if [[ ${Z4H_STARTUP_PROFILE} != fast ]]; then
-		[[ -d $Z4H/Aloxaf/fzf-tab ]] || z4h install Aloxaf/fzf-tab || return
-	fi
-fi
-
-# Load the conditional Intel MacPorts/Homebrew plugin before z4h initializes
-# completion and before fzf-tab is loaded.
-z4h source --compile "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-pkgmng.plugin.zsh"
-
-# Homebrew's native completion must be visible when z4h runs compinit. It
-# provides the formula and cask candidates for `brew install`, unlike a
-# completion generated from `brew --help`.
+dotsh_source -c "$DOTFILES_DIR/zsh/dotsh.custom.plugins/dotsh-pkgmng.plugin.zsh"
 if (( $+commands[brew] )) || [[ -x ${HOMEBREW_BREW:-} ]]; then
-	typeset _z4h_brew_prefix=${HOMEBREW_PREFIX:-${commands[brew]:A:h:h}}
-	fpath=(
-		$_z4h_brew_prefix/share/zsh/site-functions(N-/)
-		$_z4h_brew_prefix/completions/zsh(N-/)
-		$fpath
-	)
-	typeset -gU fpath
-	unset _z4h_brew_prefix
+  typeset _dotsh_brew_prefix=${HOMEBREW_PREFIX:-${commands[brew]:A:h:h}}
+  fpath=($_dotsh_brew_prefix/share/zsh/site-functions(N-/) $_dotsh_brew_prefix/completions/zsh(N-/) $fpath)
+  unset _dotsh_brew_prefix
 fi
-
-# The fast profile loads these ZLE plugins from zle-line-init while z4h can
-# still be building its completion dump in the background. Keep their function
-# directories in fpath from the start so that compinit's cache signature cannot
-# change during that race; the plugins themselves remain lazily loaded.
-if [[ ${Z4H_STARTUP_PROFILE} == fast ]]; then
-	fpath=(
-		$Z4H/zdharma-continuum/fast-syntax-highlighting(N-/)
-		$Z4H/zsh-users/zsh-history-substring-search(N-/)
-		$fpath
-	)
-	typeset -gU fpath
-fi
-
-# Start or reuse an SSH agent and load local private keys.
+# Keep fpath stable while completion initialization and ZLE loading overlap.
+fpath=("$DOTSH_PACKAGES/fast-syntax-highlighting" "$DOTSH_PACKAGES/zsh-history-substring-search" $fpath)
+typeset -gU fpath
 source "$DOTFILES_DIR/zsh/helpers/ssh.zsh"
 if [[ -o interactive && -z ${SSH_CLIENT-} && -z ${SSH_CONNECTION-} &&
-      ${Z4H_SSH_LOAD_KEY:-true} != false ]]; then
-	if [[ ${Z4H_SSH_ASKPASS_REQUIRE:-false} == true ]]; then
-		export SSH_ASKPASS_REQUIRE=force
-	fi
-	load-our-ssh-keys
+      ${DOTSH_SSH_LOAD_KEY:-true} != false ]]; then
+  [[ ${DOTSH_SSH_ASKPASS_REQUIRE:-false} != true ]] || export SSH_ASKPASS_REQUIRE=force
+  load-our-ssh-keys
 fi
-# deal with screen, if we're using it - courtesy MacOSXHints.com
-# Login greeting ------------------
-if [ "$TERM" = "screen" -a ! "$SHOWED_SCREEN_MESSAGE" = "true" ]; then
-	detached_screens=$(screen -list | grep Detached)
-	if [ ! -z "$detached_screens" ]; then
-		echo "+---------------------------------------+"
-		echo "| Detached screens are available:       |"
-		echo "$detached_screens"
-		echo "+---------------------------------------+"
-	fi
+if [[ $TERM == screen && ${SHOWED_SCREEN_MESSAGE:-} != true ]]; then
+  typeset detached_screens=$(screen -list 2>/dev/null | grep Detached)
+  if [[ -n $detached_screens ]]; then
+    print -r -- '+---------------------------------------+' '| Detached screens are available:       |' "$detached_screens" '+---------------------------------------+'
+  fi
+  unset detached_screens
 fi
-
 source "$DOTFILES_DIR/zsh/helpers/fastfetch.zsh"
-
-# Install or update core components (zsh-autosuggestions, etc.) and
-# initialize Zsh. After this point console I/O is unavailable until Zsh
-# is fully initialized. Everything that requires user interaction or can
-# perform network I/O must be done above. Everything else is best done below.
-z4h init || return
+dotsh_init || return
 
 # A cached compinit dump can predate Homebrew's addition to fpath. Register
 # its native completion explicitly so formula/cask candidates and the
@@ -210,17 +72,16 @@ if (( $+commands[git] )); then
 	# Homebrew's _git delegates to Bash completion and drops the grouped refs,
 	# recent commits and descriptions provided by macOS's native Zsh completion.
 	if [[ $OSTYPE == darwin* ]]; then
-		typeset _z4h_native_git_completion=/usr/share/zsh/$ZSH_VERSION/functions/_git
-		if [[ -r $_z4h_native_git_completion ]]; then
+		typeset _dotsh_native_git_completion=/usr/share/zsh/$ZSH_VERSION/functions/_git
+		if [[ -r $_dotsh_native_git_completion ]]; then
 			unfunction _git 2>/dev/null
-			autoload -Uz -R "$_z4h_native_git_completion"
+			autoload -Uz -R "$_dotsh_native_git_completion"
 			compdef _git git gitk
 		fi
-		unset _z4h_native_git_completion
+		unset _dotsh_native_git_completion
 	fi
 
-	# z4h hides these expensive groups by default. Restore the complete Git
-	# candidate set after z4h init so fzf-tab receives them.
+	# Restore the full Git candidate set after runtime initialization.
 	zstyle -d ':completion:*:git-*:argument-rest:heads' ignored-patterns
 	zstyle -d ':completion:*:git-*:argument-rest:heads-local' ignored-patterns
 	zstyle -d ':completion:*:git-*:argument-rest:heads-remote' ignored-patterns
@@ -233,104 +94,80 @@ fi
 export GPG_TTY=$TTY
 
 # Source additional local files if they exist.
-z4h source ~/.env.zsh
-
-# Use additional Git repositories pulled in with `z4h install`.
-#
-# This is just an example that you should delete. It does nothing useful.
-#z4h source ohmyzsh/ohmyzsh/lib/diagnostics.zsh  # source an individual file
-#z4h load   ohmyzsh/ohmyzsh/plugins/emoji-clock  # load a plugin
+[[ ! -r $HOME/.env.zsh ]] || dotsh_source "$HOME/.env.zsh"
 
 # Oh My Zsh libraries and plugins, without sourcing oh-my-zsh.sh or running a
 # second compinit/keymap setup.
-if [[ ${Z4H_ENABLE_OH_MY_ZSH} = true ]]; then
-	z4h source -c ohmyzsh/ohmyzsh/lib/functions.zsh
-	z4h source -c ohmyzsh/ohmyzsh/lib/git.zsh
-	#z4h load -c ohmyzsh/ohmyzsh/plugins/pip
-	z4h load -c ohmyzsh/ohmyzsh/plugins/sudo
-	#z4h load -c ohmyzsh/ohmyzsh/plugins/colored-man-pages
-	#z4h load -c ohmyzsh/ohmyzsh/plugins/git
-	#z4h load -c ohmyzsh/ohmyzsh/plugins/github
-	#z4h load -c ohmyzsh/ohmyzsh/plugins/python
-	#z4h load -c ohmyzsh/ohmyzsh/plugins/rsync
-	#z4h load -c ohmyzsh/ohmyzsh/plugins/screen
-	z4h load -c ohmyzsh/ohmyzsh/plugins/command-not-found
+if [[ ${DOTSH_ENABLE_OH_MY_ZSH} = true ]]; then
+	dotsh_source -c "$DOTSH_PACKAGES/ohmyzsh/lib/functions.zsh"
+	dotsh_source -c "$DOTSH_PACKAGES/ohmyzsh/lib/git.zsh"
+	dotsh_load -c "$DOTSH_PACKAGES/ohmyzsh/plugins/sudo"
+	dotsh_load -c "$DOTSH_PACKAGES/ohmyzsh/plugins/command-not-found"
 	if [[ $OSTYPE == darwin* ]]; then
-		z4h load -c ohmyzsh/ohmyzsh/plugins/brew
-		z4h load -c ohmyzsh/ohmyzsh/plugins/macos
+	dotsh_load -c "$DOTSH_PACKAGES/ohmyzsh/plugins/brew"
+	dotsh_load -c "$DOTSH_PACKAGES/ohmyzsh/plugins/macos"
 	fi
 fi
 
-if [[ ${Z4H_USE_FZF_TAB} = true && ${Z4H_STARTUP_PROFILE} != fast ]]; then
-	# Prefer the locally built fzf; retain the z4h fallback if bootstrap failed.
-	export FZF_PATH="${FZF_PATH:=${XDG_CACHE_HOME}/zsh4humans/v5/fzf}"
-	source "$FZF_PATH/shell/key-bindings.zsh"
-	# fzf-tab must wrap the stock completion widget, not z4h-fzf-complete.
+if [[ ${DOTSH_USE_FZF_TAB} = true && ${DOTSH_STARTUP_PROFILE} != fast ]]; then
+	# Use the explicitly prepared independent fzf checkout.
+	export FZF_PATH="${FZF_PATH:=$DOTSH_PACKAGES/fzf}"
+	dotsh_source -c "$FZF_PATH/shell/key-bindings.zsh"
+	# fzf-tab wraps the stock completion widget.
 	bindkey '^I' expand-or-complete
-	z4h load -c Aloxaf/fzf-tab
+	dotsh_load -c "$DOTSH_PACKAGES/fzf-tab"
 
-	if [[ ${Z4H_FZF_GIT_VENDOR_LOADED:-false} != true ]]; then
-		typeset -g Z4H_FZF_GIT_VENDOR_LOADED=true
-		z4h source --compile "$DOTFILES_DIR/zsh/vendor/fzf-git.sh"
+	if [[ ${DOTSH_FZF_GIT_VENDOR_LOADED:-false} != true ]]; then
+		typeset -g DOTSH_FZF_GIT_VENDOR_LOADED=true
+		dotsh_source --compile "$DOTFILES_DIR/zsh/vendor/fzf-git.sh"
 	fi
-	z4h source --compile "$DOTFILES_DIR/zsh/helpers/fzf-git.zsh"
-	z4h source --compile "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-fzf.plugin.zsh"
+	dotsh_source --compile "$DOTFILES_DIR/zsh/helpers/fzf-git.zsh"
+	dotsh_source --compile "$DOTFILES_DIR/zsh/dotsh.custom.plugins/dotsh-fzf.plugin.zsh"
 fi
 
-if [[ ${Z4H_USE_FZF_TAB} = true && ${Z4H_STARTUP_PROFILE} == fast ]]; then
-	source "$DOTFILES_DIR/zsh/helpers/fast-startup.zsh"
+if [[ ${DOTSH_USE_FZF_TAB} = true && ${DOTSH_STARTUP_PROFILE} == fast ]]; then
+	dotsh_source -c "$DOTFILES_DIR/zsh/helpers/fast-startup.zsh"
 fi
 
-#z4h source -c unixorn/jpb.zshplugin/jpb.plugin.zsh
-#z4h source -c unixorn/warhol.plugin.zsh/warhol.plugin.zsh
-#z4h source -c unixorn/tumult.plugin.zsh/tumult.plugin.zsh
 #
-#z4h load -c eventi/noreallyjustfuckingstopalready
-#z4h load -c djui/alias-tips
-#z4h load -c unixorn/git-extra-commands
-#compdef _git git
-#z4h load -c skx/sysadmin-util
-#z4h source -c peterhurford/git-it-on.zsh/git-it-on.plugin.zsh
-#z4h load -c StackExchange/blackbox
-#z4h source -c sharat87/pip-app/pip-app.sh
 
 # Local plugins. The last file applies final widget and environment settings.
-z4h source --compile "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-eza.plugin.zsh"
-z4h source --compile "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-misc.plugin.zsh"
-z4h source --compile "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-containers.plugin.zsh"
-if [[ ${Z4H_USE_MISE} = true ]]; then
-	z4h source --compile "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-mise.plugin.zsh"
+dotsh_source --compile "$DOTFILES_DIR/zsh/dotsh.custom.plugins/dotsh-eza.plugin.zsh"
+dotsh_source --compile "$DOTFILES_DIR/zsh/dotsh.custom.plugins/dotsh-misc.plugin.zsh"
+dotsh_source --compile "$DOTFILES_DIR/zsh/dotsh.custom.plugins/dotsh-containers.plugin.zsh"
+if [[ ${DOTSH_USE_MISE} = true ]]; then
+	dotsh_source --compile "$DOTFILES_DIR/zsh/dotsh.custom.plugins/dotsh-mise.plugin.zsh"
 fi
 
-if [[ ${Z4H_ENABLE_AUTO_GENCOMP} = true && ${Z4H_STARTUP_PROFILE} != fast ]]; then
-	z4h source --compile "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-gencomp-lazy.plugin.zsh"
+if [[ ${DOTSH_ENABLE_AUTO_GENCOMP} = true && ${DOTSH_STARTUP_PROFILE} != fast ]]; then
+	dotsh_source --compile "$DOTFILES_DIR/zsh/dotsh.custom.plugins/dotsh-gencomp-lazy.plugin.zsh"
 fi
 
-if [[ "${Z4H_PROMPT}" == "ohmyposh" ]]; then
-	export Z4H_OH_MY_POSH_CONFIG=${Z4H_OH_MY_POSH_CONFIG:="$HOME/.config/oh-my-posh/custom.omp.json"}
-	z4h source --compile "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-oh-my-posh.plugin.zsh"
-	z4h-init-oh-my-posh
+if [[ "${DOTSH_PROMPT}" == "ohmyposh" ]]; then
+	export DOTSH_OH_MY_POSH_CONFIG=${DOTSH_OH_MY_POSH_CONFIG:="$HOME/.config/oh-my-posh/custom.omp.json"}
+	dotsh_source --compile "$DOTFILES_DIR/zsh/dotsh.custom.plugins/dotsh-oh-my-posh.plugin.zsh"
+	dotsh-init-oh-my-posh
 fi
 
-if [[ ${Z4H_USE_FZF_TAB} = true && ${Z4H_STARTUP_PROFILE} != fast ]]; then
+if [[ ${DOTSH_USE_FZF_TAB} = true && ${DOTSH_STARTUP_PROFILE} != fast ]]; then
 	# Plugins that wrap ZLE widgets are deliberately loaded last.
-	z4h load -c zdharma-continuum/fast-syntax-highlighting
-	z4h load -c zsh-users/zsh-history-substring-search
+	dotsh_load_highlighting
+	dotsh_load -c "$DOTSH_PACKAGES/zsh-history-substring-search"
 
 	#bindkey '^I' fzf_tab_no_space_after_at
 fi
 
 # Define key bindings.
-z4h bindkey undo Ctrl+/               # undo the last command line change
-z4h bindkey redo Option+/            # redo the last undone command line change
+dotsh_bindkey undo Ctrl+/               # undo the last command line change
+dotsh_bindkey redo Option+/            # redo the last undone command line change
 
-z4h bindkey z4h-cd-back    Shift+Left   # cd into the previous directory
-z4h bindkey z4h-cd-forward Shift+Right  # cd into the next directory
-z4h bindkey z4h-cd-up      Shift+Up     # cd into the parent directory
-z4h bindkey z4h-cd-down    Shift+Down   # cd into a child directory
+dotsh_bindkey dotsh-cd-back    Shift+Left   # cd into the previous directory
+dotsh_bindkey dotsh-cd-forward Shift+Right  # cd into the next directory
+dotsh_bindkey dotsh-cd-up      Shift+Up     # cd into the parent directory
+dotsh_bindkey dotsh-cd-down    Shift+Down   # cd into a child directory
 
-z4h bindkey up-history Up
-z4h bindkey down-history Down
+dotsh_bindkey up-history Up
+dotsh_bindkey down-history Down
 
 # Make an interrupted command line visibly distinct from an executed command.
 TRAPINT() {
@@ -348,7 +185,7 @@ function md() {
 compdef _directories md
 
 # Define named directories: ~w <=> Windows home directory on WSL.
-[[ -z $z4h_win_home ]] || hash -d w=$z4h_win_home
+[[ -z $dotsh_win_home ]] || hash -d w=$dotsh_win_home
 
 # Define aliases.
 alias tree='tree -a -I .git'
@@ -381,7 +218,7 @@ ZSH_AUTOSUGGEST_CLEAR_WIDGETS+=(bracketed-paste)
 print -n $'\e[9999;1H'
 run-fastfetch
 
-if [[ ${Z4H_SSH_SHOW_KEY:-false} == true ]]; then
+if [[ ${DOTSH_SSH_SHOW_KEY:-false} == true ]]; then
 	print
 	print 'Current SSH Keys:'
 	if (( ${_ZQS_SSH_KEYS_VALID:-0} )) && (( ${_ZQS_SSH_KEYS_STATUS:-2} == 0 )); then
@@ -393,6 +230,7 @@ if [[ ${Z4H_SSH_SHOW_KEY:-false} == true ]]; then
 fi
 unset _ZQS_SSH_KEYS _ZQS_SSH_KEYS_STATUS _ZQS_SSH_KEYS_VALID
 
-if [[ -f ${HOME}/.z4h-zprof-enabled ]]; then
+
+if [[ -f ${HOME}/.dotsh-zprof-enabled ]]; then
   zprof
 fi

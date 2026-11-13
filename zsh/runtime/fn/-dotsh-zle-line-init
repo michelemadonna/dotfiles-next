@@ -1,0 +1,47 @@
+#!/usr/bin/env zsh
+
+local -i ret
+
+if [[ -n ${DOTSH_LINE_INIT_ONCE:-} ]]; then
+  if "$DOTSH_LINE_INIT_ONCE"; then
+    unset DOTSH_LINE_INIT_ONCE
+  else
+    ret=$?
+  fi
+fi
+
+if [[ ${CONTEXT-} != start || -v _dotsh_transient_rprompt ]]; then
+  if [[ ${CONTEXT} == start ]]; then
+    unsetopt transient_rprompt
+    unset _dotsh_transient_rprompt
+  elif [[ ! -o transient_rprompt ]]; then
+    setopt transient_rprompt
+    typeset -g _dotsh_transient_rprompt=
+  fi
+fi
+
+if (( ${+widgets[-dotsh-orig-zle-line-init]} )); then
+  zle -- -dotsh-orig-zle-line-init "$@" || ret=$?
+fi
+
+if (( ${+_dotsh_redraw_fd} )); then
+  zle -F "$_dotsh_redraw_fd"
+  exec {_dotsh_redraw_fd}>&-
+  unset _dotsh_redraw_fd
+fi
+
+unset POSTDISPLAY _dotsh_autosuggest_buffer _dotsh_autosuggestion _zsh_highlight__highlighter_${^ZSH_HIGHLIGHT_HIGHLIGHTERS}_cache
+_ZSH_HIGHLIGHT_PRIOR_BUFFER=
+_ZSH_HIGHLIGHT_PRIOR_CURSOR=$CURSOR
+region_highlight=()
+
+if [[ ${(%):-%~} != ${_dotsh_last_dir-} && ! -v _dotsh_dir_hist_fd ]]; then
+  typeset -gi _dotsh_dir_hist_fd
+  if sysopen -o cloexec -ru _dotsh_dir_hist_fd /dev/null; then
+    zle -F $_dotsh_dir_hist_fd -dotsh-update-dir-history
+  else
+    unset _dotsh_dir_hist_fd
+  fi
+fi
+
+return ret

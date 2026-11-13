@@ -1,13 +1,13 @@
 # dotfiles-next
 
-> A batteries-included Zsh environment for macOS and Ubuntu 26.04, built around Zsh for Humans.
+> A batteries-included Zsh environment for macOS and Ubuntu 26.04, with a standalone Zsh runtime.
 
 ## ✨ Introduction
 
 `dotfiles-next` is an opinionated collection of shell settings, terminal tools, editor configurations, themes, fonts, and custom Zsh plugins. It provides an interactive installer for personal workstations, a deterministic non-interactive mode for automation, and a complete Docker image for exploring the setup without changing the host.
 
 The default prompt is **Powerlevel10k**. **Oh My Posh** is available as an explicit alternative. 
-Zsh for Humans (z4h) bootstraps the shell framework and manages the external Zsh plugins on first startup.
+The local `dotsh` runtime preserves the Zsh options, completion caching, and ZLE optimizations extracted from the upstream reference. Pinned independent plugins are prepared explicitly by the installer; shell startup performs no framework installation or update. See [the standalone migration](docs/standalone-zsh.md).
 
 ---
 
@@ -32,7 +32,7 @@ not open the graphical `xcode-select --install` prompt. The Apple-provided
 packages then install Git through MacPorts on Intel when selected, or through
 Homebrew on Intel and Apple Silicon.
 
-> ⚠️ **Homebrew on Intel Macs:** Since September 2026, Intel macOS is Homebrew Tier 3: it has no CI support and receives no new binary bottles, so formulae may compile from source, take considerably longer, or fail. The installer therefore recommends and defaults to MacPorts, but allows Homebrew as the primary provider. Homebrew can also be installed manually alongside MacPorts, mainly for casks and formulae unavailable in MacPorts. When MacPorts is selected and both managers are installed, the custom `z4h-pkgmng` plugin keeps MacPorts primary and exposes explicit Homebrew exceptions. See [Homebrew's support tiers](https://docs.brew.sh/Support-Tiers) for the current policy and timeline.
+> ⚠️ **Homebrew on Intel Macs:** Since September 2026, Intel macOS is Homebrew Tier 3: it has no CI support and receives no new binary bottles, so formulae may compile from source, take considerably longer, or fail. The installer therefore recommends and defaults to MacPorts, but allows Homebrew as the primary provider. Homebrew can also be installed manually alongside MacPorts, mainly for casks and formulae unavailable in MacPorts. When MacPorts is selected and both managers are installed, the custom `dotsh-pkgmng` plugin keeps MacPorts primary and exposes explicit Homebrew exceptions. See [Homebrew's support tiers](https://docs.brew.sh/Support-Tiers) for the current policy and timeline.
 
 If Zsh is missing, install it with the platform package manager:
 
@@ -197,7 +197,7 @@ The base package set is installed once per platform. It supplies the commands us
 | ⚡️ **fd**                                                | Fast file discovery. On Ubuntu 26.04 the package is named `fd-find` and exposes `fdfind`; both the host installer and Docker image add an `fd` compatibility link under `~/.local/bin`. |
 | 🦸 **ripgrep**                                           | Fast recursive text search.                                                                                                                                                             |
 | 🧩 **git-delta**                                         | Readable, side-by-side diffs.                                                                                                                                                           |
-| 🔍 **fzf** and **fzf-tab**                               | Fuzzy file selection and interactive Zsh completion. The shell can use z4h's native `fzf` or a release installed from a local Git checkout.                                             |
+| 🔍 **fzf** and **fzf-tab**                               | Fuzzy file selection and interactive Zsh completion, using explicitly prepared, pinned dependencies.                                                                                    |
 | 📺 **chafa**, **mediainfo**, **poppler**, and **file**   | Image, media, PDF, and generic file previews inside fzf.                                                                                                                                |
 | 🔀 **tmux**                                              | Persistent terminal sessions with the included mouse and keyboard configuration.                                                                                                        |
 | 🛠️ **htop**, **tree**, **wget**, and DNS tools          | Process inspection, directory views, downloads, and host/DNS inspection.                                                                                                                |
@@ -207,7 +207,7 @@ The base package set is installed once per platform. It supplies the commands us
 
 | Component                                            | Status                       | Purpose                                                                                                                                                                                                          |
 | ---------------------------------------------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 🐚 **Zsh for Humans**                                | Core                         | Bootstraps the Zsh environment, manages external plugins, and supplies shell utilities and key bindings.                                                                                                         |
+| 🐚 **Standalone dotsh runtime**                     | Core                         | Preserves extracted Zsh options, startup optimizations, shell utilities, and key bindings; independent plugin revisions are prepared explicitly.                                                                                                         |
 | 🚀 **Powerlevel10k**                                 | Default                      | Fast, Git-aware two-line prompt configured by [`powerlevel10k/.p10k.zsh`](powerlevel10k/.p10k.zsh).                                                                                                              |
 | 🎨 **Oh My Posh**                                    | Optional                     | Alternative prompt using the repository's custom JSON theme. Installed only when `ohmyposh` is selected.                                                                                                         |
 | 🛠️ **Oh My Zsh helpers**                            | Always enabled                 | Loads selected libraries and plugins such as `sudo`, `command-not-found`, and the macOS/Homebrew helpers without sourcing the complete `oh-my-zsh.sh`.                                                           |
@@ -221,18 +221,18 @@ The repository also contains configurations for **Git**, **Ghostty**, **iTerm2**
 
 ### 2.3. Custom Zsh plugins
 
-The project-specific plugins live in [`zsh/z4h.custom.plugins`](zsh/z4h.custom.plugins) and are loaded from the main Zsh configuration.
+The project-specific plugins live in [`zsh/dotsh.custom.plugins`](zsh/dotsh.custom.plugins) and are loaded from the main Zsh configuration.
 
 | Plugin             | What it does                                                                                                                                                                                                                                                                                                 |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `z4h-fzf`          | Extends fzf-tab, `Ctrl-T`, and `Alt-C` with shared hidden-file state, alphabetically ordered filesystem candidates, persistent preview layout, contextual previews, grouped Git refs and recent commits, and command-specific views for Git, Docker, package managers, SSH, processes, manuals, and systemd. It also integrates the vendored `fzf-git.sh` pickers for files, branches, tags, remotes, commits, stashes, reflogs, worktrees, and refs. |
-| `z4h-containers`   | Adds Docker and kubectl aliases, caches CLI-generated completion, improves Docker completion contexts, and supplies JSON/YAML kubectl helpers when the required tools are available.                                                                                                                         |
-| `z4h-eza`          | Replaces common `ls` forms with an icon-aware `eza` configuration and falls back to `exa` when necessary. Provides `ll` and `lls`.                                                                                                                                                                           |
-| `z4h-gencomp-lazy` | Generates completion from a command's help output on explicit `Shift-Tab`, caches it, loads it immediately, and remembers failed attempts for the current session. It also provides the manual `gencomp` command.                                                                                            |
-| `z4h-mise`         | Caches Mise activation and completion, avoids duplicate hooks, refreshes immediately after directory changes and successful `mise` commands, throttles unchanged prompts, provides `asdf` compatibility, and synchronizes `mise use` selections to `.tool-versions`.                                         |
-| `z4h-pkgmng`       | On Intel macOS with MacPorts selected and both managers installed, keeps MacPorts primary while exposing explicitly selected Homebrew commands, completions, rescans, and an isolated Homebrew shell.                                                                                |
-| `z4h-oh-my-posh`   | Loads Oh My Posh only when selected and caches the generated Zsh initialization until the binary, theme, or plugin changes.                                                                                                                                                                                  |
-| `z4h-misc`         | Provides compatibility aliases, the optional allafine behavior, and a searchable `Ctrl-K` keybinding reference for Zsh, fzf, tmux, and Micro.                                                                                                                                                                |
+| `dotsh-fzf`          | Extends fzf-tab, `Ctrl-T`, and `Alt-C` with shared hidden-file state, alphabetically ordered filesystem candidates, persistent preview layout, contextual previews, grouped Git refs and recent commits, and command-specific views for Git, Docker, package managers, SSH, processes, manuals, and systemd. It also integrates the vendored `fzf-git.sh` pickers for files, branches, tags, remotes, commits, stashes, reflogs, worktrees, and refs. |
+| `dotsh-containers`   | Adds Docker and kubectl aliases, caches CLI-generated completion, improves Docker completion contexts, and supplies JSON/YAML kubectl helpers when the required tools are available.                                                                                                                         |
+| `dotsh-eza`          | Replaces common `ls` forms with an icon-aware `eza` configuration and falls back to `exa` when necessary. Provides `ll` and `lls`.                                                                                                                                                                           |
+| `dotsh-gencomp-lazy` | Generates completion from a command's help output on explicit `Shift-Tab`, caches it, loads it immediately, and remembers failed attempts for the current session. It also provides the manual `gencomp` command.                                                                                            |
+| `dotsh-mise`         | Caches Mise activation and completion, avoids duplicate hooks, refreshes immediately after directory changes and successful `mise` commands, throttles unchanged prompts, provides `asdf` compatibility, and synchronizes `mise use` selections to `.tool-versions`.                                         |
+| `dotsh-pkgmng`       | On Intel macOS with MacPorts selected and both managers installed, keeps MacPorts primary while exposing explicitly selected Homebrew commands, completions, rescans, and an isolated Homebrew shell.                                                                                |
+| `dotsh-oh-my-posh`   | Loads Oh My Posh only when selected and caches the generated Zsh initialization until the binary, theme, or plugin changes.                                                                                                                                                                                  |
+| `dotsh-misc`         | Provides compatibility aliases, the optional allafine behavior, and a searchable `Ctrl-K` keybinding reference for Zsh, fzf, tmux, and Micro.                                                                                                                                                                |
 
 ---
 
@@ -282,16 +282,16 @@ After installation, start a fresh login shell:
 exec zsh -l
 ```
 
-The first Zsh startup downloads z4h and the enabled external plugins, so it requires an internet connection and can take longer than subsequent starts.
+The installer explicitly prepares the pinned external plugins and executables.
+Shell startup uses those local dependencies and does not download or update them.
 
-To remove every cache and persistent state file created by this environment,
-run:
+To clear the runtime caches and selected state files, run:
 
 ```zsh
-z4h-reset-zsh-cache
+dotsh-reset-zsh-cache
 ```
 
-Use `--dry-run` to inspect the exact paths, `--yes` to skip confirmation, or `--no-restart` to leave the current shell running. Normally the function restarts Zsh; that startup requires network access to download z4h again.
+Use `--dry-run` to inspect the exact paths, `--yes` to skip confirmation, or `--no-restart` to leave the current shell running. Normally the function restarts Zsh; prepared plugins and executables are retained, so startup does not need a download.
 Because the installer marker is removed, the next installer run executes the base-package step again.
 
 ---
@@ -301,16 +301,16 @@ Because the installer marker is removed, the next installer run executes the bas
 The primary shell configuration is [`zsh/home/.zshrc`](zsh/home/.zshrc).
 The installer creates or retain [`zsh/home/.zshenv`](zsh/home/.zshenv), and creates a symlink `~/.zshenv` that points to it.
 Shell startup puts `$HOME/.local/bin` at the front of `PATH`; `.zshrc` reapplies
-it before z4h initialization so macOS login-shell startup cannot discard it.
+it before runtime initialization so macOS login-shell startup cannot discard it.
 Cached Mise activation also preserves the current startup paths.
 
-The installer persists `Z4H_STARTUP_PROFILE_DEFAULT=default`. The default
-profile is the normal as-is startup path, including z4h's bundled fzf and the
-eager fzf-tab and picker integrations. Set `Z4H_STARTUP_PROFILE=fast` for an
+The installer persists `DOTSH_STARTUP_PROFILE_DEFAULT=default`. The default
+profile is the normal as-is startup path, including the prepared fzf and the
+eager fzf-tab and picker integrations. Set `DOTSH_STARTUP_PROFILE=fast` for an
 opt-in faster shell; this leaves the persisted default unchanged and defers
 fzf-tab, pickers, fzf-git, syntax highlighting, history search, and generated
-completions until first use. Autosuggestions remain managed natively by z4h in
-both profiles so their ghost text stays synchronized with z4h's redraw cycle.
+completions until first use. Autosuggestions remain managed natively by dotsh in
+both profiles so their ghost text stays synchronized with dotsh's redraw cycle.
 Fastfetch and SSH remain synchronous in both profiles.
 
 ### Intel macOS package providers
@@ -324,7 +324,7 @@ automatic tool installation keeps the same provider.
 When MacPorts is selected, `/opt/local/bin` and `/opt/local/sbin` take
 precedence and Homebrew's `/usr/local/bin` and `/usr/local/sbin` are excluded
 from the normal shell `PATH`. If Homebrew is also installed manually, the
-custom `z4h-pkgmng` plugin is enabled and the following commands manage
+custom `dotsh-pkgmng` plugin is enabled and the following commands manage
 explicit Homebrew exceptions:
 
 ```zsh
@@ -372,32 +372,32 @@ The installer manages those symbolic links:
 - Fastfetch and Mise configuration when those components are installed
   * `~/.config/fastfetch` → `~/.dotfiles/fastfetch`
   * `~/.config/mise` → `~/.dotfiles/mise`
-- Powerlevel10K and Oh-My-Posh (if installed) configs are managed using the envs in the `zsh/home/.zshenv` file
-  * `POWERLEVEL9K_CONFIG_FILE="$DOTFILES_DIR/powerlevel10k/.p10k.zsh`" 
-  * `Z4H_OH_MY_POSH_CONFIG="$DOTFILES_DIR/oh-my-posh/custom.omp.json`"
+- Powerlevel10k and Oh My Posh configurations are selected by environment variables:
+  * `POWERLEVEL9K_CONFIG_FILE="$DOTFILES_DIR/powerlevel10k/.p10k.zsh"`
+  * `DOTSH_OH_MY_POSH_CONFIG="$DOTFILES_DIR/oh-my-posh/custom.omp.json"`
 
 The envs defined into `zsh/home/.zshenv`:
 
 When `python3` is available, the generated environment also defines `python`
 as an alias for `python3`.
 
-* `Z4H_PROMPT` Selects the prompt theme. Supported values are `powerlevel10k`, `ohmyposh`, and `minimal`.
-* `Z4H_STARTUP_PROFILE_DEFAULT` Selects the persisted startup profile. The installer default is `default`; supported values are `default` and `fast`.
-* `Z4H_STARTUP_PROFILE` Temporarily overrides the persisted profile for the current shell. Set it to `fast` to enable deferred feature loading without rewriting the installer preference.
+* `DOTSH_PROMPT` Selects the prompt theme. Supported values are `powerlevel10k`, `ohmyposh`, and `minimal`.
+* `DOTSH_STARTUP_PROFILE_DEFAULT` Selects the persisted startup profile. The installer default is `default`; supported values are `default` and `fast`.
+* `DOTSH_STARTUP_PROFILE` Temporarily overrides the persisted profile for the current shell. Set it to `fast` to enable deferred feature loading without rewriting the installer preference.
 * `DOTFILES_INTEL_PACKAGE_MANAGER` selects `macports` or `homebrew` as the Intel macOS installer and shell provider. It defaults to `macports` and has no effect on Apple Silicon or Linux.
-* `Z4H_SHOW_FASTFETCH` Controls when Fastfetch is displayed. Set it to `false` to disable Fastfetch, `true` to display it at every interactive terminal startup, or `first` to display it only in the first active terminal session.
-* `Z4H_ENABLE_AUTO_GENCOMP` Enables on-demand generation of Zsh completions for commands that do not already provide them. Completions are generated from the command’s `--help` output.
-* `Z4H_SSH_LOAD_KEY` Controls automatic SSH key loading. When enabled, private keys found in `$HOME/.ssh` are loaded into the active SSH agent or platform keychain.
-* `Z4H_SSH_SHOW_KEY` Controls whether the SSH keys currently loaded in the agent are displayed during shell startup.
-* `Z4H_SSH_ASKPASS_REQUIRE` Controls SSH passphrase prompting. When enabled, SSH is required to use an askpass mechanism whenever a private key needs to be unlocked.
-* `Z4H_USE_MISE` Enables Mise integration. When enabled, Mise is installed automatically if necessary and initialized for runtime management, activation, completions, and asdf-compatible plugins.
-* `Z4H_USE_FZF_TAB` is always `true`; it remains exported for compatibility.
-* `Z4H_ENABLE_OH_MY_ZSH` is always `true`; it remains exported for compatibility.
-* `Z4H_USE_FZF_FROM_Z4H` is always `false`; the installer uses the latest fzf binary from its local Git checkout and keeps this variable exported for compatibility.
-* `Z4H_MISE_REFRESH_SECONDS` Controls the periodic safety refresh performed by Mise. The default is `5` seconds. Directory changes, `PATH` changes, and successful `mise` commands always trigger an immediate refresh. Set it to `0` to refresh Mise before
+* `DOTSH_SHOW_FASTFETCH` Controls when Fastfetch is displayed. Set it to `false` to disable Fastfetch, `true` to display it at every interactive terminal startup, or `first` to display it only in the first active terminal session.
+* `DOTSH_ENABLE_AUTO_GENCOMP` Enables on-demand generation of Zsh completions for commands that do not already provide them. Completions are generated from the command’s `--help` output.
+* `DOTSH_SSH_LOAD_KEY` Controls automatic SSH key loading. When enabled, private keys found in `$HOME/.ssh` are loaded into the active SSH agent or platform keychain.
+* `DOTSH_SSH_SHOW_KEY` Controls whether the SSH keys currently loaded in the agent are displayed during shell startup.
+* `DOTSH_SSH_ASKPASS_REQUIRE` Controls SSH passphrase prompting. When enabled, SSH is required to use an askpass mechanism whenever a private key needs to be unlocked.
+* `DOTSH_USE_MISE` Enables Mise integration when Mise is installed, including activation, completions, and asdf-compatible plugins. Install missing tools explicitly with the installer.
+* `DOTSH_USE_FZF_TAB` is always `true`; it remains exported for compatibility.
+* `DOTSH_ENABLE_OH_MY_ZSH` is always `true`; it remains exported for compatibility.
+* `DOTSH_KEYBOARD` selects the named-key mapping, `mac` or `pc`. It defaults to `mac` on macOS and `pc` on other systems. The setting selects names for terminal key sequences; a Mac keyboard on Linux can use `DOTSH_KEYBOARD=mac`.
+* `DOTSH_MISE_REFRESH_SECONDS` Controls the periodic safety refresh performed by Mise. The default is `5` seconds. Directory changes, `PATH` changes, and successful `mise` commands always trigger an immediate refresh. Set it to `0` to refresh Mise before
   every prompt.
 * `POWERLEVEL9K_CONFIG_FILE` the powerlevel10k's config file path.
-* `Z4H_OH_MY_POSH_CONFIG` the oh-my-posh's config file path.
+* `DOTSH_OH_MY_POSH_CONFIG` the oh-my-posh's config file path.
 
 Other than env variable configured in `zsh/home/.zshenv` :
 
@@ -517,7 +517,7 @@ the editor in Files and Each-ref. Existing actions such as `Alt-A`, `Alt-R`,
 for its current Git command; direct `Ctrl-G` pickers expose every mode.
 `Ctrl-G Ctrl-E` opens the upstream `for-each-ref` picker covering every ref.
 `Ctrl-G` is handled as an explicit prefix, so the second key is not constrained
-by z4h's normal multi-key `KEYTIMEOUT`.
+by dotsh's normal multi-key `KEYTIMEOUT`.
 
 TAB starts Each-ref for ambiguous ref contexts such as branch start-points,
 checkout, switch, merge, rebase, worktree creation, restore sources, and
@@ -536,9 +536,8 @@ with `Ctrl-F` is applied on the next launch (fzf cannot resize an open picker).
 `Ctrl-H` is not needed inside fzf-git: its file picker already includes tracked
 and untracked dotfiles from Git status/index data.
 
-The pinned upstream revision requires fzf 0.66 or newer. The installer always
-uses (`Z4H_USE_FZF_FROM_Z4H=false`), verifies, and keeps the latest
-checkout under `~/.local/share/fzf`; older fzf versions retain separate
+The pinned integration revision requires fzf 0.66 or newer. The installer prepares
+the pinned fzf checkout and links it under `~/.local/share/fzf`; older fzf versions retain separate
 compatible pickers and normal fzf-tab fallback. Git 2.42 or newer is required
 for the `for-each-ref` picker. Because upstream fzf-git uses newline-delimited
 selection output, filenames containing embedded newlines are not supported by
@@ -606,7 +605,7 @@ and reopen your terminal or start a fresh login shell:
 exec zsh -l
 ```
 
-micro will be automatically installed at shell startup if it is not already present on your system.
+Install Micro explicitly with the installer if it is not already present.
 My micro configuration in `$HOME/.dotfiles/micro` will be automatically linked to `$HOME/.config/micro` during the installation process.
 
 If you want to use your own custom micro configuration, remove the symlink or point it to your custom configuration directory.
@@ -669,7 +668,7 @@ and reopen your terminal or start a fresh login shell:
 exec zsh -l
 ```
 
-fresh will be automatically installed at shell startup if it is not already present on your system.
+Install Fresh explicitly with the installer if it is not already present.
 My fresh configuration in `$HOME/.dotfiles/fresh` will be automatically linked to `$HOME/.config/fresh` during the installation process.
 
 If you want to use your own custom fresh configuration, remove the symlink or point it to your custom configuration directory.
@@ -695,10 +694,10 @@ If you want to use your own custom fresh configuration, remove the symlink or po
 
 #### Installation
 
-in vour $HOME/.zshenv file, modify the `Z4H_USE_MISE` variable to enable mise integration:
+in vour $HOME/.zshenv file, modify the `DOTSH_USE_MISE` variable to enable mise integration:
 
 ```bash
-export Z4H_USE_MISE=true
+export DOTSH_USE_MISE=true
 ```
 
 and reopen your terminal or start a fresh login shell:
@@ -707,7 +706,7 @@ and reopen your terminal or start a fresh login shell:
 exec zsh -l
 ```
 
-mise will be automatically installed at shell startup if it is not already present on your system.
+Install Mise explicitly with the installer if it is not already present.
 My mise configuration in `$HOME/.dotfiles/mise` will be automatically linked to `$HOME/.config/mise` during the installation process.
 
 This will load the customized mise integration (with Powerlevel10k segments support and a more convenient completion for using the various runtimes versions) before your plugins.
@@ -750,12 +749,12 @@ This repository includes my personal Fastfetch configuration at `$HOME/.dotfiles
 
 #### Installation
 
-in vour $HOME/.zshenv file, modify the `Z4H_SHOW_FASTFETCH` variable to enable fastfetch integration:
+in vour $HOME/.zshenv file, modify the `DOTSH_SHOW_FASTFETCH` variable to enable fastfetch integration:
 
 ```bash
-export Z4H_SHOW_FASTFETCH=true #shows fastfetch at every new terminal session
+export DOTSH_SHOW_FASTFETCH=true #shows fastfetch at every new terminal session
 or
-export Z4H_SHOW_FASTFETCH=first #shows fastfetch only on the first pts/ttys
+export DOTSH_SHOW_FASTFETCH=first #shows fastfetch only on the first pts/ttys
 ```
 
 and reopen your terminal or start a fresh login shell:
@@ -764,7 +763,7 @@ and reopen your terminal or start a fresh login shell:
 exec zsh -l
 ```
 
-fastfetch will be automatically installed at shell startup if it is not already present on your system.
+Install Fastfetch explicitly with the installer if it is not already present.
 My fastfetch configuration in `$HOME/.dotfiles/fastfetch` will be automatically linked to `$HOME/.config/fastfetch` during the installation process.
 The Fastfetch configuration is set up automatically using `$HOME/.config/fastfetch/config.jsonc`.
 If you want to use your own custom fastfetch configuration, remove the symlink or point it to your custom configuration directory.
@@ -775,10 +774,10 @@ If you want to use your own custom fastfetch configuration, remove the symlink o
 
 #### Installation
 
-in vour $HOME/.zshenv file, modify the `Z4H_PROMPT` variable to enable fastfetch integration:
+In your `$HOME/.zshenv` file, set `DOTSH_PROMPT` to select Oh My Posh:
 
 ```bash
-export Z4H_PROMPT=ohmyposh
+export DOTSH_PROMPT=ohmyposh
 ```
 
 and reopen your terminal or start a fresh login shell:
@@ -787,21 +786,21 @@ and reopen your terminal or start a fresh login shell:
 exec zsh -l
 ```
 
-oh-my-posh will be automatically installed at shell startup if it is not already present on your system.
-The oh-my-posh configuration is set up automatically using `Z4H_OH_MY_POSH_CONFIG="$DOTFILES_DIR/oh-my-posh/custom.omp.json"` in $HOME/.zshenv.
+Install Oh My Posh explicitly with the installer if it is not already present.
+The oh-my-posh configuration is set up automatically using `DOTSH_OH_MY_POSH_CONFIG="$DOTFILES_DIR/oh-my-posh/custom.omp.json"` in $HOME/.zshenv.
 If you want to use your own custom oh-my-posh configuration change the env to use your configuration.
 
 - **Built-in theme:** 
-  Set `Z4H_OH_MY_POSH_CONFIG` to the name of any theme included with Oh My Posh (e.g., `paradox`, `jandedobbeleer`, `powerlevel10k`):
+  Set `DOTSH_OH_MY_POSH_CONFIG` to the name of any theme included with Oh My Posh (e.g., `paradox`, `jandedobbeleer`, `powerlevel10k`):
   
   ```bash
-  export Z4H_OH_MY_POSH_CONFIG="paradox"
+  export DOTSH_OH_MY_POSH_CONFIG="paradox"
   ```
 
 Restart your terminal to apply the changes. 
 For more themes and customization options, see the [Oh My Posh theme gallery](https://ohmyposh.dev/themes).
 
-To revert to `powerlevel10K`, simply revert the `Z4H_PROMPT` env variable.
+To revert to `powerlevel10K`, simply revert the `DOTSH_PROMPT` env variable.
 
 ### 8.5. 🔀 tmux
 

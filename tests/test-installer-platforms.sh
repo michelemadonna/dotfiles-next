@@ -5,6 +5,10 @@ set -eu
 ROOT=$(CDPATH='' cd -- "$(dirname "$0")/.." && pwd)
 TEST_ROOT=$(mktemp -d "${TMPDIR:-/tmp}/dotfiles-installer-test.XXXXXX")
 trap 'rm -rf -- "$TEST_ROOT"' 0 HUP INT TERM
+# Provider defaults must not come from the caller's generated preferences.
+unset DOTFILES_INTEL_PACKAGE_MANAGER
+DOTFILES_DIR="$TEST_ROOT/default-dotfiles"
+export DOTFILES_DIR
 
 awk '!/^main "\$@"$/' "$ROOT/install.sh" >"$TEST_ROOT/install-lib.sh"
 
@@ -125,7 +129,54 @@ DOTFILES_DIR="$TEST_ROOT/generated-dotfiles" sh -c '
   info() { :; }
   generate_zshenv
   grep -q "^  export DOTFILES_INTEL_PACKAGE_MANAGER=homebrew$" "$DOTFILES_DIR/zsh/home/.zshenv"
-  grep -q "^  export Z4H_STARTUP_PROFILE_DEFAULT=default$" "$DOTFILES_DIR/zsh/home/.zshenv"
+  grep -q "^  export DOTSH_STARTUP_PROFILE_DEFAULT=default$" "$DOTFILES_DIR/zsh/home/.zshenv"
+' sh "$TEST_ROOT/install-lib.sh"
+
+# Migrating generated preferences removes the known bootstrap, preserving
+# custom settings rather than replacing the user's file with the template.
+mkdir -p "$TEST_ROOT/migration/zsh/home"
+cp "$ROOT/zsh/.zshenv.init" "$TEST_ROOT/migration/zsh/.zshenv.init"
+cat > "$TEST_ROOT/migration/zsh/home/.zshenv" <<'PREFERENCES'
+if [ -n "${ZSH_VERSION-}" ]; then
+  export PREVIOUS_STARTUP_PROFILE=fast
+  export PREVIOUS_PROMPT=powerlevel10k
+  export PREVIOUS_MISE_REFRESH_SECONDS=60
+  export PREVIOUS_SSH_ASKPASS_REQUIRE=false
+  export PREVIOUS_USE_FZF_FROM_PREVIOUS=true
+  export CUSTOM_PROMPT=untouched
+  export CUSTOM_STARTUP_PROFILE=unrelated
+  export CUSTOM_MESSAGE='PREVIOUS is my label'
+  export CUSTOM_PREVIOUS_SETTING=retained
+  export HISTORY_IGNORE='custom-history-pattern'
+  custom_preference=preserved
+  source "$DOTFILES_DIR/zsh/helpers/tool-bootstrap.zsh"
+  previous_zshenv="$ZDOTDIR/.zshenv_previous"
+  obsolete_bootstrap_must_disappear=true
+  : ${ZDOTDIR:=~}
+fi
+PREFERENCES
+DOTFILES_DIR="$TEST_ROOT/migration" sh -c '
+  . "$1"
+  MODE=non-interactive
+  configure_non_interactive
+  load_non_interactive_choices
+  info() { :; }
+  generate_zshenv
+  result="$DOTFILES_DIR/zsh/home/.zshenv"
+  [ -f "$result.pre-standalone" ]
+  grep -q "DOTSH_MISE_REFRESH_SECONDS=60" "$result"
+  grep -q "CUSTOM_PROMPT=untouched" "$result"
+  grep -q "CUSTOM_STARTUP_PROFILE=unrelated" "$result"
+  grep -q "PREVIOUS is my label" "$result"
+  grep -q "CUSTOM_PREVIOUS_SETTING=retained" "$result"
+  grep -q "custom_preference=preserved" "$result"
+  grep -q "custom-history-pattern" "$result"
+  grep -q "DOTSH_STARTUP_PROFILE_DEFAULT=fast" "$result"
+  ! grep -q "obsolete_bootstrap\|tool-bootstrap\|dotsh_zshenv\|export PREVIOUS_\|previous_zshenv\|DOTSH_USE_FZF_FROM_" "$result"
+  [ "$(grep -c "setopt no_global_rcs" "$result")" = 1 ]
+  cp "$result" "$result.expected"
+  generate_zshenv
+  cmp "$result" "$result.expected"
 ' sh "$TEST_ROOT/install-lib.sh"
 
 privilege_log=$TEST_ROOT/privilege.log
@@ -547,6 +598,7 @@ homebrew_editor_result=$(
     PACKAGE_MANAGER=homebrew
     HOMEBREW_PREFIX=$2/editor-homebrew
     editor=nano
+    selected_tool_available() { return 1; }
     info() { :; }
     link_editor_config() { :; }
     install_macports_ports() { printf "PORTS:%s\n" "$*"; }
@@ -578,14 +630,13 @@ BOOTSTRAP_LOG=$bootstrap_log \
     OSTYPE=darwin26.0
     EDITOR=vim
     DOTFILES_INTEL_PACKAGE_MANAGER=macports
-    Z4H_PROMPT=powerlevel10k
-    Z4H_SHOW_FASTFETCH=false
-    Z4H_USE_MISE=false
-    Z4H_USE_FZF_FROM_Z4H=true
+    DOTSH_PROMPT=powerlevel10k
+    DOTSH_SHOW_FASTFETCH=false
+    DOTSH_USE_MISE=false
     uname() { print -r -- x86_64; }
     source "$1"
   ' zsh "$ROOT/zsh/helpers/tool-bootstrap.zsh"
-assert_equal "$(cat "$bootstrap_log")" 'non-interactive'
+[ ! -e "$bootstrap_log" ]
 
 mkdir -p "$TEST_ROOT/bootstrap-macports/bin"
 printf '#!/bin/sh\nexit 0\n' >"$TEST_ROOT/bootstrap-macports/bin/vim"
@@ -598,13 +649,12 @@ BOOTSTRAP_LOG=$bootstrap_log \
     OSTYPE=darwin26.0
     EDITOR=vim
     DOTFILES_INTEL_PACKAGE_MANAGER=macports
-    Z4H_PROMPT=powerlevel10k
-    Z4H_SHOW_FASTFETCH=false
-    Z4H_USE_MISE=false
-    Z4H_USE_FZF_FROM_Z4H=true
+    DOTSH_PROMPT=powerlevel10k
+    DOTSH_SHOW_FASTFETCH=false
+    DOTSH_USE_MISE=false
     source "$1"
   ' zsh "$ROOT/zsh/helpers/tool-bootstrap.zsh"
-assert_equal "$(cat "$bootstrap_log")" 'non-interactive'
+[ ! -e "$bootstrap_log" ]
 
 optional_bootstrap_root=$TEST_ROOT/optional-bootstrap
 optional_bootstrap_log=$TEST_ROOT/optional-bootstrap.log
@@ -628,10 +678,9 @@ BOOTSTRAP_LOG=$optional_bootstrap_log \
     MACHTYPE=x86_64
     EDITOR=vim
     DOTFILES_INTEL_PACKAGE_MANAGER=macports
-    Z4H_PROMPT=ohmyposh
-    Z4H_SHOW_FASTFETCH=true
-    Z4H_USE_MISE=false
-    Z4H_USE_FZF_FROM_Z4H=true
+    DOTSH_PROMPT=ohmyposh
+    DOTSH_SHOW_FASTFETCH=true
+    DOTSH_USE_MISE=false
     source "$1"
   ' zsh "$ROOT/zsh/helpers/tool-bootstrap.zsh"
 [ ! -e "$optional_bootstrap_log" ]

@@ -1,0 +1,50 @@
+#!/usr/bin/env zsh
+
+local -i ret
+
+if (( ! _dotsh_terminal_dirty )) && [[ ${LASTWIDGET-} != accept-line ]]; then
+  # A widget can run an editor or picker without a shell preexec event.
+  _dotsh_terminal_dirty=1
+fi
+
+if (( ${+widgets[-dotsh-orig-zle-line-pre-redraw]} )); then
+  zle -- -dotsh-orig-zle-line-pre-redraw "$@" || ret=$?
+fi
+
+if (( ${+_dotsh_substring_search_highlight} )) &&
+   [[ ${_history_substring_search_cursor-} != $CURSOR ||
+      ${_history_substring_search_result-} != $BUFFER ]]; then
+  typeset -g _history_substring_search_result=
+  typeset -g _history_substring_search_query_highlight=
+  unset _dotsh_substring_search_highlight _history_substring_search_cursor
+fi
+
+if (( PENDING || KEYS_QUEUED_COUNT )); then
+  if (( ! ${+_dotsh_redraw_fd} )); then
+    typeset -gi _dotsh_redraw_fd
+    if sysopen -o cloexec -ru _dotsh_redraw_fd /dev/null; then
+      zle -F $_dotsh_redraw_fd -dotsh-redraw-buffer
+    else
+      unset _dotsh_redraw_fd
+    fi
+  fi
+  if [[ -n "${POSTDISPLAY-}" &&
+        "${#BUFFER}" -ne "${#_dotsh_autosuggest_buffer}" &&
+        -v region_highlight ]]; then
+    POSTDISPLAY=${_dotsh_autosuggestion:${#BUFFER}}
+    if [[ -n "$POSTDISPLAY" ]]; then
+      region_highlight[-1]="${#BUFFER} $((${#BUFFER} + ${#POSTDISPLAY})) $ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE"
+    else
+      unset POSTDISPLAY _dotsh_autosuggest_buffer _dotsh_autosuggestion
+    fi
+  fi
+else
+  if [[ -z $BUFFER && -z $PREBUFFER && ! -v _dotsh_redraw_fd ]]; then
+    unset POSTDISPLAY _dotsh_autosuggest_buffer _dotsh_autosuggestion
+    region_highlight=()
+  else
+    -dotsh-redraw-buffer
+  fi
+fi
+
+return ret

@@ -1,0 +1,10 @@
+#!/usr/bin/env zsh
+
+[[ -v _dotsh_tty_fd ]] || return
+
+builtin echoti civis >&$_dotsh_tty_fd
+builtin print -rnu $_dotsh_tty_fd -- $'\e[H\e[2J'"${(pl:$((LINES-1))::\n:)}"
+builtin zle -I
+builtin zle -R
+builtin print -rnu $_dotsh_tty_fd -- $'\e[3J'
+-dotsh-cursor-show

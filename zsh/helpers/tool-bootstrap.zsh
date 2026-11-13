@@ -1,17 +1,17 @@
-# Install selected tools and link their repository configurations on startup.
+# Legacy config-link helper. Installation is explicit; startup does not source this file.
 
-typeset -gr Z4H_BOOTSTRAP_CYAN=$'\033[36m'
-typeset -gr Z4H_BOOTSTRAP_GREEN=$'\033[32m'
-typeset -gr Z4H_BOOTSTRAP_RED=$'\033[31m'
-typeset -gr Z4H_BOOTSTRAP_BOLD=$'\033[1m'
-typeset -gr Z4H_BOOTSTRAP_RESET=$'\033[0m'
+typeset -gr DOTSH_BOOTSTRAP_CYAN=$'\033[36m'
+typeset -gr DOTSH_BOOTSTRAP_GREEN=$'\033[32m'
+typeset -gr DOTSH_BOOTSTRAP_RED=$'\033[31m'
+typeset -gr DOTSH_BOOTSTRAP_BOLD=$'\033[1m'
+typeset -gr DOTSH_BOOTSTRAP_RESET=$'\033[0m'
 
-z4h_bootstrap_log() {
+dotsh_bootstrap_log() {
   local color=$1 icon=$2 title=$3 message=$4
-  print -ru2 -- "${color}${Z4H_BOOTSTRAP_BOLD}${icon} ${title}${Z4H_BOOTSTRAP_RESET} ${color}${message}${Z4H_BOOTSTRAP_RESET}"
+  print -ru2 -- "${color}${DOTSH_BOOTSTRAP_BOLD}${icon} ${title}${DOTSH_BOOTSTRAP_RESET} ${color}${message}${DOTSH_BOOTSTRAP_RESET}"
 }
 
-z4h_link_config() {
+dotsh_link_config() {
   local source_path=$1 destination=$2
   [[ -e $source_path ]] || return 0
   [[ -d ${destination:h} ]] || command mkdir -p -- "${destination:h}" 2>/dev/null || return 0
@@ -19,16 +19,16 @@ z4h_link_config() {
   command ln -sfn -- "$source_path" "$destination" 2>/dev/null || true
 }
 
-z4h_tool_available() {
+dotsh_tool_available() {
   local tool=$1
   (( $+commands[$tool] )) || [[ -x $HOME/.local/bin/$tool ]]
 }
 
-z4h_selected_tool_available() {
+dotsh_selected_tool_available() {
   local tool=$1 prefix brew_bin
 
   if [[ $OSTYPE != darwin* ]]; then
-    z4h_tool_available "$tool"
+    dotsh_tool_available "$tool"
     return
   fi
 
@@ -48,7 +48,7 @@ z4h_selected_tool_available() {
   return 1
 }
 
-z4h_fzf_is_current() {
+dotsh_fzf_is_current() {
   local fzf_bin=$HOME/.local/bin/fzf version marker marker_dir
   [[ -d $HOME/.local/share/fzf/.git && -x $fzf_bin ]] || return 1
   marker="${ZSH_CACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/zsh}/dotfiles-next/fzf-version"
@@ -65,51 +65,43 @@ z4h_fzf_is_current() {
   is-at-least 0.66.0 "$version"
 }
 
-z4h_bootstrap_tools() {
+dotsh_bootstrap_tools() {
   local needs_install=false editor_config
   local -a editor_configs
 
   case $EDITOR in
     micro|fresh|vim|nano)
       editor_config="$DOTFILES_DIR/$EDITOR"
-      z4h_selected_tool_available "$EDITOR" || needs_install=true
+      dotsh_selected_tool_available "$EDITOR" || needs_install=true
       [[ -e $editor_config ]] && editor_configs+=("$editor_config:$XDG_CONFIG_HOME/$EDITOR")
       ;;
   esac
 
-  if [[ $Z4H_PROMPT == ohmyposh ]] && ! z4h_selected_tool_available oh-my-posh; then
+  if [[ $DOTSH_PROMPT == ohmyposh ]] && ! dotsh_selected_tool_available oh-my-posh; then
     needs_install=true
   fi
-  if [[ $Z4H_SHOW_FASTFETCH == true || $Z4H_SHOW_FASTFETCH == first ]] &&
-    ! z4h_selected_tool_available fastfetch; then
+  if [[ $DOTSH_SHOW_FASTFETCH == true || $DOTSH_SHOW_FASTFETCH == first ]] &&
+    ! dotsh_selected_tool_available fastfetch; then
     needs_install=true
   fi
-  if [[ $Z4H_USE_MISE == true ]] && ! z4h_tool_available mise; then
+  if [[ $DOTSH_USE_MISE == true ]] && ! dotsh_tool_available mise; then
     needs_install=true
   fi
-  if [[ $Z4H_USE_FZF_FROM_Z4H == false ]] && ! z4h_fzf_is_current; then
+  if ! dotsh_fzf_is_current; then
     needs_install=true
   fi
 
-  if [[ $needs_install == true && -f $DOTFILES_DIR/install.sh ]]; then
-    z4h_bootstrap_log "$Z4H_BOOTSTRAP_CYAN" '●' 'INFO' 'A selected tool is missing; starting non-interactive installation.'
-    if command sh "$DOTFILES_DIR/install.sh" non-interactive; then
-      z4h_bootstrap_log "$Z4H_BOOTSTRAP_GREEN" '✓' 'DONE' 'Non-interactive installation completed.'
-    else
-      z4h_bootstrap_log "$Z4H_BOOTSTRAP_RED" '✕' 'ERROR' 'Non-interactive installation failed; continuing Zsh startup.'
-    fi
-    path=("$HOME/.local/bin" $path)
-    typeset -gU path PATH
-    rehash
+  if [[ $needs_install == true ]]; then
+    dotsh_bootstrap_log "$DOTSH_BOOTSTRAP_RED" '!' 'MISSING' 'A selected tool is missing; run install.sh explicitly.'
   fi
 
-  z4h_link_config "$DOTFILES_DIR/fastfetch" "$XDG_CONFIG_HOME/fastfetch"
-  z4h_link_config "$DOTFILES_DIR/mise" "$XDG_CONFIG_HOME/mise"
+  dotsh_link_config "$DOTFILES_DIR/fastfetch" "$XDG_CONFIG_HOME/fastfetch"
+  dotsh_link_config "$DOTFILES_DIR/mise" "$XDG_CONFIG_HOME/mise"
   for editor_config in "${editor_configs[@]}"; do
-    z4h_link_config "${editor_config%%:*}" "${editor_config#*:}"
+    dotsh_link_config "${editor_config%%:*}" "${editor_config#*:}"
   done
 }
 
-z4h_bootstrap_tools
-unfunction z4h_link_config z4h_tool_available z4h_selected_tool_available \
-  z4h_fzf_is_current z4h_bootstrap_tools
+dotsh_bootstrap_tools
+unfunction dotsh_link_config dotsh_tool_available dotsh_selected_tool_available \
+  dotsh_fzf_is_current dotsh_bootstrap_tools

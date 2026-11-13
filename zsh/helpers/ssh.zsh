@@ -12,7 +12,8 @@ function load-our-ssh-keys() {
 	typeset -gi _ZQS_SSH_KEYS_STATUS=2
 	typeset -gi _ZQS_SSH_KEYS_VALID=0
 
-	if (( $+commands[keychain] )); then
+	# A fake HOME must not reuse host agents or import keys from macOS Keychain.
+	if (( $+commands[keychain] )) && [[ ${DOTFILES_FAKE_HOME:-} != $HOME ]]; then
 		eval "$(keychain -q --eval)" || return
 		agent_keys=$(ssh-add -l 2>/dev/null)
 		agent_status=$?
@@ -46,7 +47,7 @@ function load-our-ssh-keys() {
 	(( agent_status == 0 )) && _ZQS_SSH_KEYS_VALID=1
 
 	if (( agent_status == 1 )); then
-		if [[ $OSTYPE == darwin* ]]; then
+		if [[ $OSTYPE == darwin* && ${DOTFILES_FAKE_HOME:-} != $HOME ]]; then
 			if (( $+commands[sw_vers] )) && (( ${$(sw_vers -productVersion)%%.*} >= 12 )); then
 				ssh-add --apple-load-keychain >/dev/null 2>&1
 			else

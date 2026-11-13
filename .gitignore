@@ -38,7 +38,12 @@ gitconfig*
 zsh/home/.zsh_history
 zsh/home/.zshenv
 vim/autoload/plug.vim
-zsh/home/.zshenv_z4h
+zsh/home/.zshenv_dotsh
 fresh/tsconfig.json
 fresh/types/fresh.d.ts
 fresh/types/plugins.d.ts
+
+# Explicitly prepared pinned shell dependencies
+zsh/vendor/packages/
+zsh/home/.zshenv.pre-standalone
+docs/benchmarks/

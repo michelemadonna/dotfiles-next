@@ -1,0 +1,125 @@
+#!/usr/bin/env zsh
+
+()  {
+  eval "$_dotsh_opt"
+
+  local -i list_types
+  [[ $1 == on ]] && list_types=1
+
+  typeset -ga _dotsh_naturals
+  if (( $#_dotsh_naturals < $#_dotsh_words )); then
+    _dotsh_naturals+=({$(($#_dotsh_naturals+1))..$#_dotsh_words})
+  fi
+
+  local -A seen
+  local -a indices
+  local word idx
+  for word idx in "${(@)_dotsh_words:^_dotsh_naturals}"; do
+    if (( ! ${+seen[$word]} )); then
+      seen[$word]=1
+      indices+=($idx)
+    fi
+  done
+
+  -dotsh-set-list-colors "$_dotsh_curcontext" "$list_types"
+  local -i list_colors=$((!$?))
+
+  zstyle -t :completion:${_dotsh_curcontext}:default sort
+  local -i sort=$((!$?))
+
+  autoload +X -Uz -- -dotsh-cursor-show -dotsh-fzf
+
+  local -i pct=60
+  (( _dotsh_can_save_restore_screen )) && pct=100
+
+  local -i height=$(( 100 * ($#indices + 4) < pct * LINES ? $#indices + 4 : pct * LINES / 100 ))
+
+  (( height >= 6 )) || (( height = 6 ))
+  (( height <= LINES - 1 )) || (( height = LINES - 1 ))
+
+  local opts=(
+    --query=${_dotsh_word_prefix:+"^$_dotsh_word_prefix"}
+    --color=hl:201,hl+:201
+    --with-nth=2
+    --delimiter='\000'
+    --ansi
+    --exact
+    --no-mouse
+    --tiebreak=length,begin,index
+    --multi
+    --cycle
+    --border=horizontal
+  )
+
+  local cursor_y cursor_x
+  -dotsh-get-cursor-pos || return
+
+  if (( _dotsh_can_save_restore_screen )); then
+    opts+=(--no-clear)
+    if { (( height <= cursor_y - 1 )) && zstyle -T :dotsh: prompt-at-bottom } ||
+       (( cursor_y - 1 > LINES - cursor_y && cursor_y - 1 > 6 )) &&
+       { (( height > LINES - cursor_y )) || zstyle -T :dotsh: prompt-at-bottom }; then
+      (( height <= cursor_y - 1 )) || (( height = cursor_y - 1 ))
+      local move=$'\e[0m\e['$((cursor_y-height))';1H'
+      opts+=(--layout=default)
+    elif (( LINES - cursor_y > 6 )); then
+      (( height <= LINES - cursor_y )) || (( height = LINES - cursor_y ))
+      local move=$'\e[0m\n\r'
+      opts+=(--layout=reverse)
+    else
+      local -i extra=$((height - LINES + cursor_y))
+      print -rnu $_dotsh_tty_fd -- ${(pl:$height::\n:)} || return
+      (( cursor_y += LINES - cursor_y - height ))
+      local move=$'\e[0m\e['$((cursor_y+1))';1H'
+      opts+=(--layout=reverse)
+    fi
+    local _dotsh_saved_screen
+    -dotsh-save-screen || return
+  else
+    print >&$_dotsh_tty_fd || return
+    local move=
+    opts+=(--layout=reverse)
+  fi
+
+  opts+=(--height=$height)
+
+  {
+    local choice
+    choice="$(
+      unsetopt pipe_fail
+      exec 2>/dev/null
+      {
+        # TODO: colorize files.
+        if (( sort )); then
+          local rows=()
+          for idx in $indices; do
+            rows+=($_dotsh_descrs[idx]$'\0'$idx)
+          done
+          printf '%2$s\0%1$s\n' "${(@0)${(@o)rows}}"
+        else
+          for idx in $indices; do
+            printf '%s\0%s\n' $idx "$_dotsh_descrs[idx]"
+          done
+        fi
+      } | {
+        print -rnu $_dotsh_tty_fd -- $move
+        -dotsh-cursor-show
+        2>&$_dotsh_tty_fd -dotsh-fzf $opts
+      }
+    )"
+  } always {
+    -dotsh-cursor-hide
+    if (( _dotsh_can_save_restore_screen )); then
+      -dotsh-restore-screen
+      print -rn -- $'\e[0m\e['$cursor_y';'$cursor_x'H'
+    else
+      builtin echoti cuu 1
+      (( cursor_x > 1 )) && builtin echoti cuf $((cursor_x-1))
+    fi
+  }
+
+  [[ -n $choice ]] || return
+  choice=("${(@f)choice}")
+  typeset -g _dotsh_reply=(0 ${${choice:1}%$'\0'*})
+  [[ -z $choice[1] ]] || _dotsh_reply[1]=1
+} "${options[list_types]}"

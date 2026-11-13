@@ -1,0 +1,176 @@
+#!/usr/bin/env zsh
+
+[[ -v _dotsh_tty_fd ]] || return
+
+autoload +X -Uz -- -dotsh-present-files -dotsh-cursor-show -dotsh-find -dotsh-fzf
+
+local -i dot_glob list_types
+[[ -o dot_glob   ]] && dot_glob=1
+[[ -o list_types ]] && list_types=1
+
+-dotsh-set-list-colors :complete:cd:: $list_types
+local -i list_colors=$((!$?))
+
+(( ${+_dotsh_dir_hist_fd} )) && -dotsh-update-dir-history
+
+{
+  -dotsh-cursor-hide
+
+  local -i first=1
+  while true; do
+    local -i redraw=0 again=0
+    () {
+      eval "$_dotsh_opt"
+
+      if (( first )); then
+        local -i num_dirs=$#_dotsh_dir_history
+        local -i num_non_empty=0
+      else
+        if (( dot_glob )); then
+          local dirs=(*(-/DN))
+        else
+          local dirs=(*(-/N))
+        fi
+        local non_empty=(${^${dirs}}/*(D-/Y1N:h:t))
+        (( $#dirs )) || return 0
+        local -i num_dirs=$#dirs
+        local -i num_non_empty=$#non_empty
+      fi
+
+      {
+        -dotsh-show-dots ''
+
+        local -i pct=60
+        (( _dotsh_can_save_restore_screen )) && pct=100
+
+        local -i height=$(( ! num_non_empty && 100 * (num_dirs + 4) < pct * LINES ? num_dirs + 4 : pct * LINES / 100 ))
+
+        (( height >= 6 )) || (( height = 6 ))
+        (( height <= LINES - 1 )) || (( height = LINES - 1 ))
+
+        local opts=(
+          --color=hl:201,hl+:201
+          --with-nth=2
+          --delimiter='\000'
+          --ansi
+          --exact
+          --no-mouse
+          --tiebreak=length,begin,index
+          --no-multi
+          --border=horizontal
+        )
+
+        if (( first )); then
+          opts+=(--no-sort)
+        else
+          () {
+            emulate -L zsh
+            # Set dot_glob in case the value of find-flags depends on it (via `zstyle -e`).
+            # Ideally we should run this with user options.
+            (( dot_glob )) && setopt dot_glob
+            local -a bin
+            zstyle -a :dotsh:${WIDGET#dotsh-} find-command bin
+            if (( ! $#bin )) && (( $+commands[bfs] )); then
+              opts+=(--no-sort)
+            fi
+          }
+        fi
+
+        local cursor_y cursor_x
+        -dotsh-get-cursor-pos || return
+
+        if (( _dotsh_can_save_restore_screen )); then
+          opts+=(--no-clear)
+          if { (( height <= cursor_y - 1 )) && zstyle -T :dotsh: prompt-at-bottom } ||
+             (( cursor_y - 1 > LINES - cursor_y && cursor_y - 1 > 4 )) &&
+             { (( height > LINES - cursor_y )) || zstyle -T :dotsh: prompt-at-bottom }; then
+            (( height <= cursor_y - 1 )) || (( height = cursor_y - 1 ))
+            local move=$'\e[0m\e['$((cursor_y-height))';1H'
+            opts+=(--layout=default)
+          elif (( LINES - cursor_y > 4 )); then
+            (( height <= LINES - cursor_y )) || (( height = LINES - cursor_y ))
+            local move=$'\e[0m\n\r'
+            opts+=(--layout=reverse)
+          else
+            local -i extra=$((height - LINES + cursor_y))
+            print -rnu $_dotsh_tty_fd -- ${(pl:$height::\n:)} || return
+            (( cursor_y += LINES - cursor_y - height ))
+            local move=$'\e[0m\e['$((cursor_y+1))';1H'
+            opts+=(--layout=reverse)
+          fi
+          local _dotsh_saved_screen
+          -dotsh-save-screen || return
+        else
+          print -u $_dotsh_tty_fd || return
+          local move=
+          opts+=(--layout=reverse)
+        fi
+
+        opts+=(--height=$height)
+
+        {
+          local choice
+          choice=$(
+            unsetopt pipe_fail
+            exec 2>/dev/null
+            {
+              print -r -- $sysparams[pid]
+              if (( first )); then
+                local dir
+                for dir in $_dotsh_dir_history; do
+                  {
+                    # There is a bug in zsh that triggers if these two
+                    # expansions are combined: ${(g:oce:)${~dir}}.
+                    dir=${~dir}
+                    if [[ -d ${dir::=${(g:oce:)dir}} && $dir != *$'\n'* ]]; then
+                      print -r -- $dir
+                    fi
+                  } always {
+                    TRY_BLOCK_ERROR=0
+                  }
+                done 2>/dev/null
+              else
+                print -rC1 -- $dirs
+                -dotsh-find $dot_glob 1 $non_empty | command sed -n '/\/.*\// s/^..//p'
+              fi
+            } | {
+              local -a pids
+              IFS=' ' builtin read -rA pids || exit
+              print -r -- $pids $sysparams[pid] || exit
+              -dotsh-present-files $list_colors $list_types 1
+            } | {
+              local -a pids
+              IFS=' ' builtin read -rA pids || pids=()
+              print -rnu $_dotsh_tty_fd -- $move
+              -dotsh-cursor-show
+              2>&$_dotsh_tty_fd -dotsh-fzf $opts
+              (( $#pids )) && builtin kill -- $pids
+            } always {
+              -dotsh-cursor-hide
+            })
+          [[ -n $choice ]] || return
+          choice=("${(@f)choice}")
+          [[ -n $choice[1] ]] && again=1
+          # Weird chars don't roundtrip, so the directory may not exist.
+          cd -- ${choice[2]%%$'\0'*} 2>/dev/null || return
+          redraw=1
+        } always {
+          if (( _dotsh_can_save_restore_screen )); then
+            -dotsh-restore-screen
+            print -rn -- $'\e[0m\e['$cursor_y';'$cursor_x'H'
+          else
+            builtin echoti cuu 1
+            (( cursor_x > 1 )) && builtin echoti cuf $((cursor_x-1))
+          fi
+        }
+      } always {
+        zle -R
+      }
+    } || return
+    (( redraw )) && -dotsh-redraw-prompt 1
+    (( again )) || break
+    first=0
+  done
+} always {
+  -dotsh-cursor-show
+}

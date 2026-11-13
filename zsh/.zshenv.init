@@ -1,33 +1,35 @@
-# zshenv useb by installer
-if [[ -f ${HOME}/.z4h-zprof-enabled ]]; then
+
+if [[ -f ${HOME}/.dotsh-zprof-enabled ]]; then
   zmodload zsh/zprof
 fi
 
 if [ -n "${ZSH_VERSION-}" ]; then
-  export Z4H_PROMPT=${Z4H_PROMPT:="powerlevel10k"} # powerlevel10k/ohmyposh/minimal
-  export Z4H_STARTUP_PROFILE_DEFAULT=${Z4H_STARTUP_PROFILE_DEFAULT:=fast} # fast/default
-  case $Z4H_STARTUP_PROFILE_DEFAULT in
+  # Must run before /etc/zprofile, before .zshrc can be loaded.
+  setopt no_global_rcs
+  [[ ! -o interactive ]] || umask o-w
+  export DOTSH_PROMPT=${DOTSH_PROMPT:="powerlevel10k"} # powerlevel10k/ohmyposh/minimal
+  export DOTSH_STARTUP_PROFILE_DEFAULT=${DOTSH_STARTUP_PROFILE_DEFAULT:=fast} # fast/default
+  case $DOTSH_STARTUP_PROFILE_DEFAULT in
     default|fast) ;;
-    *) export Z4H_STARTUP_PROFILE_DEFAULT=default ;;
+    *) export DOTSH_STARTUP_PROFILE_DEFAULT=default ;;
   esac
-  case ${Z4H_STARTUP_PROFILE:-$Z4H_STARTUP_PROFILE_DEFAULT} in
-    default|fast) export Z4H_STARTUP_PROFILE=${Z4H_STARTUP_PROFILE:-$Z4H_STARTUP_PROFILE_DEFAULT} ;;
-    *) export Z4H_STARTUP_PROFILE=$Z4H_STARTUP_PROFILE_DEFAULT ;;
+  case ${DOTSH_STARTUP_PROFILE:-$DOTSH_STARTUP_PROFILE_DEFAULT} in
+    default|fast) export DOTSH_STARTUP_PROFILE=${DOTSH_STARTUP_PROFILE:-$DOTSH_STARTUP_PROFILE_DEFAULT} ;;
+    *) export DOTSH_STARTUP_PROFILE=$DOTSH_STARTUP_PROFILE_DEFAULT ;;
   esac
-  export Z4H_SHOW_FASTFETCH=${Z4H_SHOW_FASTFETCH:=first} #false/true/first
-  export Z4H_ENABLE_ALLAFINE=false
-  export Z4H_USE_FZF_TAB=true
-  export Z4H_ENABLE_AUTO_GENCOMP=${Z4H_ENABLE_AUTO_GENCOMP:=true} #true/false
-  export Z4H_ENABLE_OH_MY_ZSH=true
-  export Z4H_SSH_LOAD_KEY=${Z4H_SSH_LOAD_KEY:=true} #false/true
-  export Z4H_SSH_SHOW_KEY=${Z4H_SSH_SHOW_KEY:=true} #false/true
-  export Z4H_SSH_ASKPASS_REQUIRE=${Z4H_SSH_ASKPASS_REQUIRE:=false} #false/true
-  export Z4H_MISE_REFRESH_SECONDS=${Z4H_MISE_REFRESH_SECONDS:=5} #0 checks every prompt
-  export Z4H_USE_MISE=${Z4H_USE_MISE:=true} #true/false
-  export Z4H_USE_FZF_FROM_Z4H=false
-  export DOTFILES_INTEL_PACKAGE_MANAGER=${DOTFILES_INTEL_PACKAGE_MANAGER:=macports} #macports/homebrew
+  export DOTSH_SHOW_FASTFETCH=${DOTSH_SHOW_FASTFETCH:=first} #false/true/first
+  export DOTSH_ENABLE_ALLAFINE=false
+  export DOTSH_USE_FZF_TAB=true
+  export DOTSH_ENABLE_AUTO_GENCOMP=${DOTSH_ENABLE_AUTO_GENCOMP:=true} #true/false
+  export DOTSH_ENABLE_OH_MY_ZSH=true
+  export DOTSH_SSH_LOAD_KEY=${DOTSH_SSH_LOAD_KEY:=true} #false/true
+  export DOTSH_SSH_SHOW_KEY=${DOTSH_SSH_SHOW_KEY:=true} #false/true
+  export DOTSH_SSH_ASKPASS_REQUIRE=${DOTSH_SSH_ASKPASS_REQUIRE:=false} #false/true
+  export DOTSH_MISE_REFRESH_SECONDS=${DOTSH_MISE_REFRESH_SECONDS:=5} #0 checks every prompt
+  export DOTSH_USE_MISE=${DOTSH_USE_MISE:=true} #true/false
+  export DOTFILES_INTEL_PACKAGE_MANAGER=${DOTFILES_INTEL_PACKAGE_MANAGER:=homebrew} #macports/homebrew
   
-  export DOTFILES_DIR="$HOME/.dotfiles" #${DOTFILES_DIR:="$HOME/.dotfiles"}
+  export DOTFILES_DIR=${DOTFILES_DIR:-$HOME/.dotfiles}
   export XDG_CACHE_HOME=${XDG_CACHE_HOME:="$HOME/.cache"}
   export XDG_CONFIG_HOME=${XDG_CONFIG_HOME:="$HOME/.config"}
   export XDG_DATA_HOME=${XDG_DATA_HOME:="$HOME/.local/share"} 
@@ -41,7 +43,7 @@ if [ -n "${ZSH_VERSION-}" ]; then
   # MacPorts is primary, keep Homebrew isolated for the pkgmng coexistence
   # layer.
   if [[ $OSTYPE == darwin* ]]; then
-    if [[ $(uname -m) == x86_64 ]]; then
+    if [[ $CPUTYPE == x86_64 ]]; then
       if [[ $DOTFILES_INTEL_PACKAGE_MANAGER == homebrew ]]; then
         path=(
           /usr/local/bin /usr/local/sbin
@@ -61,7 +63,7 @@ if [ -n "${ZSH_VERSION-}" ]; then
   fi
   path=("$HOME/.local/bin" $path)
   typeset -gU path PATH
-  typeset -g _Z4H_PATH_SNAPSHOT="$PATH"
+  typeset -g _DOTSH_PATH_SNAPSHOT="$PATH"
 
   (( $+commands[python3] )) && alias python='command python3'
 
@@ -77,7 +79,7 @@ if [ -n "${ZSH_VERSION-}" ]; then
 
   export VIMINIT='source ~/.config/vim/vimrc'
 
-  source "$DOTFILES_DIR/zsh/helpers/tool-bootstrap.zsh"
+  # Dependencies are prepared explicitly by install.sh, never during startup.
 
   ## customize your color scheme and keep them in sync
   ## across Linux and OS X/*BSD at http://geoff.greer.fm/lscolors/
@@ -110,36 +112,7 @@ if [ -n "${ZSH_VERSION-}" ]; then
   export FZF_COMPLETION_TRIGGER='**' # change ** to whatever you like 
   
   export POWERLEVEL9K_CONFIG_FILE="$DOTFILES_DIR/powerlevel10k/.p10k.zsh" 
-  export Z4H_OH_MY_POSH_CONFIG="$DOTFILES_DIR/oh-my-posh/custom.omp.json"
+  export DOTSH_OH_MY_POSH_CONFIG="$DOTFILES_DIR/oh-my-posh/custom.omp.json"
   
-  z4h_zshenv="$ZDOTDIR/.zshenv_z4h"
-  if [[ ! -s $z4h_zshenv ]]; then
-    z4h_zshenv_url='https://raw.githubusercontent.com/romkatv/zsh4humans/v5/.zshenv'
-    z4h_zshenv_tmp=$(mktemp "${z4h_zshenv}.tmp.XXXXXX" 2>/dev/null) || z4h_zshenv_tmp=
-    if [[ -n $z4h_zshenv_tmp ]]; then
-      z4h_zshenv_downloaded=false
-      if command -v curl >/dev/null 2>&1 &&
-          curl -fsSL -- "$z4h_zshenv_url" >| "$z4h_zshenv_tmp"; then
-        z4h_zshenv_downloaded=true
-      elif command -v wget >/dev/null 2>&1 &&
-          wget -qO- -- "$z4h_zshenv_url" >| "$z4h_zshenv_tmp"; then
-        z4h_zshenv_downloaded=true
-      fi
-      if [[ $z4h_zshenv_downloaded == true && -s $z4h_zshenv_tmp ]]; then
-        mv -f -- "$z4h_zshenv_tmp" "$z4h_zshenv"
-      else
-        rm -f -- "$z4h_zshenv_tmp"
-        print -u2 -r -- 'z4h: unable to download .zshenv from zsh4humans.'
-      fi
-    else
-      print -u2 -r -- 'z4h: unable to create a temporary file for .zshenv.'
-    fi
-  fi
-  if [[ -r $z4h_zshenv ]]; then
-    . "$z4h_zshenv"
-  else
-    print -u2 -r -- "z4h: missing $z4h_zshenv"
-  fi
-
   : ${ZDOTDIR:=~}
 fi

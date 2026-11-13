@@ -53,8 +53,8 @@ __fzf_git_cat() {
 }
 
 __fzf_git_pager() {
-  if [[ -n ${Z4H_FZF_GIT_SHELL_Q:-} && -n ${Z4H_FZF_GIT_ACTION_Q:-} ]]; then
-    printf '%s %s preview-pager' "$Z4H_FZF_GIT_SHELL_Q" "$Z4H_FZF_GIT_ACTION_Q"
+  if [[ -n ${DOTSH_FZF_GIT_SHELL_Q:-} && -n ${DOTSH_FZF_GIT_ACTION_Q:-} ]]; then
+    printf '%s %s preview-pager' "$DOTSH_FZF_GIT_SHELL_Q" "$DOTSH_FZF_GIT_ACTION_Q"
     return
   fi
   local pager
@@ -77,19 +77,19 @@ if [[ $1 == --list ]]; then
     case "$1" in
       branches)
         echo 'CTRL-O (open in browser) ╱ ALT-A (show all branches)'
-        [[ -z ${Z4H_FZF_GIT_ALLOWED:-} || ",${Z4H_FZF_GIT_ALLOWED}," == *",hashes,"* ]] &&
+        [[ -z ${DOTSH_FZF_GIT_ALLOWED:-} || ",${DOTSH_FZF_GIT_ALLOWED}," == *",hashes,"* ]] &&
           echo 'ALT-H (list commit hashes)' || echo
         branches
         ;;
       all-branches)
         echo 'CTRL-O (open in browser) ╱ ALT-ENTER (accept without remote)'
-        [[ -z ${Z4H_FZF_GIT_ALLOWED:-} || ",${Z4H_FZF_GIT_ALLOWED}," == *",hashes,"* ]] &&
+        [[ -z ${DOTSH_FZF_GIT_ALLOWED:-} || ",${DOTSH_FZF_GIT_ALLOWED}," == *",hashes,"* ]] &&
           echo 'ALT-H (list commit hashes)' || echo
         branches -a
         ;;
       hashes)
         echo 'CTRL-O (open in browser) ╱ CTRL-D (diff) ╱ CTRL-S (toggle sort)'
-        if [[ -z ${Z4H_FZF_GIT_ALLOWED:-} || ",${Z4H_FZF_GIT_ALLOWED}," == *",files,"* ]]; then
+        if [[ -z ${DOTSH_FZF_GIT_ALLOWED:-} || ",${DOTSH_FZF_GIT_ALLOWED}," == *",files,"* ]]; then
           echo 'ALT-R (toggle raw mode) ╱ ALT-F (list files) ╱ ALT-A (show all hashes)'
         else
           echo 'ALT-R (toggle raw mode) ╱ ALT-A (show all hashes)'
@@ -98,7 +98,7 @@ if [[ $1 == --list ]]; then
         ;;
       all-hashes)
         echo 'CTRL-O (open in browser) ╱ CTRL-D (diff)'
-        if [[ -z ${Z4H_FZF_GIT_ALLOWED:-} || ",${Z4H_FZF_GIT_ALLOWED}," == *",files,"* ]]; then
+        if [[ -z ${DOTSH_FZF_GIT_ALLOWED:-} || ",${DOTSH_FZF_GIT_ALLOWED}," == *",files,"* ]]; then
           echo 'CTRL-S (toggle sort) ╱ ALT-F (list files)'
         else
           echo 'CTRL-S (toggle sort)'
@@ -207,27 +207,27 @@ _fzf_git_check() {
 __fzf_git_mode_allowed() {
   local mode=$1
   [[ $mode != tree_files ]] || mode=files
-  [[ -z ${Z4H_FZF_GIT_ALLOWED:-} || ",${Z4H_FZF_GIT_ALLOWED}," == *",${mode},"* ]]
+  [[ -z ${DOTSH_FZF_GIT_ALLOWED:-} || ",${DOTSH_FZF_GIT_ALLOWED}," == *",${mode},"* ]]
 }
 
 __fzf_git_transition_bind() {
   local key=$1 mode=$2 extra=${3:-}
-  if [[ -z ${Z4H_FZF_GIT_SHELL_Q:-} || -z ${Z4H_FZF_GIT_ADAPTER_Q:-} ]] ||
+  if [[ -z ${DOTSH_FZF_GIT_SHELL_Q:-} || -z ${DOTSH_FZF_GIT_ADAPTER_Q:-} ]] ||
      ! __fzf_git_mode_allowed "$mode"; then
     printf '%s:ignore' "$key"
     return
   fi
   printf '%s:become:%s %s --bridge %s --transition%s' \
-    "$key" "$Z4H_FZF_GIT_SHELL_Q" "$Z4H_FZF_GIT_ADAPTER_Q" "$mode" "$extra"
+    "$key" "$DOTSH_FZF_GIT_SHELL_Q" "$DOTSH_FZF_GIT_ADAPTER_Q" "$mode" "$extra"
 }
 
 __fzf_git_branch_hash_bind() {
-  if [[ -z ${Z4H_FZF_GIT_SHELL_Q:-} || -z ${Z4H_FZF_GIT_ADAPTER_Q:-} ]] ||
+  if [[ -z ${DOTSH_FZF_GIT_SHELL_Q:-} || -z ${DOTSH_FZF_GIT_ADAPTER_Q:-} ]] ||
      ! __fzf_git_mode_allowed hashes; then
     printf '%s' 'alt-h:ignore'
     return
   fi
-  printf '%s' "alt-h:become:LIST_OPTS=\$(cut -c3- <<< {} | cut -d' ' -f1) $Z4H_FZF_GIT_SHELL_Q $Z4H_FZF_GIT_ADAPTER_Q --bridge hashes --transition"
+  printf '%s' "alt-h:become:LIST_OPTS=\$(cut -c3- <<< {} | cut -d' ' -f1) $DOTSH_FZF_GIT_SHELL_Q $DOTSH_FZF_GIT_ADAPTER_Q --bridge hashes --transition"
 }
 
 __fzf_git_transition_header() {
@@ -248,12 +248,12 @@ __fzf_git_transition_header() {
 
 __fzf_git_editor_bind() {
   local mode=$1 selection=$2
-  if [[ -z ${Z4H_FZF_GIT_SHELL_Q:-} || -z ${Z4H_FZF_GIT_ACTION_Q:-} ]]; then
+  if [[ -z ${DOTSH_FZF_GIT_SHELL_Q:-} || -z ${DOTSH_FZF_GIT_ACTION_Q:-} ]]; then
     printf '%s' 'alt-v:ignore'
     return
   fi
   printf 'alt-v:execute:%s %s edit %s %s' \
-    "$Z4H_FZF_GIT_SHELL_Q" "$Z4H_FZF_GIT_ACTION_Q" "$mode" "$selection"
+    "$DOTSH_FZF_GIT_SHELL_Q" "$DOTSH_FZF_GIT_ACTION_Q" "$mode" "$selection"
 }
 
 __fzf_git=${BASH_SOURCE[0]:-${(%):-%x}}
@@ -427,7 +427,7 @@ _fzf_git_lreflogs() {
 _fzf_git_each_ref() {
   _fzf_git_check || return
   local accept_nth=2
-  [[ ${Z4H_FZF_GIT_BRIDGE_CAPTURE:-} != each_ref ]] || accept_nth=1,2
+  [[ ${DOTSH_FZF_GIT_BRIDGE_CAPTURE:-} != each_ref ]] || accept_nth=1,2
   bash "$__fzf_git" --list refs | _fzf_git_fzf --ansi \
     --nth 2,2.. \
     --tiebreak begin \

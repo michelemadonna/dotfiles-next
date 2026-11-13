@@ -1,0 +1,3 @@
+#!/bin/sh
+# Preserve the current shell executable in child processes, independently of PATH.
+exec "${DOTSH_EXE:-/bin/zsh}" "$@"

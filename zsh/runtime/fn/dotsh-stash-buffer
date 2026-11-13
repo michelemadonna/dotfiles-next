@@ -1,0 +1,6 @@
+#!/usr/bin/env zsh
+
+eval "$_dotsh_opt"
+[[ -z $BUFFER ]] && return
+fc -R =(print -r -- ${BUFFER//$'\n'/$'\\\n'})
+BUFFER=

@@ -2,37 +2,37 @@
 
 # fzf-git integration for dotfiles-next. The upstream script is vendored at a
 # fixed revision; this adapter owns command-aware TAB completion and the
-# compatibility path for the older fzf bundled with z4h.
+# compatibility path for older independently installed fzf versions.
 
 emulate -L zsh
 setopt extended_glob no_aliases
 
-if [[ ${Z4H_FZF_GIT_LOADED:-false} == true ]]; then
+if [[ ${DOTSH_FZF_GIT_LOADED:-false} == true ]]; then
     return 0 2>/dev/null || exit 0
 fi
-typeset -g Z4H_FZF_GIT_LOADED=true
+typeset -g DOTSH_FZF_GIT_LOADED=true
 
-typeset -gr Z4H_FZF_GIT_ADAPTER="${${(%):-%x}:A}"
-typeset -gr Z4H_FZF_GIT_ACTION="${Z4H_FZF_GIT_ADAPTER:h}/fzf-git-action.zsh"
-typeset -gx Z4H_FZF_GIT_SHELL="${commands[zsh]:-/bin/zsh}"
-typeset -gx Z4H_FZF_GIT_ADAPTER_Q="${(q)Z4H_FZF_GIT_ADAPTER}"
-typeset -gx Z4H_FZF_GIT_ACTION_Q="${(q)Z4H_FZF_GIT_ACTION}"
-typeset -gx Z4H_FZF_GIT_SHELL_Q="${(q)Z4H_FZF_GIT_SHELL}"
-typeset -g Z4H_FZF_GIT_FZF=${Z4H_FZF_GIT_FZF:-}
-if [[ -n $Z4H_FZF_GIT_FZF && -x $Z4H_FZF_GIT_FZF ]]; then
+typeset -gr DOTSH_FZF_GIT_ADAPTER="${${(%):-%x}:A}"
+typeset -gr DOTSH_FZF_GIT_ACTION="${DOTSH_FZF_GIT_ADAPTER:h}/fzf-git-action.zsh"
+typeset -gx DOTSH_FZF_GIT_SHELL="${commands[zsh]:-/bin/zsh}"
+typeset -gx DOTSH_FZF_GIT_ADAPTER_Q="${(q)DOTSH_FZF_GIT_ADAPTER}"
+typeset -gx DOTSH_FZF_GIT_ACTION_Q="${(q)DOTSH_FZF_GIT_ACTION}"
+typeset -gx DOTSH_FZF_GIT_SHELL_Q="${(q)DOTSH_FZF_GIT_SHELL}"
+typeset -g DOTSH_FZF_GIT_FZF=${DOTSH_FZF_GIT_FZF:-}
+if [[ -n $DOTSH_FZF_GIT_FZF && -x $DOTSH_FZF_GIT_FZF ]]; then
     :
-elif [[ ${Z4H_USE_FZF_FROM_Z4H:-true} == false && -x ${FZF_LOCAL_BIN:-$HOME/.local/bin/fzf} ]]; then
-    Z4H_FZF_GIT_FZF=${FZF_LOCAL_BIN:-$HOME/.local/bin/fzf}
+elif [[ -x ${FZF_LOCAL_BIN:-$HOME/.local/bin/fzf} ]]; then
+    DOTSH_FZF_GIT_FZF=${FZF_LOCAL_BIN:-$HOME/.local/bin/fzf}
 elif [[ -x ${FZF_PATH:-}/bin/fzf ]]; then
-    Z4H_FZF_GIT_FZF=$FZF_PATH/bin/fzf
+    DOTSH_FZF_GIT_FZF=$FZF_PATH/bin/fzf
 else
-    Z4H_FZF_GIT_FZF=${commands[fzf]:-}
+    DOTSH_FZF_GIT_FZF=${commands[fzf]:-}
 fi
-typeset -g Z4H_FZF_GIT_MODERN=false
-typeset -g Z4H_FZF_GIT_UPSTREAM=false
-typeset -g Z4H_FZF_GIT_QUERY=${Z4H_FZF_GIT_QUERY:-}
+typeset -g DOTSH_FZF_GIT_MODERN=false
+typeset -g DOTSH_FZF_GIT_UPSTREAM=false
+typeset -g DOTSH_FZF_GIT_QUERY=${DOTSH_FZF_GIT_QUERY:-}
 
-_z4h_fzf_git_version_at_least() {
+_dotsh_fzf_git_version_at_least() {
     emulate -L zsh
     local wanted=$1 version=${2%% *}
     local -a want_parts=(${(s:.:)wanted}) have_parts=(${(s:.:)version})
@@ -47,36 +47,36 @@ _z4h_fzf_git_version_at_least() {
     return 0
 }
 
-if [[ -n $Z4H_FZF_GIT_FZF ]]; then
-    typeset _z4h_fzf_git_version
-    _z4h_fzf_git_version=$($Z4H_FZF_GIT_FZF --version 2>/dev/null)
-    _z4h_fzf_git_version_at_least 0.38.0 "$_z4h_fzf_git_version" &&
-        Z4H_FZF_GIT_MODERN=true
-    _z4h_fzf_git_version_at_least 0.66.0 "$_z4h_fzf_git_version" &&
-        Z4H_FZF_GIT_UPSTREAM=true
-    unset _z4h_fzf_git_version
+if [[ -n $DOTSH_FZF_GIT_FZF ]]; then
+    typeset _dotsh_fzf_git_version
+    _dotsh_fzf_git_version=$($DOTSH_FZF_GIT_FZF --version 2>/dev/null)
+    _dotsh_fzf_git_version_at_least 0.38.0 "$_dotsh_fzf_git_version" &&
+        DOTSH_FZF_GIT_MODERN=true
+    _dotsh_fzf_git_version_at_least 0.66.0 "$_dotsh_fzf_git_version" &&
+        DOTSH_FZF_GIT_UPSTREAM=true
+    unset _dotsh_fzf_git_version
 fi
 
 # Keep the vendored UI intact while making it use the fzf binary selected by
 # the installer. This function is deliberately valid in both Zsh and Bash:
 # fzf-git.sh exports it to a Bash subprocess for the branch picker.
-if [[ $Z4H_FZF_GIT_UPSTREAM == true ]]; then
-    if [[ -z ${Z4H_FZF_GIT_TRANSFER_DIR:-} ]]; then
-        typeset -gx Z4H_FZF_GIT_TRANSFER_DIR
-        Z4H_FZF_GIT_TRANSFER_DIR=$(mktemp -d "${TMPDIR:-/tmp}/z4h-fzf-git-transfer.XXXXXX") || {
+if [[ $DOTSH_FZF_GIT_UPSTREAM == true ]]; then
+    if [[ -z ${DOTSH_FZF_GIT_TRANSFER_DIR:-} ]]; then
+        typeset -gx DOTSH_FZF_GIT_TRANSFER_DIR
+        DOTSH_FZF_GIT_TRANSFER_DIR=$(mktemp -d "${TMPDIR:-/tmp}/dotsh-fzf-git-transfer.XXXXXX") || {
             return 1 2>/dev/null || exit 1
         }
-        command chmod 700 "$Z4H_FZF_GIT_TRANSFER_DIR"
-        typeset -gx Z4H_FZF_GIT_TRANSFER_OWNER=$$
+        command chmod 700 "$DOTSH_FZF_GIT_TRANSFER_DIR"
+        typeset -gx DOTSH_FZF_GIT_TRANSFER_OWNER=$$
     fi
-    export Z4H_FZF_GIT_FZF
+    export DOTSH_FZF_GIT_FZF
     _fzf_git_fzf() {
         local height preview_position preview_window preview_cycle
         local state_command state_helper preview_state_file
         local state_command_q state_helper_q preview_state_file_q ctrl_p_bind
 
-        Z4H_FZF_GIT_EDITOR=${Z4H_FZF_GIT_EDITOR:-${VISUAL:-${EDITOR:-vi}}}
-        export Z4H_FZF_GIT_EDITOR
+        DOTSH_FZF_GIT_EDITOR=${DOTSH_FZF_GIT_EDITOR:-${VISUAL:-${EDITOR:-vi}}}
+        export DOTSH_FZF_GIT_EDITOR
 
         height=33%
         if [ -r "${FZF_TAB_HEIGHT_STATE_FILE:-}" ]; then
@@ -122,7 +122,7 @@ if [[ $Z4H_FZF_GIT_UPSTREAM == true ]]; then
         printf -v preview_state_file_q %q "$preview_state_file"
         ctrl_p_bind="ctrl-p:execute-silent(${state_command_q} ${state_helper_q} cycle-preview ${preview_state_file_q})+change-preview-window(${preview_cycle})+refresh-preview"
 
-        command "${Z4H_FZF_GIT_FZF:-fzf}" \
+        command "${DOTSH_FZF_GIT_FZF:-fzf}" \
             --layout reverse --multi --min-height 20+ \
             --no-separator --header-border horizontal \
             --border-label-pos 2 \
@@ -137,94 +137,94 @@ if [[ $Z4H_FZF_GIT_UPSTREAM == true ]]; then
     typeset -gx __fzf_git_fzf="$(typeset -f _fzf_git_fzf)"
 fi
 
-_z4h_fzf_git_cleanup_transfer_dir() {
+_dotsh_fzf_git_cleanup_transfer_dir() {
     local temporary_root=${${TMPDIR:-/tmp}:A}
-    local transfer_dir=${${Z4H_FZF_GIT_TRANSFER_DIR:-}:A}
-    [[ ${Z4H_FZF_GIT_TRANSFER_OWNER:-} == $$ ]] || return 0
+    local transfer_dir=${${DOTSH_FZF_GIT_TRANSFER_DIR:-}:A}
+    [[ ${DOTSH_FZF_GIT_TRANSFER_OWNER:-} == $$ ]] || return 0
     [[ -n $transfer_dir && -d $transfer_dir ]] || return 0
-    [[ $transfer_dir == ${temporary_root%/}/z4h-fzf-git-transfer.* ]] || return 1
+    [[ $transfer_dir == ${temporary_root%/}/dotsh-fzf-git-transfer.* ]] || return 1
     command rm -rf -- "$transfer_dir"
 }
 
-if [[ $Z4H_FZF_GIT_UPSTREAM == true && ${Z4H_FZF_GIT_TRANSFER_OWNER:-} == $$ && -o interactive ]]; then
+if [[ $DOTSH_FZF_GIT_UPSTREAM == true && ${DOTSH_FZF_GIT_TRANSFER_OWNER:-} == $$ && -o interactive ]]; then
     autoload -Uz add-zsh-hook
-    add-zsh-hook zshexit _z4h_fzf_git_cleanup_transfer_dir
+    add-zsh-hook zshexit _dotsh_fzf_git_cleanup_transfer_dir
 fi
 
-_z4h_fzf_git_check() {
+_dotsh_fzf_git_check() {
     command git rev-parse --is-inside-work-tree >/dev/null 2>&1
 }
 
-_z4h_fzf_git_emit() {
+_dotsh_fzf_git_emit() {
     local type=$1 value=$2 description=${3:-}
     printf '%s\t%s\t%s\0' "$type" "$value" "$description"
 }
 
-_z4h_fzf_git_files() {
+_dotsh_fzf_git_files() {
     local file
     while IFS= read -r -d '' file; do
-        _z4h_fzf_git_emit file "$file"
+        _dotsh_fzf_git_emit file "$file"
     done < <(command git -c core.quotePath=false ls-files -co --exclude-standard -z)
 }
 
-_z4h_fzf_git_branches() {
+_dotsh_fzf_git_branches() {
     local line value description type
     while IFS=$'\t' read -r value description; do
         [[ -n $value ]] || continue
         type=branch
         [[ $value == */* ]] && type=remote-branch
-        _z4h_fzf_git_emit "$type" "$value" "$description"
+        _dotsh_fzf_git_emit "$type" "$value" "$description"
     done < <(command git for-each-ref \
         --sort=-committerdate \
         --format=$'%(refname:short)\t%(subject)' \
         refs/heads refs/remotes 2>/dev/null)
 }
 
-_z4h_fzf_git_tags() {
+_dotsh_fzf_git_tags() {
     local line value description
     while IFS=$'\t' read -r value description; do
-        [[ -n $value ]] && _z4h_fzf_git_emit tag "$value" "$description"
+        [[ -n $value ]] && _dotsh_fzf_git_emit tag "$value" "$description"
     done < <(command git for-each-ref \
         --sort=-creatordate \
         --format=$'%(refname:short)\t%(subject)' refs/tags 2>/dev/null)
 }
 
-_z4h_fzf_git_remotes() {
+_dotsh_fzf_git_remotes() {
     local remote url
     while IFS= read -r remote; do
         [[ -n $remote ]] || continue
         url=$(command git remote get-url "$remote" 2>/dev/null)
-        _z4h_fzf_git_emit remote "$remote" "$url"
+        _dotsh_fzf_git_emit remote "$remote" "$url"
     done < <(command git remote 2>/dev/null)
 }
 
-_z4h_fzf_git_hashes() {
+_dotsh_fzf_git_hashes() {
     local line hash description
     while IFS=$'\t' read -r hash description; do
-        [[ -n $hash ]] && _z4h_fzf_git_emit commit "$hash" "$description"
+        [[ -n $hash ]] && _dotsh_fzf_git_emit commit "$hash" "$description"
     done < <(command git log --all -200 --format=$'%h\t%s' 2>/dev/null)
 }
 
-_z4h_fzf_git_stashes() {
+_dotsh_fzf_git_stashes() {
     local line value description
     while IFS=$'\t' read -r value description; do
-        [[ -n $value ]] && _z4h_fzf_git_emit stash "$value" "$description"
+        [[ -n $value ]] && _dotsh_fzf_git_emit stash "$value" "$description"
     done < <(command git stash list --format=$'%gd\t%gs' 2>/dev/null)
 }
 
-_z4h_fzf_git_reflogs() {
+_dotsh_fzf_git_reflogs() {
     local line value description
     while IFS=$'\t' read -r value description; do
-        [[ -n $value ]] && _z4h_fzf_git_emit reflog "$value" "$description"
+        [[ -n $value ]] && _dotsh_fzf_git_emit reflog "$value" "$description"
     done < <(command git reflog --all --format=$'%gD\t%gs' 2>/dev/null)
 }
 
-_z4h_fzf_git_worktrees() {
+_dotsh_fzf_git_worktrees() {
     local line worktree_path= head= branch=
     while IFS= read -r line; do
         case $line in
             'worktree '*)
-                [[ -z $worktree_path ]] || _z4h_fzf_git_emit worktree "$worktree_path" "${branch:-$head}"
+                [[ -z $worktree_path ]] || _dotsh_fzf_git_emit worktree "$worktree_path" "${branch:-$head}"
                 worktree_path=${line#worktree }
                 head=
                 branch=
@@ -232,17 +232,17 @@ _z4h_fzf_git_worktrees() {
             'HEAD '*) head=${line#HEAD } ;;
             'branch '*) branch=${${line#branch }#refs/heads/} ;;
             '')
-                [[ -z $worktree_path ]] || _z4h_fzf_git_emit worktree "$worktree_path" "${branch:-$head}"
+                [[ -z $worktree_path ]] || _dotsh_fzf_git_emit worktree "$worktree_path" "${branch:-$head}"
                 worktree_path=
                 head=
                 branch=
                 ;;
         esac
     done < <(command git worktree list --porcelain 2>/dev/null)
-    [[ -z $worktree_path ]] || _z4h_fzf_git_emit worktree "$worktree_path" "${branch:-$head}"
+    [[ -z $worktree_path ]] || _dotsh_fzf_git_emit worktree "$worktree_path" "${branch:-$head}"
 }
 
-_z4h_fzf_git_refs() {
+_dotsh_fzf_git_refs() {
     local line type value description
     while IFS=$'\t' read -r type value description; do
         [[ -n $value ]] || continue
@@ -253,52 +253,52 @@ _z4h_fzf_git_refs() {
             refs/stash) type=stash ;;
             *) type=ref ;;
         esac
-        _z4h_fzf_git_emit "$type" "$value" "$description"
+        _dotsh_fzf_git_emit "$type" "$value" "$description"
     done < <(command git for-each-ref \
         --sort=-creatordate \
         --format=$'%(refname:rstrip=-2)\t%(refname:short)\t%(subject)' 2>/dev/null)
 }
 
-_z4h_fzf_git_records() {
+_dotsh_fzf_git_records() {
     emulate -L zsh
-    local mode=$1 allowed=${Z4H_FZF_GIT_ALLOWED:-}
+    local mode=$1 allowed=${DOTSH_FZF_GIT_ALLOWED:-}
     case $mode in
-        files) _z4h_fzf_git_files ;;
-        branches) _z4h_fzf_git_branches ;;
-        tags) _z4h_fzf_git_tags ;;
-        remotes) _z4h_fzf_git_remotes ;;
-        hashes) _z4h_fzf_git_hashes ;;
-        stashes) _z4h_fzf_git_stashes ;;
-        reflogs) _z4h_fzf_git_reflogs ;;
-        worktrees) _z4h_fzf_git_worktrees ;;
-        refs) _z4h_fzf_git_refs ;;
+        files) _dotsh_fzf_git_files ;;
+        branches) _dotsh_fzf_git_branches ;;
+        tags) _dotsh_fzf_git_tags ;;
+        remotes) _dotsh_fzf_git_remotes ;;
+        hashes) _dotsh_fzf_git_hashes ;;
+        stashes) _dotsh_fzf_git_stashes ;;
+        reflogs) _dotsh_fzf_git_reflogs ;;
+        worktrees) _dotsh_fzf_git_worktrees ;;
+        refs) _dotsh_fzf_git_refs ;;
         all)
-            [[ $allowed == *files* ]] && _z4h_fzf_git_files
+            [[ $allowed == *files* ]] && _dotsh_fzf_git_files
             if [[ $allowed == *refs* ]]; then
-                _z4h_fzf_git_refs
+                _dotsh_fzf_git_refs
             else
-                [[ $allowed == *branches* ]] && _z4h_fzf_git_branches
-                [[ $allowed == *tags* ]] && _z4h_fzf_git_tags
-                [[ $allowed == *stashes* ]] && _z4h_fzf_git_stashes
+                [[ $allowed == *branches* ]] && _dotsh_fzf_git_branches
+                [[ $allowed == *tags* ]] && _dotsh_fzf_git_tags
+                [[ $allowed == *stashes* ]] && _dotsh_fzf_git_stashes
             fi
-            [[ $allowed == *remotes* ]] && _z4h_fzf_git_remotes
-            [[ $allowed == *hashes* ]] && _z4h_fzf_git_hashes
-            [[ $allowed == *reflogs* ]] && _z4h_fzf_git_reflogs
-            [[ $allowed == *worktrees* ]] && _z4h_fzf_git_worktrees
+            [[ $allowed == *remotes* ]] && _dotsh_fzf_git_remotes
+            [[ $allowed == *hashes* ]] && _dotsh_fzf_git_hashes
+            [[ $allowed == *reflogs* ]] && _dotsh_fzf_git_reflogs
+            [[ $allowed == *worktrees* ]] && _dotsh_fzf_git_worktrees
             ;;
         *) return 1 ;;
     esac
 }
 
-_z4h_fzf_git_mode_allowed() {
-    [[ ",${Z4H_FZF_GIT_ALLOWED}," == *",$1,"* ]]
+_dotsh_fzf_git_mode_allowed() {
+    [[ ",${DOTSH_FZF_GIT_ALLOWED}," == *",$1,"* ]]
 }
 
-_z4h_fzf_git_bindings() {
+_dotsh_fzf_git_bindings() {
     emulate -L zsh
-    [[ $Z4H_FZF_GIT_MODERN == true ]] || return
+    [[ $DOTSH_FZF_GIT_MODERN == true ]] || return
     local shell=${commands[zsh]:-/bin/zsh}
-    local quoted_shell=${(q)shell} quoted_adapter=${(q)Z4H_FZF_GIT_ADAPTER}
+    local quoted_shell=${(q)shell} quoted_adapter=${(q)DOTSH_FZF_GIT_ADAPTER}
     local mode key
     local -a bindings=()
     for mode key in \
@@ -312,13 +312,13 @@ _z4h_fzf_git_bindings() {
         worktrees alt-w \
         refs alt-e \
         all alt-a; do
-        _z4h_fzf_git_mode_allowed "$mode" || continue
+        _dotsh_fzf_git_mode_allowed "$mode" || continue
         bindings+=("${key}:become($quoted_shell $quoted_adapter --run $mode)")
     done
     (( $#bindings )) && print -rl -- --bind "${(j:,:)bindings}"
 }
 
-_z4h_fzf_git_preview() {
+_dotsh_fzf_git_preview() {
     print -r -- '
         type={1}
         value={2}
@@ -340,12 +340,12 @@ _z4h_fzf_git_preview() {
     '
 }
 
-_z4h_fzf_git_pick() {
+_dotsh_fzf_git_pick() {
     emulate -L zsh
     setopt pipe_fail
     local mode=${1:-all}
     local label=${mode:u}
-    local preview=$(_z4h_fzf_git_preview)
+    local preview=$(_dotsh_fzf_git_preview)
     local -a options=(
         --read0 --print0 --ansi
         --height=70% --layout=reverse --border
@@ -355,35 +355,35 @@ _z4h_fzf_git_pick() {
         --prompt="$label > "
         --header='Alt-B branch · Alt-T tag · Alt-H commit · Alt-F file · Alt-A all · Alt-R remote · Alt-S stash · Alt-L reflog · Alt-W worktree · Alt-E refs'
     )
-    [[ ${Z4H_FZF_GIT_MULTI:-false} == true ]] && options+=(--multi)
-    if [[ -n ${Z4H_FZF_GIT_FILTER:-} ]]; then
-        options+=(--filter="$Z4H_FZF_GIT_FILTER")
-    elif [[ -n ${Z4H_FZF_GIT_QUERY:-} ]]; then
-        options+=(--query="$Z4H_FZF_GIT_QUERY")
+    [[ ${DOTSH_FZF_GIT_MULTI:-false} == true ]] && options+=(--multi)
+    if [[ -n ${DOTSH_FZF_GIT_FILTER:-} ]]; then
+        options+=(--filter="$DOTSH_FZF_GIT_FILTER")
+    elif [[ -n ${DOTSH_FZF_GIT_QUERY:-} ]]; then
+        options+=(--query="$DOTSH_FZF_GIT_QUERY")
     fi
-    if [[ $Z4H_FZF_GIT_MODERN == true ]]; then
-        options+=("${(@f)$(_z4h_fzf_git_bindings)}")
+    if [[ $DOTSH_FZF_GIT_MODERN == true ]]; then
+        options+=("${(@f)$(_dotsh_fzf_git_bindings)}")
     fi
-    _z4h_fzf_git_records "$mode" | FZF_DEFAULT_OPTS= command "$Z4H_FZF_GIT_FZF" "${options[@]}"
+    _dotsh_fzf_git_records "$mode" | FZF_DEFAULT_OPTS= command "$DOTSH_FZF_GIT_FZF" "${options[@]}"
 }
 
-_z4h_fzf_git_pick_to_file() {
+_dotsh_fzf_git_pick_to_file() {
     emulate -L zsh
     local mode=$1
-    if [[ $Z4H_FZF_GIT_UPSTREAM == true ]]; then
-        _z4h_fzf_git_upstream_pick_to_file "$mode"
+    if [[ $DOTSH_FZF_GIT_UPSTREAM == true ]]; then
+        _dotsh_fzf_git_upstream_pick_to_file "$mode"
         return $?
     fi
-    REPLY=$(mktemp "${TMPDIR:-/tmp}/z4h-fzf-git.XXXXXX") || return 1
-    _z4h_fzf_git_pick "$mode" >| "$REPLY"
+    REPLY=$(mktemp "${TMPDIR:-/tmp}/dotsh-fzf-git.XXXXXX") || return 1
+    _dotsh_fzf_git_pick "$mode" >| "$REPLY"
     return 0
 }
 
-_z4h_fzf_git_upstream_target() {
+_dotsh_fzf_git_upstream_target() {
     emulate -L zsh
     local mode=$1
     if [[ $mode == all ]]; then
-        case ${Z4H_FZF_GIT_COMMAND:-} in
+        case ${DOTSH_FZF_GIT_COMMAND:-} in
             add) mode=files ;;
             checkout|switch|restore|merge|rebase|worktree|fetch|pull|push) mode=refs ;;
             diff) mode=files ;;
@@ -406,7 +406,7 @@ _z4h_fzf_git_upstream_target() {
     esac
 }
 
-_z4h_fzf_git_upstream_type() {
+_dotsh_fzf_git_upstream_type() {
     emulate -L zsh
     local default_type=$1 value=$2
     REPLY=$default_type
@@ -422,7 +422,7 @@ _z4h_fzf_git_upstream_type() {
     fi
 }
 
-_z4h_fzf_git_type_allowed() {
+_dotsh_fzf_git_type_allowed() {
     emulate -L zsh
     local type=$1 mode
     case $type in
@@ -432,9 +432,9 @@ _z4h_fzf_git_type_allowed() {
         commit) mode=hashes ;;
         remote) mode=remotes ;;
         stash)
-            [[ -z ${Z4H_FZF_GIT_ALLOWED:-} ||
-                ",${Z4H_FZF_GIT_ALLOWED}," == *",stashes,"* ||
-                ",${Z4H_FZF_GIT_ALLOWED}," == *",refs,"* ]]
+            [[ -z ${DOTSH_FZF_GIT_ALLOWED:-} ||
+                ",${DOTSH_FZF_GIT_ALLOWED}," == *",stashes,"* ||
+                ",${DOTSH_FZF_GIT_ALLOWED}," == *",refs,"* ]]
             return
             ;;
         reflog) mode=reflogs ;;
@@ -442,23 +442,23 @@ _z4h_fzf_git_type_allowed() {
         ref) mode=refs ;;
         *) return 1 ;;
     esac
-    [[ -z ${Z4H_FZF_GIT_ALLOWED:-} || ",${Z4H_FZF_GIT_ALLOWED}," == *",${mode},"* ]]
+    [[ -z ${DOTSH_FZF_GIT_ALLOWED:-} || ",${DOTSH_FZF_GIT_ALLOWED}," == *",${mode},"* ]]
 }
 
-_z4h_fzf_git_extract_token() {
+_dotsh_fzf_git_extract_token() {
     emulate -L zsh
     local value=$1 token
     [[ $value =~ "([0-9a-f]{40})" ]] || return 1
     token=$match[1]
-    [[ -f ${Z4H_FZF_GIT_TRANSFER_DIR:-}/$token ]] || return 1
+    [[ -f ${DOTSH_FZF_GIT_TRANSFER_DIR:-}/$token ]] || return 1
     REPLY=$token
 }
 
-_z4h_fzf_git_forward_token() {
+_dotsh_fzf_git_forward_token() {
     emulate -L zsh
     local line token
     while IFS= read -r line || [[ -n $line ]]; do
-        _z4h_fzf_git_extract_token "$line" || continue
+        _dotsh_fzf_git_extract_token "$line" || continue
         token=$REPLY
         print -r -- "   $token"
         return 0
@@ -466,29 +466,29 @@ _z4h_fzf_git_forward_token() {
     return 1
 }
 
-_z4h_fzf_git_new_token() {
+_dotsh_fzf_git_new_token() {
     emulate -L zsh
     local token
     repeat 10; do
         token=$(command od -An -N20 -tx1 /dev/urandom 2>/dev/null)
         token=${token//[[:space:]]/}
-        [[ ${#token} == 40 && ! -e $Z4H_FZF_GIT_TRANSFER_DIR/$token ]] || continue
+        [[ ${#token} == 40 && ! -e $DOTSH_FZF_GIT_TRANSFER_DIR/$token ]] || continue
         REPLY=$token
         return 0
     done
     return 1
 }
 
-_z4h_fzf_git_write_transfer() {
+_dotsh_fzf_git_write_transfer() {
     emulate -L zsh
     setopt extended_glob
     local mode=$1 source_file=$2 default_type=$3
     local line type value token transfer_file temporary_file
     local -i records=0
 
-    _z4h_fzf_git_new_token || return 1
+    _dotsh_fzf_git_new_token || return 1
     token=$REPLY
-    transfer_file=$Z4H_FZF_GIT_TRANSFER_DIR/$token
+    transfer_file=$DOTSH_FZF_GIT_TRANSFER_DIR/$token
     temporary_file=$transfer_file.tmp.$$
     : >| "$temporary_file" || return 1
     command chmod 600 "$temporary_file"
@@ -507,11 +507,11 @@ _z4h_fzf_git_write_transfer() {
         else
             value=${(Q)line}
             type=$default_type
-            _z4h_fzf_git_upstream_type "$type" "$value"
+            _dotsh_fzf_git_upstream_type "$type" "$value"
             type=$REPLY
         fi
         [[ -n $value ]] || continue
-        _z4h_fzf_git_type_allowed "$type" || {
+        _dotsh_fzf_git_type_allowed "$type" || {
             command rm -f -- "$temporary_file"
             return 2
         }
@@ -527,7 +527,7 @@ _z4h_fzf_git_write_transfer() {
     print -r -- "   $token"
 }
 
-_z4h_fzf_git_treeishes_from_selection() {
+_dotsh_fzf_git_treeishes_from_selection() {
     emulate -L zsh
     local line hash
     reply=()
@@ -540,55 +540,55 @@ _z4h_fzf_git_treeishes_from_selection() {
     (( $#reply ))
 }
 
-_z4h_fzf_git_bridge() {
+_dotsh_fzf_git_bridge() {
     emulate -L zsh
     local requested_mode=$1 transition=${2:-} selection_file=${3:-}
     local vendor_mode default_type plain_file picker_status=0
     local -a picker_options=() treeishes=()
 
-    _z4h_fzf_git_upstream_target "$requested_mode" || return 1
+    _dotsh_fzf_git_upstream_target "$requested_mode" || return 1
     vendor_mode=$reply[1]
     default_type=$reply[2]
     [[ $requested_mode != tree_files ]] || {
-        _z4h_fzf_git_treeishes_from_selection "$selection_file" || return 1
+        _dotsh_fzf_git_treeishes_from_selection "$selection_file" || return 1
         treeishes=("${reply[@]}")
     }
-    [[ $transition != --transition ]] || Z4H_FZF_GIT_QUERY=
-    [[ ${Z4H_FZF_GIT_MULTI:-false} == true ]] || picker_options+=(--no-multi)
-    [[ -z ${Z4H_FZF_GIT_QUERY:-} ]] || picker_options+=(--query "$Z4H_FZF_GIT_QUERY")
+    [[ $transition != --transition ]] || DOTSH_FZF_GIT_QUERY=
+    [[ ${DOTSH_FZF_GIT_MULTI:-false} == true ]] || picker_options+=(--no-multi)
+    [[ -z ${DOTSH_FZF_GIT_QUERY:-} ]] || picker_options+=(--query "$DOTSH_FZF_GIT_QUERY")
 
-    plain_file=$(mktemp "${TMPDIR:-/tmp}/z4h-fzf-git-bridge.XXXXXX") || return 1
+    plain_file=$(mktemp "${TMPDIR:-/tmp}/dotsh-fzf-git-bridge.XXXXXX") || return 1
     if [[ $requested_mode == tree_files ]]; then
-        Z4H_FZF_GIT_BRIDGE_CAPTURE=$vendor_mode \
-            "$Z4H_FZF_GIT_SHELL" "$DOTFILES_DIR/zsh/vendor/fzf-git.sh" \
+        DOTSH_FZF_GIT_BRIDGE_CAPTURE=$vendor_mode \
+            "$DOTSH_FZF_GIT_SHELL" "$DOTFILES_DIR/zsh/vendor/fzf-git.sh" \
             --run "$vendor_mode" "${treeishes[@]}" >| "$plain_file" || picker_status=$?
     else
-        Z4H_FZF_GIT_BRIDGE_CAPTURE=$vendor_mode \
-            "$Z4H_FZF_GIT_SHELL" "$DOTFILES_DIR/zsh/vendor/fzf-git.sh" \
+        DOTSH_FZF_GIT_BRIDGE_CAPTURE=$vendor_mode \
+            "$DOTSH_FZF_GIT_SHELL" "$DOTFILES_DIR/zsh/vendor/fzf-git.sh" \
             --run "$vendor_mode" "${picker_options[@]}" >| "$plain_file" || picker_status=$?
     fi
     if (( picker_status != 0 && picker_status != 1 && picker_status != 130 )); then
         command rm -f -- "$plain_file"
         return $picker_status
     fi
-    if _z4h_fzf_git_forward_token "$plain_file"; then
+    if _dotsh_fzf_git_forward_token "$plain_file"; then
         command rm -f -- "$plain_file"
         return 0
     fi
-    _z4h_fzf_git_write_transfer "$vendor_mode" "$plain_file" "$default_type"
+    _dotsh_fzf_git_write_transfer "$vendor_mode" "$plain_file" "$default_type"
     picker_status=$?
     command rm -f -- "$plain_file"
     return $picker_status
 }
 
-_z4h_fzf_git_resolve_transfer() {
+_dotsh_fzf_git_resolve_transfer() {
     emulate -L zsh
     local token=$1 destination=$2 record type
-    local transfer_file=$Z4H_FZF_GIT_TRANSFER_DIR/$token
+    local transfer_file=$DOTSH_FZF_GIT_TRANSFER_DIR/$token
     [[ -f $transfer_file ]] || return 1
     while IFS= read -r -d '' record; do
         type=${record%%$'\t'*}
-        _z4h_fzf_git_type_allowed "$type" || {
+        _dotsh_fzf_git_type_allowed "$type" || {
             command rm -f -- "$transfer_file"
             return 2
         }
@@ -597,14 +597,14 @@ _z4h_fzf_git_resolve_transfer() {
     command rm -f -- "$transfer_file"
 }
 
-if [[ $Z4H_FZF_GIT_UPSTREAM == true ]]; then
+if [[ $DOTSH_FZF_GIT_UPSTREAM == true ]]; then
     __fzf_git_join() {
         emulate -L zsh
         local item token transfer_file record value
         while IFS= read -r item; do
-            if _z4h_fzf_git_extract_token "$item"; then
+            if _dotsh_fzf_git_extract_token "$item"; then
                 token=$REPLY
-                transfer_file=$Z4H_FZF_GIT_TRANSFER_DIR/$token
+                transfer_file=$DOTSH_FZF_GIT_TRANSFER_DIR/$token
                 while IFS= read -r -d '' record; do
                     value=${record#*$'\t'}
                     value=${value%%$'\t'*}
@@ -618,29 +618,29 @@ if [[ $Z4H_FZF_GIT_UPSTREAM == true ]]; then
     }
 fi
 
-_z4h_fzf_git_upstream_pick_to_file() {
+_dotsh_fzf_git_upstream_pick_to_file() {
     emulate -L zsh
     local mode=$1 bridge_mode line token picker_status=0
     local plain_file result_file
 
-    _z4h_fzf_git_upstream_target "$mode" || return 1
+    _dotsh_fzf_git_upstream_target "$mode" || return 1
     bridge_mode=${reply[1]}
     [[ $bridge_mode != each_ref ]] || bridge_mode=refs
 
-    plain_file=$(mktemp "${TMPDIR:-/tmp}/z4h-fzf-git-upstream.XXXXXX") || return 1
-    result_file=$(mktemp "${TMPDIR:-/tmp}/z4h-fzf-git.XXXXXX") || {
+    plain_file=$(mktemp "${TMPDIR:-/tmp}/dotsh-fzf-git-upstream.XXXXXX") || return 1
+    result_file=$(mktemp "${TMPDIR:-/tmp}/dotsh-fzf-git.XXXXXX") || {
         command rm -f -- "$plain_file"
         return 1
     }
-    _z4h_fzf_git_bridge "$bridge_mode" >| "$plain_file" || picker_status=$?
+    _dotsh_fzf_git_bridge "$bridge_mode" >| "$plain_file" || picker_status=$?
     if (( picker_status != 0 && picker_status != 1 && picker_status != 130 )); then
         command rm -f -- "$plain_file" "$result_file"
         return $picker_status
     fi
     while IFS= read -r line || [[ -n $line ]]; do
-        _z4h_fzf_git_extract_token "$line" || continue
+        _dotsh_fzf_git_extract_token "$line" || continue
         token=$REPLY
-        _z4h_fzf_git_resolve_transfer "$token" "$result_file" || {
+        _dotsh_fzf_git_resolve_transfer "$token" "$result_file" || {
             : >| "$result_file"
             break
         }
@@ -650,15 +650,15 @@ _z4h_fzf_git_upstream_pick_to_file() {
     return 0
 }
 
-_z4h_fzf_git_widget_pick() {
+_dotsh_fzf_git_widget_pick() {
     emulate -L zsh
     local mode=$1
-    export Z4H_FZF_GIT_ALLOWED=files,branches,tags,remotes,hashes,stashes,reflogs,worktrees,refs,all
-    export Z4H_FZF_GIT_MULTI=false
-    export Z4H_FZF_GIT_QUERY=
+    export DOTSH_FZF_GIT_ALLOWED=files,branches,tags,remotes,hashes,stashes,reflogs,worktrees,refs,all
+    export DOTSH_FZF_GIT_MULTI=false
+    export DOTSH_FZF_GIT_QUERY=
     local -a selected=()
     local record selection_file
-    _z4h_fzf_git_pick_to_file "$mode" || return 0
+    _dotsh_fzf_git_pick_to_file "$mode" || return 0
     selection_file=$REPLY
     while IFS= read -r -d '' record; do
         selected+=("$record")
@@ -671,41 +671,41 @@ _z4h_fzf_git_widget_pick() {
     LBUFFER+="${(q)value} "
 }
 
-_z4h_fzf_git_register_fallback_widgets() {
+_dotsh_fzf_git_register_fallback_widgets() {
     emulate -L zsh
     local mode letter widget keymap
     for mode letter in \
         files f branches b tags t remotes r hashes h stashes s \
         reflogs l worktrees w refs e; do
-        widget="_z4h_fzf_git_${mode}_widget"
-        zle -N "$widget" _z4h_fzf_git_widget_dispatch
+        widget="_dotsh_fzf_git_${mode}_widget"
+        zle -N "$widget" _dotsh_fzf_git_widget_dispatch
         for keymap in emacs viins vicmd; do
             bindkey -M "$keymap" "^g^${letter}" "$widget"
             bindkey -M "$keymap" "^g${letter}" "$widget"
         done
     done
-    zle -N _z4h_fzf_git_help_widget
+    zle -N _dotsh_fzf_git_help_widget
     for keymap in emacs viins vicmd; do
-        bindkey -M "$keymap" '^g?' _z4h_fzf_git_help_widget
+        bindkey -M "$keymap" '^g?' _dotsh_fzf_git_help_widget
     done
 }
 
-_z4h_fzf_git_widget_dispatch() {
-    local mode=${WIDGET#_z4h_fzf_git_}
+_dotsh_fzf_git_widget_dispatch() {
+    local mode=${WIDGET#_dotsh_fzf_git_}
     mode=${mode%_widget}
-    _z4h_fzf_git_widget_pick "$mode"
+    _dotsh_fzf_git_widget_pick "$mode"
 }
 
-_z4h_fzf_git_help_widget() {
+_dotsh_fzf_git_help_widget() {
     zle -M 'Ctrl-G: F files · B branches · T tags · R remotes · H commits · S stashes · L reflogs · W worktrees · E refs'
 }
 
-_z4h_fzf_git_prefix_widget() {
+_dotsh_fzf_git_prefix_widget() {
     emulate -L zsh
     local key mode widget
-    local -x Z4H_FZF_GIT_ALLOWED=files,branches,tags,remotes,hashes,stashes,reflogs,worktrees,refs
-    local -x Z4H_FZF_GIT_MULTI=false
-    local -x Z4H_FZF_GIT_QUERY=
+    local -x DOTSH_FZF_GIT_ALLOWED=files,branches,tags,remotes,hashes,stashes,reflogs,worktrees,refs
+    local -x DOTSH_FZF_GIT_MULTI=false
+    local -x DOTSH_FZF_GIT_QUERY=
 
     zle -M 'Ctrl-G: F files · B branches · T tags · R remotes · H commits · S stashes · L reflogs · W worktrees · E refs'
     zle -R
@@ -731,29 +731,29 @@ _z4h_fzf_git_prefix_widget() {
             ;;
     esac
 
-    if [[ $Z4H_FZF_GIT_UPSTREAM == true ]]; then
+    if [[ $DOTSH_FZF_GIT_UPSTREAM == true ]]; then
         case $mode in
             reflogs) widget=fzf-git-lreflogs-widget ;;
             refs) widget=fzf-git-each_ref-widget ;;
             *) widget="fzf-git-${mode}-widget" ;;
         esac
     else
-        widget="_z4h_fzf_git_${mode}_widget"
+        widget="_dotsh_fzf_git_${mode}_widget"
     fi
     (( $+widgets[$widget] )) || return 0
     zle "$widget"
 }
 
-_z4h_fzf_git_register_prefix_widget() {
+_dotsh_fzf_git_register_prefix_widget() {
     emulate -L zsh
     local keymap
-    zle -N _z4h_fzf_git_prefix_widget
+    zle -N _dotsh_fzf_git_prefix_widget
     for keymap in emacs viins vicmd; do
-        bindkey -M "$keymap" '^G' _z4h_fzf_git_prefix_widget
+        bindkey -M "$keymap" '^G' _dotsh_fzf_git_prefix_widget
     done
 }
 
-_z4h_fzf_git_option_takes_value() {
+_dotsh_fzf_git_option_takes_value() {
     local subcommand=$1 option=${2%%=*}
     case "$subcommand:$option" in
         checkout:-b|checkout:-B|checkout:--orphan|checkout:--conflict|checkout:--pathspec-from-file|\
@@ -777,14 +777,14 @@ _z4h_fzf_git_option_takes_value() {
     return 1
 }
 
-_z4h_fzf_git_set_context() {
-    Z4H_FZF_GIT_MODE=$1
-    Z4H_FZF_GIT_ALLOWED=$2
-    Z4H_FZF_GIT_MULTI=$3
-    Z4H_FZF_GIT_POLICY=$4
+_dotsh_fzf_git_set_context() {
+    DOTSH_FZF_GIT_MODE=$1
+    DOTSH_FZF_GIT_ALLOWED=$2
+    DOTSH_FZF_GIT_MULTI=$3
+    DOTSH_FZF_GIT_POLICY=$4
 }
 
-_z4h_fzf_git_context() {
+_dotsh_fzf_git_context() {
     emulate -L zsh
     setopt extended_glob
 
@@ -794,8 +794,8 @@ _z4h_fzf_git_context() {
         words+=("${(Q)item}")
     done
 
-    Z4H_FZF_GIT_BASE_LBUFFER=$LBUFFER
-    Z4H_FZF_GIT_RIGHT_REMAINDER=$RBUFFER
+    DOTSH_FZF_GIT_BASE_LBUFFER=$LBUFFER
+    DOTSH_FZF_GIT_RIGHT_REMAINDER=$RBUFFER
     if [[ $LBUFFER != *[[:space:]] ]]; then
         (( $#raw_words )) || return 1
         current_raw=$raw_words[-1]
@@ -803,9 +803,9 @@ _z4h_fzf_git_context() {
         words[-1]=()
         local -i base_length=$(( ${#LBUFFER} - ${#current_raw} ))
         if (( base_length )); then
-            Z4H_FZF_GIT_BASE_LBUFFER=${LBUFFER[1,base_length]}
+            DOTSH_FZF_GIT_BASE_LBUFFER=${LBUFFER[1,base_length]}
         else
-            Z4H_FZF_GIT_BASE_LBUFFER=
+            DOTSH_FZF_GIT_BASE_LBUFFER=
         fi
         if [[ -n $RBUFFER && $RBUFFER != [[:space:]]* ]]; then
             local -a right_words=(${(z)RBUFFER})
@@ -814,16 +814,16 @@ _z4h_fzf_git_context() {
             current_raw+=$right_token
             local -i right_length=${#right_token}
             if (( right_length < ${#RBUFFER} )); then
-                Z4H_FZF_GIT_RIGHT_REMAINDER=${RBUFFER[$(( right_length + 1 )),-1]}
+                DOTSH_FZF_GIT_RIGHT_REMAINDER=${RBUFFER[$(( right_length + 1 )),-1]}
             else
-                Z4H_FZF_GIT_RIGHT_REMAINDER=
+                DOTSH_FZF_GIT_RIGHT_REMAINDER=
             fi
         fi
         raw_query=${(Q)current_raw}
     fi
     [[ $current_raw != \'* || $current_raw == *\' ]] || return 1
     [[ $current_raw != \"* || $current_raw == *\" ]] || return 1
-    Z4H_FZF_GIT_QUERY=$raw_query
+    DOTSH_FZF_GIT_QUERY=$raw_query
 
     (( $#words >= 2 )) || return 1
     [[ $words[1] == git ]] || return 1
@@ -848,15 +848,15 @@ _z4h_fzf_git_context() {
         esac
     done
     [[ -n $subcommand ]] || return 1
-    Z4H_FZF_GIT_COMMAND=$subcommand
+    DOTSH_FZF_GIT_COMMAND=$subcommand
 
     case "$subcommand:$current_raw" in
         branch:--set-upstream-to=*|branch:--contains=*|branch:--no-contains=*|\
         branch:--merged=*|branch:--no-merged=*|branch:--points-at=*)
             attached_option=${current_raw%%=*}
             raw_query=${(Q)${current_raw#*=}}
-            Z4H_FZF_GIT_QUERY=$raw_query
-            Z4H_FZF_GIT_BASE_LBUFFER+="${current_raw%%=*}="
+            DOTSH_FZF_GIT_QUERY=$raw_query
+            DOTSH_FZF_GIT_BASE_LBUFFER+="${current_raw%%=*}="
             current_raw=
             ;;
     esac
@@ -883,7 +883,7 @@ _z4h_fzf_git_context() {
                     create_set=true
                     ;;
             esac
-            if [[ $arg != *=* ]] && _z4h_fzf_git_option_takes_value "$subcommand" "$arg"; then
+            if [[ $arg != *=* ]] && _dotsh_fzf_git_option_takes_value "$subcommand" "$arg"; then
                 pending_option=$arg
             fi
             continue
@@ -905,11 +905,11 @@ _z4h_fzf_git_context() {
             [[ $after_separator == false ]] || return 1
             case ${pending_option%%=*} in
                 -u|--set-upstream-to)
-                    _z4h_fzf_git_set_context branches branches false plain
+                    _dotsh_fzf_git_set_context branches branches false plain
                     return 0
                     ;;
                 --contains|--no-contains|--merged|--no-merged|--points-at)
-                    _z4h_fzf_git_set_context hashes branches,tags,hashes,refs false plain
+                    _dotsh_fzf_git_set_context hashes branches,tags,hashes,refs false plain
                     return 0
                     ;;
                 '') ;;
@@ -920,23 +920,23 @@ _z4h_fzf_git_context() {
                 [[ $joined_options != *' -r '* &&
                     $joined_options != *' --remotes '* ]] || return 1
                 (( $#positionals == 0 )) || return 1
-                _z4h_fzf_git_set_context branches branches true local-branch
+                _dotsh_fzf_git_set_context branches branches true local-branch
             elif [[ $joined_options == *' --edit-description '* ||
                 $joined_options == *' --unset-upstream '* ]]; then
                 (( $#positionals == 0 )) || return 1
-                _z4h_fzf_git_set_context branches branches false local-branch
+                _dotsh_fzf_git_set_context branches branches false local-branch
             elif [[ $joined_options == *' -u '* ||
                 $joined_options == *' --set-upstream-to '* ||
                 $joined_options == *' --set-upstream-to='* ]]; then
                 (( $#positionals == 0 )) || return 1
-                _z4h_fzf_git_set_context branches branches false local-branch
+                _dotsh_fzf_git_set_context branches branches false local-branch
             elif [[ $joined_options == *' -m '* || $joined_options == *' -M '* ||
                 $joined_options == *' --move '* || $joined_options == *' -c '* ||
                 $joined_options == *' -C '* || $joined_options == *' --copy '* ||
                 $joined_options == *' -l '* || $joined_options == *' --list '* ]]; then
                 return 1
             elif (( $#positionals == 1 )); then
-                _z4h_fzf_git_set_context all branches,tags,hashes,refs false plain
+                _dotsh_fzf_git_set_context all branches,tags,hashes,refs false plain
             else
                 return 1
             fi
@@ -944,86 +944,86 @@ _z4h_fzf_git_context() {
         checkout)
             [[ -z $pending_option ]] || return 1
             if [[ $after_separator == true ]]; then
-                _z4h_fzf_git_set_context files files true path-after
+                _dotsh_fzf_git_set_context files files true path-after
             elif [[ $create_set == true ]]; then
-                _z4h_fzf_git_set_context all branches,tags,hashes,refs false plain
+                _dotsh_fzf_git_set_context all branches,tags,hashes,refs false plain
             elif (( $#positionals )); then
-                _z4h_fzf_git_set_context files files true path
+                _dotsh_fzf_git_set_context files files true path
             else
-                _z4h_fzf_git_set_context all files,branches,tags,hashes,refs false mixed
+                _dotsh_fzf_git_set_context all files,branches,tags,hashes,refs false mixed
             fi
             ;;
         switch)
             [[ -z $pending_option ]] || return 1
-            _z4h_fzf_git_set_context all branches,tags,hashes,refs false switch
+            _dotsh_fzf_git_set_context all branches,tags,hashes,refs false switch
             ;;
         restore)
             if [[ ${pending_option%%=*} == -s || ${pending_option%%=*} == --source ]]; then
-                _z4h_fzf_git_set_context all branches,tags,hashes,refs false plain
+                _dotsh_fzf_git_set_context all branches,tags,hashes,refs false plain
             elif [[ -n $pending_option ]]; then
                 return 1
             elif [[ $after_separator == true ]]; then
-                _z4h_fzf_git_set_context files files true path-after
+                _dotsh_fzf_git_set_context files files true path-after
             elif [[ $source_set == true ]]; then
-                _z4h_fzf_git_set_context files files true path
+                _dotsh_fzf_git_set_context files files true path
             else
-                _z4h_fzf_git_set_context files files true restore
+                _dotsh_fzf_git_set_context files files true restore
             fi
             ;;
         add)
             [[ -z $pending_option ]] || return 1
             if [[ $after_separator == true ]]; then
-                _z4h_fzf_git_set_context files files true path-after
+                _dotsh_fzf_git_set_context files files true path-after
             else
-                _z4h_fzf_git_set_context files files true path
+                _dotsh_fzf_git_set_context files files true path
             fi
             ;;
         diff)
             [[ -z $pending_option ]] || return 1
             if [[ $after_separator == true ]]; then
-                _z4h_fzf_git_set_context files files true path-after
+                _dotsh_fzf_git_set_context files files true path-after
             else
-                _z4h_fzf_git_set_context all files,branches,tags,hashes,refs false mixed
+                _dotsh_fzf_git_set_context all files,branches,tags,hashes,refs false mixed
             fi
             ;;
         show|log)
             [[ -z $pending_option ]] || return 1
             if [[ $after_separator == true ]]; then
-                _z4h_fzf_git_set_context files files true path-after
+                _dotsh_fzf_git_set_context files files true path-after
             else
-                _z4h_fzf_git_set_context all branches,tags,hashes,refs false plain
+                _dotsh_fzf_git_set_context all branches,tags,hashes,refs false plain
             fi
             ;;
         reset)
             [[ -z $pending_option ]] || return 1
             if [[ $after_separator == true ]]; then
-                _z4h_fzf_git_set_context files files true path-after
+                _dotsh_fzf_git_set_context files files true path-after
             elif (( $#positionals )); then
-                _z4h_fzf_git_set_context files files true path
+                _dotsh_fzf_git_set_context files files true path
             else
-                _z4h_fzf_git_set_context all files,branches,tags,hashes,refs false mixed
+                _dotsh_fzf_git_set_context all files,branches,tags,hashes,refs false mixed
             fi
             ;;
         merge|rebase|cherry-pick|revert)
             [[ -z $pending_option ]] || return 1
-            _z4h_fzf_git_set_context all branches,tags,hashes,refs false plain
+            _dotsh_fzf_git_set_context all branches,tags,hashes,refs false plain
             ;;
         stash)
             [[ -z $pending_option ]] || return 1
             case $action in
                 apply|pop|drop|show)
                     (( $#positionals == 1 )) || return 1
-                    _z4h_fzf_git_set_context stashes stashes false plain
+                    _dotsh_fzf_git_set_context stashes stashes false plain
                     ;;
                 branch)
                     (( $#positionals == 2 )) || return 1
-                    _z4h_fzf_git_set_context stashes stashes false plain
+                    _dotsh_fzf_git_set_context stashes stashes false plain
                     ;;
                 push|save)
                     if [[ $after_separator == true ]]; then
-                        _z4h_fzf_git_set_context files files true path-after
+                        _dotsh_fzf_git_set_context files files true path-after
                     else
-                        _z4h_fzf_git_set_context files files true path
+                        _dotsh_fzf_git_set_context files files true path
                     fi
                     ;;
                 *) return 1 ;;
@@ -1035,11 +1035,11 @@ _z4h_fzf_git_context() {
                 add)
                     (( $#positionals == 2 )) || return 1
                     [[ $joined_options != *' --orphan '* ]] || return 1
-                    _z4h_fzf_git_set_context all branches,tags,hashes,refs false plain
+                    _dotsh_fzf_git_set_context all branches,tags,hashes,refs false plain
                     ;;
                 remove|lock|unlock|move)
                     (( $#positionals == 1 )) || return 1
-                    _z4h_fzf_git_set_context worktrees worktrees false plain
+                    _dotsh_fzf_git_set_context worktrees worktrees false plain
                     ;;
                 *) return 1 ;;
             esac
@@ -1049,10 +1049,10 @@ _z4h_fzf_git_context() {
             case $action in
                 get-url|remove|rm|prune|show|set-head|set-branches|set-url|rename)
                     (( $#positionals == 1 )) || return 1
-                    _z4h_fzf_git_set_context remotes remotes false plain
+                    _dotsh_fzf_git_set_context remotes remotes false plain
                     ;;
                 update)
-                    _z4h_fzf_git_set_context remotes remotes true plain
+                    _dotsh_fzf_git_set_context remotes remotes true plain
                     ;;
                 *) return 1 ;;
             esac
@@ -1060,43 +1060,43 @@ _z4h_fzf_git_context() {
         fetch|pull|push)
             [[ -z $pending_option ]] || return 1
             if [[ $joined_options == *' --multiple '* ]]; then
-                _z4h_fzf_git_set_context remotes remotes true plain
+                _dotsh_fzf_git_set_context remotes remotes true plain
             elif (( $#positionals == 0 )); then
-                _z4h_fzf_git_set_context remotes remotes false plain
+                _dotsh_fzf_git_set_context remotes remotes false plain
             elif [[ $joined_options == *' --all '* || $joined_options == *' --mirror '* ]]; then
                 return 1
             else
-                _z4h_fzf_git_set_context all branches,tags,refs false plain
+                _dotsh_fzf_git_set_context all branches,tags,refs false plain
             fi
             ;;
         *) return 1 ;;
     esac
 }
 
-_z4h_fzf_git_complete() {
+_dotsh_fzf_git_complete() {
     emulate -L zsh
     setopt extended_glob
-    _z4h_fzf_git_context || return 1
-    _z4h_fzf_git_check || return 1
-    [[ -n $Z4H_FZF_GIT_FZF ]] || return 1
+    _dotsh_fzf_git_context || return 1
+    _dotsh_fzf_git_check || return 1
+    [[ -n $DOTSH_FZF_GIT_FZF ]] || return 1
 
     local original_lbuffer=$LBUFFER
     local original_rbuffer=$RBUFFER
-    local base_lbuffer=$Z4H_FZF_GIT_BASE_LBUFFER
-    local context_allowed=$Z4H_FZF_GIT_ALLOWED
-    local context_multi=$Z4H_FZF_GIT_MULTI
-    local context_query=$Z4H_FZF_GIT_QUERY
-    local -x Z4H_FZF_GIT_ALLOWED=$context_allowed
-    local -x Z4H_FZF_GIT_MULTI=$context_multi
-    local -x Z4H_FZF_GIT_QUERY=$context_query
+    local base_lbuffer=$DOTSH_FZF_GIT_BASE_LBUFFER
+    local context_allowed=$DOTSH_FZF_GIT_ALLOWED
+    local context_multi=$DOTSH_FZF_GIT_MULTI
+    local context_query=$DOTSH_FZF_GIT_QUERY
+    local -x DOTSH_FZF_GIT_ALLOWED=$context_allowed
+    local -x DOTSH_FZF_GIT_MULTI=$context_multi
+    local -x DOTSH_FZF_GIT_QUERY=$context_query
 
     local -a selected=()
     local record selection_file
-    _z4h_fzf_git_pick_to_file "$Z4H_FZF_GIT_MODE" || return 1
+    _dotsh_fzf_git_pick_to_file "$DOTSH_FZF_GIT_MODE" || return 1
     selection_file=$REPLY
     while IFS= read -r -d '' record; do
         selected+=("$record")
-        [[ $Z4H_FZF_GIT_MULTI == true ]] || break
+        [[ $DOTSH_FZF_GIT_MULTI == true ]] || break
     done < "$selection_file"
     command rm -f -- "$selection_file"
     zle reset-prompt
@@ -1113,14 +1113,14 @@ _z4h_fzf_git_complete() {
         type=$fields[1]
         value=$fields[2]
         [[ -n $value ]] || continue
-        if [[ $Z4H_FZF_GIT_POLICY == restore && $type != file ]]; then
+        if [[ $DOTSH_FZF_GIT_POLICY == restore && $type != file ]]; then
             insertions+=("--source=${(q)value}")
-            export Z4H_FZF_GIT_ALLOWED=files
-            export Z4H_FZF_GIT_MULTI=true
-            export Z4H_FZF_GIT_QUERY=
+            export DOTSH_FZF_GIT_ALLOWED=files
+            export DOTSH_FZF_GIT_MULTI=true
+            export DOTSH_FZF_GIT_QUERY=
             local -a restore_files=()
             local file_record restore_selection_file
-            _z4h_fzf_git_pick_to_file files || {
+            _dotsh_fzf_git_pick_to_file files || {
                 LBUFFER=$original_lbuffer
                 RBUFFER=$original_rbuffer
                 return 0
@@ -1140,11 +1140,11 @@ _z4h_fzf_git_complete() {
             break
         elif [[ $type == file ]]; then
             insertions+=("${(q)value}")
-        elif [[ $Z4H_FZF_GIT_POLICY == local-branch && $type != branch ]]; then
+        elif [[ $DOTSH_FZF_GIT_POLICY == local-branch && $type != branch ]]; then
             LBUFFER=$original_lbuffer
             RBUFFER=$original_rbuffer
             return 0
-        elif [[ $Z4H_FZF_GIT_POLICY == switch && $type != branch ]]; then
+        elif [[ $DOTSH_FZF_GIT_POLICY == switch && $type != branch ]]; then
             insertions+=(--detach "${(q)value}")
         else
             insertions+=("${(q)value}")
@@ -1156,35 +1156,35 @@ _z4h_fzf_git_complete() {
         return 0
     }
 
-    if [[ $type == file && ( $Z4H_FZF_GIT_POLICY == path || $Z4H_FZF_GIT_POLICY == mixed || $Z4H_FZF_GIT_POLICY == restore ) ]]; then
+    if [[ $type == file && ( $DOTSH_FZF_GIT_POLICY == path || $DOTSH_FZF_GIT_POLICY == mixed || $DOTSH_FZF_GIT_POLICY == restore ) ]]; then
         insertions=(-- "${insertions[@]}")
     fi
     LBUFFER="${base_lbuffer}${(j: :)insertions}"
-    RBUFFER=$Z4H_FZF_GIT_RIGHT_REMAINDER
+    RBUFFER=$DOTSH_FZF_GIT_RIGHT_REMAINDER
     zle redisplay
     return 0
 }
 
-if [[ $Z4H_FZF_GIT_UPSTREAM != true ]]; then
-    _z4h_fzf_git_register_fallback_widgets
+if [[ $DOTSH_FZF_GIT_UPSTREAM != true ]]; then
+    _dotsh_fzf_git_register_fallback_widgets
 fi
-_z4h_fzf_git_register_prefix_widget
+_dotsh_fzf_git_register_prefix_widget
 
 if [[ ${ZSH_EVAL_CONTEXT:-} == toplevel ]]; then
     case ${1:-} in
         --bridge)
             shift
-            _z4h_fzf_git_bridge "${1:-refs}" "${2:-}" "${3:-}"
+            _dotsh_fzf_git_bridge "${1:-refs}" "${2:-}" "${3:-}"
             exit $?
             ;;
         --run)
             shift
-            _z4h_fzf_git_pick "${1:-all}"
+            _dotsh_fzf_git_pick "${1:-all}"
             exit $?
             ;;
         --records)
             shift
-            _z4h_fzf_git_records "${1:-all}"
+            _dotsh_fzf_git_records "${1:-all}"
             exit $?
             ;;
     esac

@@ -106,7 +106,7 @@ chmod +x \
 
 OSTYPE=$PLUGIN_TEST_OSTYPE
 path=("$TEST_ROOT/test-bin" "$HOMEBREW_PREFIX/bin" "$HOMEBREW_PREFIX/sbin" /usr/bin /bin)
-source "$ROOT/zsh/z4h.custom.plugins/z4h-pkgmng.plugin.zsh"
+source "$ROOT/zsh/dotsh.custom.plugins/dotsh-pkgmng.plugin.zsh"
 
 [[ -f $PKGMGR_DB ]]
 [[ $path[1] == "$MACPORTS_PREFIX/bin" ]]
@@ -204,7 +204,7 @@ assert_plugin_disabled() {
         PATH="$TEST_ROOT/test-bin:/usr/bin:/bin" \
         /bin/zsh -dfc '
             OSTYPE=$PLUGIN_TEST_OSTYPE
-            source "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-pkgmng.plugin.zsh"
+            source "$DOTFILES_DIR/zsh/dotsh.custom.plugins/dotsh-pkgmng.plugin.zsh"
             (( ! $+functions[brew] ))
             (( ! ${+parameters[PKGMGR_DB]} ))
             [[ ! -e "$XDG_STATE_HOME/zsh/package-providers.db" ]]
@@ -218,11 +218,11 @@ assert_plugin_disabled missing-brew darwin26.0 x86_64 macports "$TEST_ROOT/missi
 
 : >"$PKGMGR_DB"
 (
-    source "$ROOT/zsh/z4h.custom.plugins/z4h-pkgmng.plugin.zsh"
+    source "$ROOT/zsh/dotsh.custom.plugins/dotsh-pkgmng.plugin.zsh"
     _pkgmgr_db_set one one brew
 ) &
 (
-    source "$ROOT/zsh/z4h.custom.plugins/z4h-pkgmng.plugin.zsh"
+    source "$ROOT/zsh/dotsh.custom.plugins/dotsh-pkgmng.plugin.zsh"
     _pkgmgr_db_set two two macports
 ) &
 wait
@@ -239,7 +239,7 @@ port_preview=$(
         /bin/zsh -dfc '
             autoload -Uz compinit
             compinit -D
-            source "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-fzf.plugin.zsh"
+            source "$DOTFILES_DIR/zsh/dotsh.custom.plugins/dotsh-fzf.plugin.zsh"
             zstyle -s ":fzf-tab:complete:port:argument-2" \
                 fzf-preview preview
             group="Available ports"
@@ -261,7 +261,7 @@ brew_bottle_preview=$(
                 printf "brew info %s\n" "$4"
             }
             PKGMGR_BREW_MANAGED=true
-            source "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-fzf.plugin.zsh"
+            source "$DOTFILES_DIR/zsh/dotsh.custom.plugins/dotsh-fzf.plugin.zsh"
             zstyle -s ":fzf-tab:complete:brew-bottle-check:argument-1" \
                 fzf-preview preview
             word=jq

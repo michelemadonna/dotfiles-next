@@ -1,10 +1,10 @@
 run-fastfetch() {
 
-	if [[ -o interactive && ${Z4H_SHOW_FASTFETCH:-false} != false && -z ${Z4H_FASTFETCH_SHOWN:-} ]]; then
-	export Z4H_FASTFETCH_SHOWN=1
+	if [[ -o interactive && ${DOTSH_SHOW_FASTFETCH:-false} != false && -z ${DOTSH_FASTFETCH_SHOWN:-} ]]; then
+	export DOTSH_FASTFETCH_SHOWN=1
 	show_fastfetch=true
 
-	if [[ $Z4H_SHOW_FASTFETCH == first ]]; then
+	if [[ $DOTSH_SHOW_FASTFETCH == first ]]; then
 		active_terminals=$(ps -axo tty= 2>/dev/null | awk '
 			$1 ~ /^ttys[0-9]+$/ || $1 ~ /^pts\/[0-9]+$/ { seen[$1] = 1 }
 			END { for (tty in seen) count++; print count + 0 }

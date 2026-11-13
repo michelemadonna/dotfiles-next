@@ -1,0 +1,148 @@
+#!/usr/bin/env zsh
+
+()  {
+  eval "$_dotsh_opt"
+
+  local -i dot_glob list_types
+  [[ $1 == on ]] && dot_glob=1
+  [[ $2 == on ]] && list_types=1
+
+  if (( _dotsh_only_dirs )); then
+    local dirs=($_dotsh_path_prefix${^${(Q)_dotsh_words}}/*(D-/Y1N:h:t))
+  else
+    local dirs=($_dotsh_path_prefix${^${(Q)_dotsh_words}}/*(DY1N:h:t))
+  fi
+
+  -dotsh-set-list-colors "$_dotsh_curcontext" "$list_types"
+  local -i list_colors=$((!$?))
+
+  autoload +X -Uz -- -dotsh-present-files -dotsh-cursor-show -dotsh-find -dotsh-fzf
+
+  local -i pct=60
+  (( _dotsh_can_save_restore_screen )) && pct=100
+
+  local -i recurse
+  () {
+    emulate -L zsh
+    # Set curcontext and dot_glob in case the value of recurse depends on them (via `zstyle -e`).
+    # Ideally we should run this with user options.
+    (( dot_glob )) && setopt dot_glob
+    local curcontext=$_dotsh_curcontext
+    zstyle -T :dotsh:${WIDGET#dotsh-} recurse-dirs && recurse=1
+  }
+
+  local -i height=$(( ! (recurse && $#dirs) && 100 * ($#_dotsh_words + 4) < pct * LINES ? $#_dotsh_words + 4 : pct * LINES / 100 ))
+
+  (( height >= 6 )) || (( height = 6 ))
+  (( height <= LINES - 1 )) || (( height = LINES - 1 ))
+
+  local opts=(
+    --query=${_dotsh_word_prefix:+"^$_dotsh_word_prefix"}
+    --color=hl:201,hl+:201
+    --with-nth=2
+    --delimiter='\000'
+    --ansi
+    --exact
+    --no-mouse
+    --tiebreak=length,begin,index
+    --multi
+    --cycle
+    --border=horizontal
+  )
+
+  () {
+    emulate -L zsh
+    # Set dot_glob in case the value of find-flags depends on it (via `zstyle -e`).
+    # Ideally we should run this with user options.
+    (( dot_glob )) && setopt dot_glob
+    local -a bin
+    zstyle -a :dotsh:${WIDGET#dotsh-} find-command bin
+    if (( ! $#bin )) && (( $+commands[bfs] )); then
+      opts+=(--no-sort)
+    fi
+  }
+
+  local cursor_y cursor_x
+  -dotsh-get-cursor-pos || return
+
+  if (( _dotsh_can_save_restore_screen )); then
+    opts+=(--no-clear)
+    if { (( height <= cursor_y - 1 )) && zstyle -T :dotsh: prompt-at-bottom } ||
+       (( cursor_y - 1 > LINES - cursor_y && cursor_y - 1 > 6 )) &&
+       { (( height > LINES - cursor_y )) || zstyle -T :dotsh: prompt-at-bottom }; then
+      (( height <= cursor_y - 1 )) || (( height = cursor_y - 1 ))
+      local move=$'\e[0m\e['$((cursor_y-height))';1H'
+      opts+=(--layout=default)
+    elif (( LINES - cursor_y > 6 )); then
+      (( height <= LINES - cursor_y )) || (( height = LINES - cursor_y ))
+      local move=$'\e[0m\n\r'
+      opts+=(--layout=reverse)
+    else
+      local -i extra=$((height - LINES + cursor_y))
+      print -rnu $_dotsh_tty_fd -- ${(pl:$height::\n:)} || return
+      (( cursor_y += LINES - cursor_y - height ))
+      local move=$'\e[0m\e['$((cursor_y+1))';1H'
+      opts+=(--layout=reverse)
+    fi
+    local _dotsh_saved_screen
+    -dotsh-save-screen || return
+  else
+    print -u $_dotsh_tty_fd || return
+    local move=
+    opts+=(--layout=reverse)
+  fi
+
+  opts+=(--height=$height)
+
+  {
+    local choice
+    choice="$(
+      unsetopt pipe_fail
+      exec 2>/dev/null
+      [[ -n $_dotsh_path_prefix ]] && builtin cd -q -- $_dotsh_path_prefix
+      {
+        print -r -- $sysparams[pid]
+        print -lr -- ${(Q)_dotsh_words}
+        if (( recurse )); then
+          # Set curcontext to support this:
+          #
+          #   zstyle -e :dotsh:fzf-complete find-flags my-find-flags
+          #
+          #   function my-find-flags() {
+          #     if [[ $curcontext == :complete:cd:* ]]; then
+          #       reply=(...)
+          #     fi
+          #   }
+          local curcontext=$_dotsh_curcontext
+          -dotsh-find $dot_glob $_dotsh_only_dirs $dirs | command sed -n '/\/.*\// s/^..//p'
+        fi
+      } | {
+        local -a pids
+        IFS=' ' builtin read -rA pids || exit
+        print -r -- $pids $sysparams[pid] || exit
+        -dotsh-present-files $list_colors $list_types 0
+      } | {
+        local -a pids
+        IFS=' ' builtin read -rA pids || pids=()
+        print -rnu $_dotsh_tty_fd -- $move
+        -dotsh-cursor-show
+        2>&$_dotsh_tty_fd -dotsh-fzf $opts
+        (( $#pids )) && builtin kill -- $pids
+      }
+    )"
+  } always {
+    -dotsh-cursor-hide
+    if (( _dotsh_can_save_restore_screen )); then
+      -dotsh-restore-screen
+      print -rn -- $'\e[0m\e['$cursor_y';'$cursor_x'H'
+    else
+      builtin echoti cuu 1
+      (( cursor_x > 1 )) && builtin echoti cuf $((cursor_x-1))
+    fi
+  }
+
+  [[ -n $choice ]] || return
+  choice=("${(@f)choice}")
+  typeset -g _dotsh_reply=(0 ${${choice:1}%$'\0'*})
+  [[ -z $choice[1] ]] || _dotsh_reply[1]=1
+} "${options[dot_glob]}" "${options[list_types]}"

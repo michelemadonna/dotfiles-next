@@ -1,0 +1,4 @@
+#!/usr/bin/env zsh
+
+# Standalone p10k handles its screen; no framework tmux/SSH transport.
+return 1

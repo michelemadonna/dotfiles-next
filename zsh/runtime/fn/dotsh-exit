@@ -1,0 +1,11 @@
+#!/usr/bin/env zsh
+
+local code=$?
+builtin eval "$_dotsh_opt"
+builtin zle || builtin exit code
+typeset -g precmd_functions=(dotsh-exit)
+if [[ $BUFFER == [[:space:]]# ]]; then
+  builtin zle -w accept-line
+else
+  builtin zle -w send-break
+fi

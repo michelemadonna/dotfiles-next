@@ -856,7 +856,7 @@ collect_intel_package_manager_choice() {
 
   package_manager_default=m
   [ "$PACKAGE_MANAGER" = homebrew ] && package_manager_default=h
-  ui_menu 'Intel package manager' 'MacPorts is recommended. Homebrew on Intel is Tier 3: it has no CI support and receives no new binary bottles, so formulae may compile from source, take much longer, or fail. You can instead install Homebrew manually alongside MacPorts, mainly for casks and formulae unavailable in MacPorts; the custom z4h-pkgmng plugin manages their coexistence.' "$package_manager_default" 'm|macports|MacPorts (recommended)
+  ui_menu 'Intel package manager' 'MacPorts is recommended. Homebrew on Intel is Tier 3: it has no CI support and receives no new binary bottles, so formulae may compile from source, take much longer, or fail. You can instead install Homebrew manually alongside MacPorts, mainly for casks and formulae unavailable in MacPorts; the custom dotsh-pkgmng plugin manages their coexistence.' "$package_manager_default" 'm|macports|MacPorts (recommended)
 h|homebrew|Homebrew (Tier 3; no new Intel bottles)'
   PACKAGE_MANAGER=$MENU_VALUE
   DOTFILES_INTEL_PACKAGE_MANAGER=$PACKAGE_MANAGER
@@ -865,7 +865,6 @@ h|homebrew|Homebrew (Tier 3; no new Intel bottles)'
 
 set_fixed_preferences() {
   use_fzf_tab=true
-  use_fzf_from_z4h=false
   enable_oh_my_zsh=true
 }
 
@@ -1060,29 +1059,8 @@ report_macports_tool_version() {
     "$@"
 }
 
-report_z4h_versions() {
-  z4h_root=${Z4H:-${XDG_CACHE_HOME:-$HOME/.cache}/zsh4humans/v5}
-  z4h_revision=
-
-  if [ -r "$z4h_root/zsh4humans/main.zsh" ] && [ -r "$z4h_root/zsh4humans/version" ]; then
-    z4h_revision=$(tr -d '\r\n' <"$z4h_root/zsh4humans/version") || z4h_revision=
-    case $z4h_revision in
-      '' | *[!0-9]*) z4h_revision= ;;
-    esac
-  fi
-
-  if [ -n "$z4h_revision" ]; then
-    ui_summary_line 'Zsh for Humans' "v5 (revision $z4h_revision)"
-  else
-    ui_summary_line 'Zsh for Humans' 'v5 (pending first Zsh startup)'
-  fi
-
-  z4h_fzf="$z4h_root/fzf/bin/fzf"
-  if [ -x "$z4h_fzf" ]; then
-    report_tool_version 'fzf (z4h)' "$z4h_fzf" 1 --version
-  else
-    ui_summary_line 'fzf (z4h)' 'pending first Zsh startup'
-  fi
+report_shell_runtime() {
+  ui_summary_line 'Shell runtime' 'standalone (local extraction; no framework updater)'
 }
 
 show_installed_tool_versions() {
@@ -1091,8 +1069,8 @@ show_installed_tool_versions() {
   printf '\n' >&3
   ui_begin "$(icon_label "$ICON_SUCCESS" 'Installed tool versions')"
 
-  ui_section 'Zsh for Humans'
-  report_z4h_versions
+  ui_section 'Zsh runtime'
+  report_shell_runtime
 
   if [ "$PLATFORM" = macos ]; then
     ui_line '' ''
@@ -1283,6 +1261,97 @@ ui_summary() {
   done
 }
 
+# Import a previous preference namespace without retaining runtime aliases.
+# Detect it from known preference suffixes, independently of its spelling.
+normalize_zsh_preferences() {
+  awk '
+    function canonical(name, plain, leading) {
+      plain = name
+      sub(/^_+/, "", plain)
+      leading = substr(name, 1, length(name) - length(plain))
+      if (index(plain, previous "_") == 1)
+        return leading "DOTSH" substr(plain, length(previous) + 1)
+      if (name == tolower(previous) "_zshenv") return "dotsh_zshenv"
+      return name
+    }
+    function rewrite(line, result, i, c, nextc, token, j) {
+      result = ""
+      for (i = 1; i <= length(line); i++) {
+        c = substr(line, i, 1)
+        if (quote == single) {
+          result = result c
+          if (c == single) quote = ""
+          continue
+        }
+        if (c == "\\") {
+          result = result c substr(line, i + 1, 1)
+          i++
+          continue
+        }
+        if (c == single && quote == "") { quote = c; result = result c; continue }
+        if (c == "\"") { quote = quote == "" ? c : ""; result = result c; continue }
+        if (c == "#" && quote == "" && (i == 1 || substr(line, i - 1, 1) ~ /[[:space:];]/))
+          return result substr(line, i)
+        if (c == "$") {
+          result = result c
+          if (substr(line, i + 1, 1) == "{") { result = result "{"; i++ }
+          token = substr(line, i + 1)
+          if (match(token, /^[A-Za-z_][A-Za-z0-9_]*/)) {
+            token = substr(token, 1, RLENGTH)
+            result = result canonical(token)
+            i += length(token)
+          }
+          continue
+        }
+        if (quote == "" && c ~ /[A-Za-z_]/) {
+          token = substr(line, i)
+          match(token, /^[A-Za-z_][A-Za-z0-9_]*/)
+          token = substr(token, 1, RLENGTH)
+          nextc = substr(line, i + length(token), 1)
+          result = result (nextc == "=" ? canonical(token) : token)
+          i += length(token) - 1
+          continue
+        }
+        result = result c
+      }
+      return result
+    }
+    BEGIN { single = sprintf("%c", 39) }
+    NR == FNR {
+      if ($0 ~ /^[[:space:]]*export [A-Z][A-Z0-9]*_(PROMPT|STARTUP_PROFILE(_DEFAULT)?|SHOW_FASTFETCH|USE_MISE|ENABLE_AUTO_GENCOMP|SSH_LOAD_KEY|SSH_SHOW_KEY|SSH_ASKPASS_REQUIRE)=/) {
+        candidate = $0
+        sub(/^[[:space:]]*export /, "", candidate)
+        sub(/=.*/, "", candidate)
+        namespace = candidate
+        sub(/_.*/, "", namespace)
+        if (!seen[candidate]++) score[namespace]++
+      }
+      next
+    }
+    {
+      if (!selected++) {
+        for (namespace in score) {
+          if (score[namespace] >= 2 && score[namespace] > highest) {
+            highest = score[namespace]; previous = namespace; ambiguous = 0
+          } else if (score[namespace] == highest && highest >= 2) {
+            ambiguous = 1
+          }
+        }
+        if (ambiguous) {
+          print "Ambiguous preference namespaces; migration was not applied." > "/dev/stderr"
+          exit 1
+        }
+        if (previous == "DOTSH") previous = ""
+      }
+      if (previous != "") {
+        sub("\\." tolower(previous) "-zprof-enabled", ".dotsh-zprof-enabled")
+        $0 = rewrite($0)
+      }
+      print
+    }
+  ' "$1" "$1"
+}
+
 generate_zshenv() {
   info 'Configuring Zsh preferences'
 
@@ -1290,8 +1359,13 @@ generate_zshenv() {
   generated_file="$DOTFILES_DIR/zsh/home/.zshenv"
   if is_non_interactive && [ -f "$generated_file" ]; then
     source_file="$generated_file"
+    if normalize_zsh_preferences "$generated_file" | grep -q '^  dotsh_zshenv=' &&
+       [ ! -e "$generated_file.pre-standalone" ]; then
+      cp -p "$generated_file" "$generated_file.pre-standalone"
+    fi
   fi
   [ -f "$source_file" ] || die "Missing Zsh template: $source_file"
+  normalized_preferences=$(normalize_zsh_preferences "$source_file") || die 'Cannot normalize Zsh preferences.'
 
   mkdir -p "$(dirname "$generated_file")"
   temporary_file=$(mktemp "${generated_file}.tmp.XXXXXX") || die "Cannot create temporary Zsh environment file: $generated_file"
@@ -1302,57 +1376,77 @@ generate_zshenv() {
     *) generated_intel_package_manager=macports ;;
   esac
 
-  awk \
+  printf '%s\n' "$normalized_preferences" | awk \
     -v intel_package_manager="$generated_intel_package_manager" \
     -v startup_profile_default="$startup_profile_default" \
     -v prompt="$prompt" \
     -v editor="$editor" \
     -v show_fastfetch="$show_fastfetch" \
     -v use_fzf_tab="$use_fzf_tab" \
-    -v use_fzf_from_z4h="$use_fzf_from_z4h" \
     -v use_mise="$use_mise" \
     -v enable_auto_gencomp="$enable_auto_gencomp" \
     -v enable_oh_my_zsh="$enable_oh_my_zsh" \
     -v load_ssh_key="$load_ssh_key" \
     -v show_ssh_key="$show_ssh_key" \
     -v askpass_require="$askpass_require" '
-      BEGIN { fixed_startup_profile = 0 }
+      BEGIN { fixed_startup_profile = 0; skip_bootstrap = 0 }
+      /^  dotsh_zshenv=/ { skip_bootstrap = 1; next }
+      skip_bootstrap && /^  : \$\{ZDOTDIR:=~\}/ { skip_bootstrap = 0 }
+      skip_bootstrap { next }
+      /source "\$DOTFILES_DIR\/zsh\/helpers\/tool-bootstrap.zsh"/ { next }
+      /^if \[ -n "\$\{ZSH_VERSION-\}" \]; then/ {
+        print
+        print "  setopt no_global_rcs"
+        print "  [[ ! -o interactive ]] || umask o-w"
+        next
+      }
+      /^  setopt no_global_rcs$/ { next }
+      /^  \[\[ ! -o interactive \]\] \|\| umask o-w$/ { next }
+      /if \[\[ \$\(uname -m\) == x86_64 \]\]; then/ { $0 = "    if [[ $CPUTYPE == x86_64 ]]; then" }
+      /^  export DOTFILES_DIR=/ { $0 = "  export DOTFILES_DIR=${DOTFILES_DIR:-$HOME/.dotfiles}" }
       /^  export DOTFILES_INTEL_PACKAGE_MANAGER=/ { $0 = "  export DOTFILES_INTEL_PACKAGE_MANAGER=" intel_package_manager; }
-      /^  export Z4H_STARTUP_PROFILE_DEFAULT=/ {
-        $0 = "  export Z4H_STARTUP_PROFILE_DEFAULT=" startup_profile_default
+      /^  export DOTSH_STARTUP_PROFILE=/ {
+        if (!fixed_startup_profile) print "  export DOTSH_STARTUP_PROFILE_DEFAULT=" startup_profile_default
+        fixed_startup_profile = 1
+        print "  case ${DOTSH_STARTUP_PROFILE:-$DOTSH_STARTUP_PROFILE_DEFAULT} in"
+        print "    default|fast) export DOTSH_STARTUP_PROFILE=${DOTSH_STARTUP_PROFILE:-$DOTSH_STARTUP_PROFILE_DEFAULT} ;;"
+        print "    *) export DOTSH_STARTUP_PROFILE=$DOTSH_STARTUP_PROFILE_DEFAULT ;;"
+        print "  esac"
+        next
+      }
+      /^  export DOTSH_STARTUP_PROFILE_DEFAULT=/ {
+        if (fixed_startup_profile) next
+        $0 = "  export DOTSH_STARTUP_PROFILE_DEFAULT=" startup_profile_default
         fixed_startup_profile = 1
       }
-      /^  export Z4H_PROMPT=/ {
+      /^  export DOTSH_PROMPT=/ {
         if (!fixed_startup_profile) {
-          print "  export Z4H_STARTUP_PROFILE_DEFAULT=" startup_profile_default
+          print "  export DOTSH_STARTUP_PROFILE_DEFAULT=" startup_profile_default
           fixed_startup_profile = 1
         }
-        $0 = "  export Z4H_PROMPT=\"" prompt "\""
+        $0 = "  export DOTSH_PROMPT=\"" prompt "\""
       }
-      /^  export Z4H_SHOW_FASTFETCH=/ { $0 = "  export Z4H_SHOW_FASTFETCH=" show_fastfetch; }
-      /^  export Z4H_USE_FZF_TAB=/ {
+      /^  export DOTSH_SHOW_FASTFETCH=/ { $0 = "  export DOTSH_SHOW_FASTFETCH=" show_fastfetch; }
+      /^  export DOTSH_USE_FZF_TAB=/ {
         if (++fixed_fzf_tab > 1) next
-        $0 = "  export Z4H_USE_FZF_TAB=" use_fzf_tab
+        $0 = "  export DOTSH_USE_FZF_TAB=" use_fzf_tab
       }
-      /^  export Z4H_USE_FZF_FROM_Z4H=/ {
-        if (++fixed_fzf_from_z4h > 1) next
-        $0 = "  export Z4H_USE_FZF_FROM_Z4H=" use_fzf_from_z4h
-      }
-      /^  export Z4H_USE_MISE=/ { $0 = "  export Z4H_USE_MISE=" use_mise; }
-      /^  export Z4H_ENABLE_AUTO_GENCOMP=/ { $0 = "  export Z4H_ENABLE_AUTO_GENCOMP=" enable_auto_gencomp; }
-      /^  export Z4H_ENABLE_OH_MY_ZSH=/ {
+      /^  export DOTSH_USE_FZF_FROM_[A-Z0-9_]+=/ { next }
+      /^  export DOTSH_USE_MISE=/ { $0 = "  export DOTSH_USE_MISE=" use_mise; }
+      /^  export DOTSH_ENABLE_AUTO_GENCOMP=/ { $0 = "  export DOTSH_ENABLE_AUTO_GENCOMP=" enable_auto_gencomp; }
+      /^  export DOTSH_ENABLE_OH_MY_ZSH=/ {
         if (++fixed_oh_my_zsh > 1) next
-        $0 = "  export Z4H_ENABLE_OH_MY_ZSH=" enable_oh_my_zsh
+        $0 = "  export DOTSH_ENABLE_OH_MY_ZSH=" enable_oh_my_zsh
       }
-      /^  export Z4H_SSH_LOAD_KEY=/ { $0 = "  export Z4H_SSH_LOAD_KEY=" load_ssh_key; }
-      /^  export Z4H_SSH_SHOW_KEY=/ { $0 = "  export Z4H_SSH_SHOW_KEY=" show_ssh_key; }
-      /^  export Z4H_SSH_ASKPASS_REQUIRE=/ { $0 = "  export Z4H_SSH_ASKPASS_REQUIRE=" askpass_require; }
+      /^  export DOTSH_SSH_LOAD_KEY=/ { $0 = "  export DOTSH_SSH_LOAD_KEY=" load_ssh_key; }
+      /^  export DOTSH_SSH_SHOW_KEY=/ { $0 = "  export DOTSH_SSH_SHOW_KEY=" show_ssh_key; }
+      /^  export DOTSH_SSH_ASKPASS_REQUIRE=/ { $0 = "  export DOTSH_SSH_ASKPASS_REQUIRE=" askpass_require; }
       /^  export EDITOR=/ { $0 = "  export EDITOR=\"" editor "\""; }
       { print }
       END {
-        if (!fixed_startup_profile) print "  export Z4H_STARTUP_PROFILE_DEFAULT=" startup_profile_default
+        if (!fixed_startup_profile) print "  export DOTSH_STARTUP_PROFILE_DEFAULT=" startup_profile_default
       }
-    ' "$source_file" >| "$temporary_file" || {
+    ' >| "$temporary_file" || {
     rm -f "$temporary_file"
     die "Cannot generate Zsh environment file: $generated_file"
   }
@@ -1360,6 +1454,8 @@ generate_zshenv() {
     rm -f "$temporary_file"
     die "Cannot install generated Zsh environment file: $generated_file"
   }
+  # A previous wordcode file must not restore the removed legacy bootstrap.
+  rm -f "$generated_file.zwc"
 }
 
 configure_non_interactive() {
@@ -1379,9 +1475,10 @@ configure_non_interactive() {
 load_non_interactive_choices() {
   choices_file="$DOTFILES_DIR/zsh/home/.zshenv"
   [ -f "$choices_file" ] || return 0
+  normalized_choices=$(normalize_zsh_preferences "$choices_file") || die 'Cannot read saved Zsh preferences.'
 
   value_from_choices() {
-    awk -v variable="$1" '
+    printf '%s\n' "$normalized_choices" | awk -v variable="$1" '
       $0 ~ "^  export " variable "=" {
         sub("^  export " variable "=", "")
         sub(/[[:space:]]+#.*/, "")
@@ -1389,18 +1486,22 @@ load_non_interactive_choices() {
         print
         exit
       }
-    ' "$choices_file"
+    '
   }
 
   for choice in \
-    'startup_profile_default Z4H_STARTUP_PROFILE_DEFAULT' \
-    'prompt Z4H_PROMPT' 'editor EDITOR' 'show_fastfetch Z4H_SHOW_FASTFETCH' \
-    'use_mise Z4H_USE_MISE' 'enable_auto_gencomp Z4H_ENABLE_AUTO_GENCOMP' \
-    'load_ssh_key Z4H_SSH_LOAD_KEY' \
-    'show_ssh_key Z4H_SSH_SHOW_KEY' 'askpass_require Z4H_SSH_ASKPASS_REQUIRE'; do
+    'startup_profile_default DOTSH_STARTUP_PROFILE_DEFAULT' \
+    'prompt DOTSH_PROMPT' 'editor EDITOR' 'show_fastfetch DOTSH_SHOW_FASTFETCH' \
+    'use_mise DOTSH_USE_MISE' 'enable_auto_gencomp DOTSH_ENABLE_AUTO_GENCOMP' \
+    'load_ssh_key DOTSH_SSH_LOAD_KEY' \
+    'show_ssh_key DOTSH_SSH_SHOW_KEY' 'askpass_require DOTSH_SSH_ASKPASS_REQUIRE'; do
     choice_name=${choice%% *}
     choice_variable=${choice#* }
     choice_value=$(value_from_choices "$choice_variable")
+    if [ "$choice_name" = startup_profile_default ] && [ -z "$choice_value" ]; then
+      # Migrate the old persisted profile without persisting an environment override.
+      choice_value=$(value_from_choices DOTSH_STARTUP_PROFILE)
+    fi
     [ -n "$choice_value" ] && eval "$choice_name=\$choice_value"
   done
 }
@@ -1573,31 +1674,11 @@ install_oh_my_posh() {
 }
 
 install_fzf_local() {
-  fzf_repo="$HOME/.local/share/fzf"
-  fzf_bin="$HOME/.local/bin/fzf"
+  fzf_repo="$DOTFILES_DIR/zsh/vendor/packages/fzf"
+  [ -x "$fzf_repo/bin/fzf" ] || die 'Prepare pinned shell dependencies first.'
   mkdir -p "$HOME/.local/share" "$HOME/.local/bin"
-  if [ -d "$fzf_repo/.git" ]; then
-    info 'Updating local fzf checkout'
-    git -C "$fzf_repo" pull --ff-only
-  else
-    rm -rf "$fzf_repo"
-    git clone --depth=1 https://github.com/junegunn/fzf.git "$fzf_repo"
-  fi
-  bash "$fzf_repo/install" --bin
-  [ -x "$fzf_repo/bin/fzf" ] || die 'Local fzf installation failed.'
-  cp "$fzf_repo/bin/fzf" "$fzf_bin"
-  fzf_version=$($fzf_bin --version 2>/dev/null) || die 'Cannot determine the local fzf version.'
-  if ! awk -v version="${fzf_version%% *}" 'BEGIN {
-    split(version, have, ".")
-    split("0.66.0", want, ".")
-    for (i = 1; i <= 3; i++) {
-      if ((have[i] + 0) > (want[i] + 0)) exit 0
-      if ((have[i] + 0) < (want[i] + 0)) exit 1
-    }
-    exit 0
-  }'; then
-    die "Local fzf 0.66.0 or newer is required; found ${fzf_version%% *}."
-  fi
+  link_path "$fzf_repo" "$HOME/.local/share/fzf"
+  cp "$fzf_repo/bin/fzf" "$HOME/.local/bin/fzf"
 }
 
 apply_installation() {
@@ -1613,6 +1694,9 @@ apply_installation() {
   fi
   set_fixed_preferences
 
+  info 'Preparing pinned shell dependencies'
+  sh "$DOTFILES_DIR/zsh/helpers/prepare-shell-dependencies.sh" || die 'Shell dependency preparation failed.'
+
   generate_zshenv
   zshenv_source="$DOTFILES_DIR/zsh/home/.zshenv"
   success 'Generated Zsh preferences'
@@ -1623,11 +1707,9 @@ apply_installation() {
   install_editor
   success "Editor ready: $editor"
 
-  if [ "$use_fzf_from_z4h" = false ]; then
-    info 'Installing local fzf from the latest Git checkout'
-    install_fzf_local
-    success 'Local fzf ready'
-  fi
+  info 'Installing the pinned local fzf binary'
+  install_fzf_local
+  success 'Local fzf ready'
 
   if [ "$use_mise" = true ]; then
     info 'Preparing Mise integration'

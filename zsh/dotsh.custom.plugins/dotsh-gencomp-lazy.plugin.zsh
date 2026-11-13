@@ -7,7 +7,7 @@ typeset -gU fpath
 
 typeset -gA _ZQS_GENCOMP_FAILED
 
-# Completions created by the former automatic mode may still live in z4h's
+# Completions created by the former automatic mode may still live in dotsh's
 # standard completion cache and get registered by compinit. Keep the files,
 # but detach only RobSis-generated definitions so TAB retains its normal
 # fallback and Shift-TAB remains the explicit activation path.
@@ -43,7 +43,7 @@ _zqs_gencomp_generate() {
 
   local program=$1
   local help_arg=${2:---help}
-  local parser="${Z4H:?}/RobSis/zsh-completion-generator/help2comp.py"
+  local parser="${DOTSH_PACKAGES:?}/zsh-completion-generator/help2comp.py"
   local python_bin=${commands[python3]:-${commands[python]:-}}
   local output_file="$GENCOMPL_FPATH/_$program"
   local temporary_file="$output_file.tmp.$$"
@@ -128,4 +128,4 @@ _zqs_gencomp_for_current_command() {
 }
 
 zle -N _zqs_gencomp_for_current_command
-z4h bindkey _zqs_gencomp_for_current_command Shift+Tab
+dotsh_bindkey _zqs_gencomp_for_current_command Shift+Tab

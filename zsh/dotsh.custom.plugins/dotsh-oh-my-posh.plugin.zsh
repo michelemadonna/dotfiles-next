@@ -7,9 +7,9 @@ fi
 
 
 
-typeset -g Z4H_OMP_PLUGIN_FILE="${(%):-%x}"
+typeset -g DOTSH_OMP_PLUGIN_FILE="${(%):-%x}"
 
-_z4h_omp_generate_init_cache() {
+_dotsh_omp_generate_init_cache() {
   emulate -L zsh
   setopt local_options err_return
 
@@ -60,11 +60,11 @@ _z4h_omp_generate_init_cache() {
   command mv -f -- "$cache_tmp" "$cache_file"
 }
 
-z4h-init-oh-my-posh() {
+dotsh-init-oh-my-posh() {
   emulate -L zsh
 
   local omp_binary=${commands[oh-my-posh]}
-  local config_file=$Z4H_OH_MY_POSH_CONFIG
+  local config_file=$DOTSH_OH_MY_POSH_CONFIG
   local cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/zsh"
   local config_key=${config_file:A}
   config_key=${config_key//\//_}
@@ -73,13 +73,13 @@ z4h-init-oh-my-posh() {
   local rebuild=false
 
   if [[ ! -s $cache_file || $omp_binary -nt $cache_file || \
-        $config_file -nt $cache_file || $Z4H_OMP_PLUGIN_FILE -nt $cache_file ]]; then
+        $config_file -nt $cache_file || $DOTSH_OMP_PLUGIN_FILE -nt $cache_file ]]; then
     rebuild=true
   fi
 
   if [[ $rebuild == true ]]; then
     [[ -d $cache_dir ]] || command mkdir -p -- "$cache_dir"
-    _z4h_omp_generate_init_cache "$omp_binary" "$config_file" "$cache_file" || {
+    _dotsh_omp_generate_init_cache "$omp_binary" "$config_file" "$cache_file" || {
       eval "$(command "$omp_binary" init zsh --config "$config_file")"
       return
     }

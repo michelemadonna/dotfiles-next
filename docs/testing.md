@@ -29,7 +29,7 @@ Use a real writable PTY, preferably the Docker demo for Docker-specific work.
 For temporary macOS tests use:
 
 ```text
-/Users/michele/Developer/z4u-next/fhome.sh
+/Users/michele/Developer/michelemadonna@github/dotfiles-no-zhu/fhome.sh
 ```
 
 Do not create a repository-local replacement. For fzf bindings capture and
@@ -55,7 +55,7 @@ quoting of paths with spaces or metacharacters. Cover every direct `Alt-B`,
 multi-hop chain such as Each-ref → Files → Branches → Hashes. Verify that
 Hashes → Files selects files from the chosen commits and that `Alt-W` selects
 working-tree files. Execute the generated Git commands; inspecting the buffer
-alone is insufficient. Run at least one picker without `Z4H_FZF_GIT_FILTER`:
+alone is insufficient. Run at least one picker without `DOTSH_FZF_GIT_FILTER`:
 filtered mode does not exercise fzf terminal ownership and cannot detect a
 stopped background picker. Confirm that `Ctrl-P` updates the shared preview
 state and geometry and that the persisted `Ctrl-F` height is applied to both

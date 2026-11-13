@@ -1,0 +1,281 @@
+#!/usr/bin/env zsh
+
+[[ -v _dotsh_tty_fd ]] || return
+
+[[ ! -v _dotsh_compinit_fd ]] || -dotsh-compinit || true
+
+[[ -o auto_menu ]] && local -i auto_menu=1 || local -i auto_menu=0
+
+setopt local_options always_to_end no_auto_list no_auto_menu no_auto_param_keys     \
+       no_auto_remove_slash no_bash_auto_list no_complete_in_word no_list_ambiguous \
+       no_list_beep no_list_packed no_list_rows_first no_menu_complete no_rec_exact
+
+local -ra _dotsh_shadow_funcs=(_main_complete _multi_parts _path_files _setup compadd zstyle)
+
+local f
+for f in $_dotsh_shadow_funcs; do
+  if (( ${+functions[$f]} )); then
+    builtin functions -c -- $f -dotsh-orig-$f
+    local _dotsh_orig_${f#_}=-dotsh-orig-$f
+  else
+    eval "local -a _dotsh_orig_${f#_}=(builtin $f)"
+  fi
+done
+
+# exec 3>&2 2>/tmp/log
+
+{
+  # setopt xtrace
+
+  function zstyle() {
+    # zstyle -T ":completion:${curcontext}:$_type" list-grouped
+    if [[ $# == 3 && $3 == list-grouped && $1 == -(t|T) && $2 == :completion:* ]]; then
+      return 1
+    else
+      $_dotsh_orig_zstyle "$@"
+    fi
+  }
+
+  function _setup () {}
+
+  function _multi_parts() {
+    local _dotsh_sep=${@[-2]}
+    local _dotsh_array=${@[-1]}
+    shift -p 2
+    [[ $# != 0 && ${@[-1]} == (-|--) ]] && shift -p
+    () {
+      emulate -L zsh
+      if [[ $_dotsh_array == '('* ]]; then
+        _dotsh_array=(${=_dotsh_array[2,-2]})
+      else
+        _dotsh_array=("${(@P)_dotsh_array}")
+      fi
+    }
+    # This ** is not ideal but alternatives are worse.
+    #
+    # Consider the following setup:
+    #
+    #   git init
+    #   mkdir -p foo1 foo2/bar
+    #   touch foo1/qux foo2/bar/qux
+    #   git add .
+    #   git commit --allow-empty-message -m ''
+    #   rm foo1/qux foo2/bar/qux
+    #   git commit <TAB>
+    #
+    # At this point there are two trial completions: foo1/qux and foo2/bar/qux.
+    #
+    # With ** we'll get foo/qux with the cursor after foo. Another TAB will
+    # give summon fzf to choose between the two trial completions.
+    #
+    # With a single * we'll get the same completion on the first TAB (foo/qux
+    # with the cursor after foo). Another TAB will produce foo1/qux. That's
+    # quite awful. The awfulness is expecially obvious if auto_menu is set.
+    # In this case `git commit <TAB>` will complete foo1/qux in a single go,
+    # even though there are two files to commit.
+    #
+    # The ideal behavior would be foo on the first TAB and fzf with both
+    # trial completions on the second. We can achieve this by dropping -M.
+    # However, this would not allow us to complete f/b, and we want that.
+    compadd -M "r:|${_dotsh_sep}=** r:|=*" "$@" - "${_dotsh_array[@]}"
+  }
+
+  function _path_files() {
+    () {
+      # TODO: respect pats and ignore somehow.
+      local -a opts files dirs pats ignore
+      zparseopts -a mopts f=files /=dirs g+:=pats F:=ignore \
+        P: S: q r: R: W:  M+: J+: V+: x+: X+: 1 2 o+: n
+      local -i patdirs=${#pats}
+      while (( ${#pats} )); do
+        if [[ ${pats[2]} != ('*(-/)'|'*(#q-/)') ]]; then
+          patdirs=0
+          break
+        fi
+        builtin shift 2 pats
+      done
+      (( patdirs )) && dirs=(-/)
+      (( ${#files} || ! ${#dirs} )) && typeset -gi _dotsh_only_dirs=0
+    } "$@"
+    local -ir _dotsh_in_path_files=1
+    $_dotsh_orig_path_files "$@"
+  }
+
+  function compadd() {
+    local -a _dotsh_{opts,nDOA,q,f,s,S,I,W,i,P,p,d,r,R,e,U}
+    zparseopts -E -a _dotsh_opts {D,O,A}+:=_dotsh_nDOA n+=_dotsh_nDOA \
+      f+=_dotsh_f s+:=_dotsh_s S+:=_dotsh_S I+:=_dotsh_I W+:=_dotsh_W     \
+      i+:=_dotsh_i P+:=_dotsh_P p+:=_dotsh_p d+:=_dotsh_d q+=_dotsh_q     \
+      r+:=_dotsh_r R+:=_dotsh_R e+=_dotsh_e U+=_dotsh_U                 \
+      {a,k,l,1,2,C,Q}+ {F,J,X,x,V,E,M}+: o+::
+    if (( ${#_dotsh_nDOA} )); then
+      $_dotsh_orig_compadd "$@"
+      return
+    fi
+    local -a _dotsh_A _dotsh_D
+    if (( ${#_dotsh_d} )); then
+      () {
+        emulate -L zsh
+        local _dotsh_arr=$_dotsh_d[2]
+        if [[ $_dotsh_arr == '('* ]]; then
+          _dotsh_D=(${=_dotsh_arr[2,-2]})
+        else
+          _dotsh_D=("${(@P)_dotsh_arr}") 
+        fi
+      }
+    fi
+    $_dotsh_orig_compadd -A _dotsh_A -D _dotsh_D "$@" || true
+    (( ${#_dotsh_A} )) || return
+    # Many completers read $compstate[nmatches], which can be super slow if there are
+    # many matches that require deduplication. We drop everything in an unsorted
+    # group without deduplication to avoid this cost. We deduplicate everything manually
+    # at a later stage.
+    $_dotsh_orig_compadd -V- -2 -o nosort -J- "$@" || return
+
+    emulate -L zsh
+    typeset -g _dotsh_curcontext=$curcontext
+    if (( $#_dotsh_D < $#_dotsh_A )); then
+      _dotsh_D+=(${_dotsh_A:$#_dotsh_D})
+    elif (( $#_dotsh_D > $#_dotsh_A )); then
+      _dotsh_D[$#_dotsh_A+1,-1]=()
+    fi
+    _dotsh_words+=("${_dotsh_A[@]}")
+    _dotsh_descrs+=("${_dotsh_D[@]}")
+    if (( ! $#_dotsh_U )); then
+      _dotsh_i=(-i "$IPREFIX$_dotsh_i[2]")
+      _dotsh_I=(-I "$_dotsh_I[2]$ISUFFIX")
+    fi
+    local scaffold=(
+      "$_dotsh_in_path_files"
+      "$_dotsh_P[2]" "$_dotsh_S[2]" "$_dotsh_p[2]" "$_dotsh_s[2]" "$_dotsh_i[2]" "$_dotsh_I[2]"
+      "$_dotsh_q[1]" "$_dotsh_r[2]" "$_dotsh_R[2]" "$_dotsh_f[1]" "$_dotsh_e[1]" "$_dotsh_W[2]"
+      "$PREFIX" "$SUFFIX")
+    scaffold=${(pj:\1:)scaffold}
+    if (( ! $#_dotsh_scaffolds )); then
+      _dotsh_scaffolds=($scaffold)
+      if [[ $IPREFIX$PREFIX == $_dotsh_i[2]$_dotsh_P[2]$_dotsh_p[2]* ]]; then
+        _dotsh_word_prefix=${${:-$IPREFIX$PREFIX}#$_dotsh_i[2]$_dotsh_P[2]$_dotsh_p[2]}
+      fi
+    elif (( $#_dotsh_scaffolds > 1 )) || [[ $_dotsh_scaffolds[1] != $scaffold ]]; then
+      repeat $(( $#_dotsh_words - $#_dotsh_scaffolds - $#_dotsh_A )); do
+        _dotsh_scaffolds+=($_dotsh_scaffolds[1])
+      done
+      repeat $#_dotsh_A _dotsh_scaffolds+=($scaffold)
+    fi
+  }
+
+  -dotsh-cursor-hide
+
+  local ZLE_REMOVE_SUFFIX_CHARS ZLE_SPACE_SUFFIX_CHARS
+  unset ZLE_REMOVE_SUFFIX_CHARS ZLE_SPACE_SUFFIX_CHARS
+
+  local -i again=1
+  while (( again )); do
+    {
+      -dotsh-show-dots $LBUFFER
+
+      local buf=$BUFFER
+      local -i cursor=CURSOR
+      
+      local -a _dotsh_words=()
+      local -a _dotsh_descrs=()
+      local -a _dotsh_scaffolds=()
+      local -i _dotsh_only_dirs=1
+      local -i _dotsh_in_path_files=0
+      local -i _dotsh_in_quotes=0
+      local _dotsh_curcontext=
+      local _dotsh_word_prefix=
+
+      functions -c -- -dotsh-main-complete _main_complete
+      builtin zle expand-or-complete
+      if [[ $buf == $BUFFER && $cursor == $CURSOR ]]; then
+        (( ${#_dotsh_words} )) || return 0
+        local _dotsh_path_prefix=
+        if () {
+                emulate -L zsh
+                (( $#_dotsh_scaffolds == 1 && !_dotsh_in_quotes )) || return
+                local -a s=("${(@ps:\1:)_dotsh_scaffolds}")
+                [[ $s[1] == 1 && -z $s[3] && -z $s[5] && -z $s[7] && -n $s[11] &&
+                  $s[13] == (|*/) && -z $s[15] ]] || return
+                typeset -g _dotsh_path_prefix=$s[13]
+              }; then
+          local -a _dotsh_reply=()
+          if builtin zstyle -t ":completion:${_dotsh_curcontext}:default" sort; then
+            _dotsh_words=("${(@ou)_dotsh_words}")
+          else
+            _dotsh_words=("${(@u)_dotsh_words}")
+          fi
+          -dotsh-sanitize-word-prefix "${_dotsh_words[@]}"
+          -dotsh-comp-files || return
+          () {
+            emulate -L zsh
+            again=${_dotsh_reply[1]}
+            _dotsh_words=("${(@q)_dotsh_reply:1}")
+          }
+          -dotsh-insert-all || return
+        else
+          local -a _dotsh_reply=()
+          local nl=$'\n'
+          _dotsh_descrs=("${(@)_dotsh_descrs//$nl/\\n}")
+          -dotsh-sanitize-word-prefix "${_dotsh_descrs[@]}"
+          -dotsh-comp-words || return
+          () {
+            emulate -L zsh
+            again=${_dotsh_reply[1]}
+            local -i idx=0
+            local words=()
+            if (( ${#_dotsh_scaffolds} == 1 )); then
+              for idx in "${(@)_dotsh_reply:1}"; do
+                words+=("${_dotsh_words[idx]}")
+              done
+            else
+            local scaffolds=()
+              for idx in "${(@)_dotsh_reply:1}"; do
+                words+=("${_dotsh_words[idx]}")
+                scaffolds+=("${_dotsh_scaffolds[idx]}")
+              done
+              _dotsh_scaffolds=("${scaffolds[@]}")
+            fi
+            _dotsh_words=("${words[@]}")
+          }
+          -dotsh-insert-all || return
+        fi
+      else
+        if (( auto_menu )); then
+          _dotsh_words=("${(@ou)_dotsh_words}")
+          again=$((${#_dotsh_words} > 1))
+        else
+          again=0
+        fi
+      fi
+
+      if [[ $LBUFFER == *' ' && $RBUFFER == ' '* ]]; then
+        RBUFFER[1]=
+      else
+        BUFFER=$BUFFER
+      fi
+
+      [[ $BUFFER == $buf && $CURSOR == $cursor ]] && return
+      builtin zle .split-undo || return
+      [[ $LBUFFER == *' ' ]] && return
+    } always {
+      if (( _dotsh_use[zsh-autosuggestions] || _dotsh_use[zsh-syntax-highlighting] )); then
+        -dotsh-redraw-buffer
+      fi
+    }
+  done
+} always {
+  # unsetopt xtrace
+  # exec 2>&3 3>&-
+  local f=
+  for f in $_dotsh_shadow_funcs; do
+    if (( ${+functions[-dotsh-orig-$f]} )); then
+      builtin functions -c -- -dotsh-orig-$f $f
+      builtin unfunction -- -dotsh-orig-$f
+    elif (( ${+functions[$f]} )); then
+      builtin unfunction -- $f
+    fi
+  done
+  builtin zle -R
+  -dotsh-cursor-show
+}

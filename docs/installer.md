@@ -29,16 +29,17 @@ Non-interactive mode never opens menus, clears the screen, asks installer
 questions, or installs Mise because of an environment override. Privileged
 package operations can still request the administrator password through
 `sudo`. Remaining user choices come from
-`zsh/home/.zshenv`; the three fixed integration flags are always normalized.
+`zsh/home/.zshenv`; the two fixed integration flags are always normalized.
 Intel defaults to MacPorts; `DOTFILES_INTEL_PACKAGE_MANAGER=homebrew` selects
 Homebrew, and an existing generated preference is reused when the environment
 does not override it.
-The generated preferences persist `Z4H_STARTUP_PROFILE_DEFAULT=default`.
-Set `Z4H_STARTUP_PROFILE=fast` in the environment to use the deferred startup
+The generated preferences persist `DOTSH_STARTUP_PROFILE_DEFAULT=default`.
+Set `DOTSH_STARTUP_PROFILE=fast` in the environment to use the deferred startup
 profile for a shell without changing that persisted default; the installer
 does not replace the default with this runtime override.
-At shell startup, a missing `zsh/home/.zshenv_z4h` is downloaded from the
-pinned zsh4humans v5 `.zshenv` source and saved at that path before loading.
+The installer prepares the revisions in `zsh/vendor/packages.lock` through
+`zsh/helpers/prepare-shell-dependencies.sh`. Startup uses the local runtime
+and prepared plugins without a framework bootstrap or network access.
 
 ## Tools and state
 
@@ -54,14 +55,12 @@ active terminal. Mise and Oh My Posh are installed only when selected; an
 existing Mise executable is reused while its links and shell caches are still
 prepared.
 
-The latest fzf checkout is always kept in `~/.local/share/fzf`, fast-forwarded
-on subsequent installer runs, and its binary is copied to `~/.local/bin/fzf`.
+The pinned fzf checkout is linked at `~/.local/share/fzf`, and its binary is
+copied to `~/.local/bin/fzf`. Repeating installation reuses matching revisions.
 This path supplies the modern fzf actions used by the vendored fzf-git
-integration. Startup checks that this binary is at least fzf 0.66 and reruns
-the non-interactive updater when it is older.
+integration. Missing dependencies must be repaired by explicitly running the installer.
 Mise uses the official installer on macOS and Linux, then prepares activation,
-completion, and ASDF compatibility data. The startup helper can invoke the
-installer once when a selected tool is missing.
+completion, and ASDF compatibility data. Shell startup never invokes the installer.
 
 Managed destinations are backed up as `.backup.YYYYMMDDhhmmss`; existing
 correct symbolic links are retained. Base packages and fonts are guarded by:
@@ -109,18 +108,18 @@ port on Intel when MacPorts is selected. Linux still installs Git through APT
 when necessary.
 
 The Intel provider is persisted as `DOTFILES_INTEL_PACKAGE_MANAGER` so
-non-interactive startup repairs retain the approved provider. Users may install
+subsequent installer runs retain the approved provider. Users may install
 Homebrew manually alongside a MacPorts-primary setup for casks or formulae
-missing from MacPorts. In that configuration the custom `z4h-pkgmng` plugin
+missing from MacPorts. In that configuration the custom `dotsh-pkgmng` plugin
 isolates Homebrew from the normal `PATH` and exposes explicit exceptions.
 
-Installer logs use the z4u palette: cyan 36, yellow 33, green 32, red 31,
+Installer logs use the dotsh palette: cyan 36, yellow 33, green 32, red 31,
 bold 1, reset 0, with Unicode icons/borders and an ASCII fallback. External
-package-manager output remains visible. The automatic bootstrap reports
-success or failure but never blocks Zsh startup.
+package-manager output remains visible. Missing startup dependencies require
+explicit preparation; the shell does not launch the installer automatically.
 
 The cache reset function lists its targets and asks for confirmation. It may
-remove z4h/plugin/Zsh/Mise/Oh My Posh/completion caches, compiled checkout
+remove Zsh/Mise/Oh My Posh/completion caches and compiled checkout
 files, fzf state/markers, SSH-agent environment, and the installer marker. It
 does not remove history, configuration, backups, Mise/ASDF data,
 `.tool-versions`, or a running SSH agent.

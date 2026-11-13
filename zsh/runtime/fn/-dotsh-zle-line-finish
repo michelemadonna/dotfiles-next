@@ -1,0 +1,32 @@
+#!/usr/bin/env zsh
+
+local -i ret
+
+if [[ -v widgets[-dotsh-orig-zle-line-finish] ]]; then
+  zle -- -dotsh-orig-zle-line-finish "$@" || ret=$?
+fi
+
+if [[ -v _dotsh_redraw_fd ]]; then
+  zle -F "$_dotsh_redraw_fd"
+  exec {_dotsh_redraw_fd}>&-
+  unset _dotsh_redraw_fd
+fi
+
+if [[ $BUFFER == *' ' ]] &&
+   ! zstyle -t :dotsh:history preserve-trailing-whitespace &&
+   -dotsh-is-valid-list "$PREBUFFER$BUFFER"; then
+  BUFFER=${BUFFER%% #}
+fi
+
+unset POSTDISPLAY _dotsh_autosuggest_buffer _dotsh_autosuggestion
+if [[ -v region_highlight ]]; then
+  if [[ -n $BUFFER || -n $PREBUFFER ]]; then
+    _zsh_highlight
+  else
+    # An empty accepted line has no syntax to finalize. Line-init resets
+    # the highlighter's prior-buffer state before the next editable line.
+    region_highlight=()
+  fi
+fi
+
+return ret
