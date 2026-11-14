@@ -8,18 +8,8 @@ if [ -n "${ZSH_VERSION-}" ]; then
   setopt no_global_rcs
   [[ ! -o interactive ]] || umask o-w
   export DOTSH_PROMPT=${DOTSH_PROMPT:="powerlevel10k"} # powerlevel10k/ohmyposh/minimal
-  export DOTSH_STARTUP_PROFILE_DEFAULT=${DOTSH_STARTUP_PROFILE_DEFAULT:=fast} # fast/default
-  case $DOTSH_STARTUP_PROFILE_DEFAULT in
-    default|fast) ;;
-    *) export DOTSH_STARTUP_PROFILE_DEFAULT=default ;;
-  esac
-  case ${DOTSH_STARTUP_PROFILE:-$DOTSH_STARTUP_PROFILE_DEFAULT} in
-    default|fast) export DOTSH_STARTUP_PROFILE=${DOTSH_STARTUP_PROFILE:-$DOTSH_STARTUP_PROFILE_DEFAULT} ;;
-    *) export DOTSH_STARTUP_PROFILE=$DOTSH_STARTUP_PROFILE_DEFAULT ;;
-  esac
   export DOTSH_SHOW_FASTFETCH=${DOTSH_SHOW_FASTFETCH:=first} #false/true/first
   export DOTSH_ENABLE_ALLAFINE=false
-  export DOTSH_USE_FZF_TAB=true
   export DOTSH_ENABLE_AUTO_GENCOMP=${DOTSH_ENABLE_AUTO_GENCOMP:=true} #true/false
   export DOTSH_ENABLE_OH_MY_ZSH=true
   export DOTSH_SSH_LOAD_KEY=${DOTSH_SSH_LOAD_KEY:=true} #false/true
@@ -64,11 +54,6 @@ if [ -n "${ZSH_VERSION-}" ]; then
   path=("$HOME/.local/bin" $path)
   typeset -gU path PATH
   typeset -g _DOTSH_PATH_SNAPSHOT="$PATH"
-
-  (( $+commands[python3] )) && alias python='command python3'
-
-  
-  
 
   case ${EDITOR:-} in
     vim|nano|fresh|micro) ;;

@@ -48,8 +48,7 @@ add-zsh-hook -- precmd  -dotsh-set-term-title-precmd                     || retu
 
 local pkg
 typeset -gA _dotsh_use
-for pkg in fzf powerlevel10k systemd zsh-history-substring-search \
-          zsh-completions zsh-autosuggestions zsh-syntax-highlighting; do
+for pkg in powerlevel10k systemd zsh-completions zsh-autosuggestions; do
   zstyle -t :dotsh:$pkg channel none || _dotsh_use[$pkg]=1
 done
 typeset -grA _dotsh_use
@@ -96,21 +95,6 @@ function dotsh-up-prefix-global() {
 function dotsh-down-prefix-global() {
   -dotsh-with-local-history 0 down-line-or-beginning-search "$@"
 }
-
-if (( _dotsh_use[zsh-history-substring-search] )); then
-  function dotsh-up-substring-local() {
-    -dotsh-with-local-history 1 history-substring-search-up "$@"
-  }
-  function dotsh-down-substring-local() {
-    -dotsh-with-local-history 1 history-substring-search-down "$@"
-  }
-  function dotsh-up-substring-global() {
-    -dotsh-with-local-history 0 history-substring-search-up "$@"
-  }
-  function dotsh-down-substring-global() {
-    -dotsh-with-local-history 0 history-substring-search-down "$@"
-  }
-fi
 
 function dotsh-kill-word()           { -dotsh-move-and-kill dotsh-forward-word   }
 function dotsh-backward-kill-word()  { -dotsh-move-and-kill dotsh-backward-word  }
@@ -163,23 +147,13 @@ zle -N dotsh-quote-prev-zword
 zle -N dotsh-beginning-of-buffer
 zle -N dotsh-end-of-buffer
 zle -N dotsh-stash-buffer
-zle -N dotsh-fzf-complete
 zle -N dotsh-up-prefix-local
 zle -N dotsh-down-prefix-local
 zle -N dotsh-up-prefix-global
 zle -N dotsh-down-prefix-global
-if (( _dotsh_use[zsh-history-substring-search] )); then
-  zle -N dotsh-up-substring-local
-  zle -N dotsh-down-substring-local
-  zle -N dotsh-up-substring-global
-  zle -N dotsh-down-substring-global
-fi
 zle -N dotsh-cd-back
 zle -N dotsh-cd-forward
 zle -N dotsh-cd-up
-zle -N dotsh-cd-down
-zle -N dotsh-fzf-history
-zle -N dotsh-fzf-dir-history
 zle -N dotsh-autosuggest-accept
 zle -N dotsh-do-nothing
 zle -N dotsh-clear-screen-soft-top
@@ -296,21 +270,11 @@ done
 bindkey   '^[[D'    backward-char                  # left
 # Move cursor one char forward.
 bindkey   '^[[C'    forward-char                   # right
-if (( _dotsh_use[zsh-history-substring-search] )); then
-  # Move cursor one line up or fetch the previous command from LOCAL history.
-  bindkey '^P'      dotsh-up-substring-local         # ctrl+p
-  bindkey '^[[A'    dotsh-up-substring-local         # up
-  # Move cursor one line down or fetch the next command from LOCAL history.
-  bindkey   '^N'    dotsh-down-substring-local       # ctrl+n
-  bindkey   '^[[B'  dotsh-down-substring-local       # down
-else
-  # Move cursor one line up or fetch the previous command from LOCAL history.
-  bindkey '^P'      dotsh-up-prefix-local            # ctrl+p
-  bindkey '^[[A'    dotsh-up-prefix-local            # up
-  # Move cursor one line down or fetch the next command from LOCAL history.
-  bindkey '^N'      dotsh-down-prefix-local          # ctrl+n
-  bindkey '^[[B'    dotsh-down-prefix-local          # down
-fi
+# Move through matching local history entries.
+bindkey '^P'      dotsh-up-prefix-local            # ctrl+p
+bindkey '^[[A'    dotsh-up-prefix-local            # up
+bindkey '^N'      dotsh-down-prefix-local          # ctrl+n
+bindkey '^[[B'    dotsh-down-prefix-local          # down
 
 # Move cursor one line up or fetch the previous command from GLOBAL history.
 bindkey   '^[[1;5A' dotsh-up-prefix-global           # ctrl+up
@@ -364,11 +328,7 @@ bindkey   '^[/'     redo                           # alt+/
 # Expand alias/glob/parameter.
 bindkey   '^ '      dotsh-expand                     # ctrl+space
 # Generic command completion.
-bindkey   '^I'      dotsh-fzf-complete               # tab
-if (( _dotsh_use[fzf] )); then
-  # Command history.
-  bindkey '^R'      dotsh-fzf-history                # ctrl+r
-fi
+bindkey   '^I'      expand-or-complete               # tab
 # Show help for the command at cursor.
 bindkey   '^[h'     run-help                       # alt+h
 bindkey   '^[H'     run-help                       # alt+H
@@ -394,15 +354,6 @@ bindkey   '^[[1;2D' dotsh-cd-back                    # shift+left
 bindkey   '^[[1;2C' dotsh-cd-forward                 # shift+right
 # cd into the parent directory.
 bindkey   '^[[1;2A' dotsh-cd-up                      # shift+up
-if (( _dotsh_use[fzf] )); then
-  # cd into a subdirectory (interactive).
-  bindkey '^[[1;2B' dotsh-cd-down                    # shift+down
-fi
-
-# Directory history.
-bindkey   '^[r'     dotsh-fzf-dir-history            # alt+r
-bindkey   '^[R'     dotsh-fzf-dir-history            # alt+R
-
 if (( _dotsh_can_save_restore_screen )) &&
    zstyle -T :dotsh: prompt-at-bottom; then
   bindkey '^L'      dotsh-clear-screen-soft-bottom   # ctrl+l
@@ -486,8 +437,6 @@ if zstyle -T :dotsh:bindkey macos-option-as-alt; then
   bindkey 'Ó'            run-help                       # opt+H
   bindkey '∫'            dotsh-backward-word              # opt+b
   bindkey 'ı'            dotsh-backward-word              # opt+B
-  bindkey '®'            dotsh-fzf-dir-history            # opt+r
-  bindkey '‰'            dotsh-fzf-dir-history            # opt+R
 else
   typeset -grA _dotsh_macos_opt_key=()
 fi
@@ -743,20 +692,11 @@ if (( _dotsh_use[zsh-autosuggestions] )); then
   # Tell zsh-autosuggestions how to handle different widgets.
   typeset -g ZSH_AUTOSUGGEST_EXECUTE_WIDGETS=()
   typeset -g ZSH_AUTOSUGGEST_CLEAR_WIDGETS=(
-    dotsh-fzf-history
     dotsh-down-prefix-global
     dotsh-down-prefix-local
     dotsh-up-prefix-global
     dotsh-up-prefix-local
   )
-  if (( _dotsh_use[zsh-history-substring-search] )); then
-    ZSH_AUTOSUGGEST_CLEAR_WIDGETS+=(
-      dotsh-down-substring-global
-      dotsh-down-substring-local
-      dotsh-up-substring-global
-      dotsh-up-substring-local
-    )
-  fi
   typeset -g ZSH_AUTOSUGGEST_PARTIAL_ACCEPT_WIDGETS=(
     emacs-forward-word
     forward-word
@@ -905,29 +845,6 @@ else
   }
 fi
 
-# Define _zsh_highlight before sourcing history-substring-search to work around bugs
-# in the latter: the upstream terminal compatibility discussion.
-function _zsh_highlight() {
-  if [[ $WIDGET == zle-line-finish || ! -v _dotsh_substring_search_highlight ]]; then
-    region_highlight=()
-  else
-    region_highlight=("${_dotsh_substring_search_highlight[@]}")
-  fi
-}
-
-if (( _dotsh_use[zsh-history-substring-search] )); then
-  builtin source $DOTSH_PACKAGES/zsh-history-substring-search/zsh-history-substring-search.zsh
-fi
-
-if (( _dotsh_use[zsh-syntax-highlighting] )); then
-  if (( terminfo[colors] >= 256 )); then
-    typeset -gA ZSH_HIGHLIGHT_STYLES=(comment fg=96)  # the default is hard to see
-  fi
-  ZSH_HIGHLIGHT_MAXLENGTH=1024                # don't colorize long command lines (slow)
-  ZSH_HIGHLIGHT_HIGHLIGHTERS=(main brackets)  # main syntax highlighting plus matching brackets
-  typeset -gi zsh_highlight__memo_feature=0
-fi
-
 local event
 for event in pre-redraw init finish; do
   if (( $+widgets[zle-line-$event] )); then
@@ -949,83 +866,6 @@ function -dotsh-post-init() {
     unset _dotsh_compinit_fd
     -dotsh-compinit
     -dotsh-update-dir-history
-  fi
-
-  if (( _dotsh_use[zsh-syntax-highlighting] )); then
-    () {
-      local -hA widgets=(
-        zle-line-finish    user:_zsh_highlight_widget_zle-line-finish
-        zle-isearch-update user:_zsh_highlight_widget_zle-isearch-update
-      )
-      builtin source $DOTSH_PACKAGES/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
-    }
-    preexec_functions=(${preexec_functions:#_zsh_highlight_preexec_hook})
-    eval '_zsh_highlight() {
-      [[ ${WIDGET-} == zle-line-pre-redraw && ${LASTWIDGET-} == accept-line ]] && return
-      {
-        if [[ ${#BUFFER} -gt ${ZSH_HIGHLIGHT_MAXLENGTH:-${#BUFFER}} ]]; then
-          region_highlight=()
-        else
-          local -ih PENDING=0 KEYS_QUEUED_COUNT=0
-          '$functions[_zsh_highlight]'
-        fi
-      } always {
-        [[ $WIDGET == zle-line-finish ]] || region_highlight+=("${_dotsh_substring_search_highlight[@]}")
-      }
-    }'
-  fi
-
-  if (( _dotsh_use[zsh-history-substring-search] )); then
-    function _history-substring-search-end() {
-      builtin eval "$_dotsh_opt"
-      if (( _history_substring_search_refresh_display )); then
-        typeset -gi CURSOR='_dotsh_cursor_max()'
-      fi
-      typeset -g _history_substring_search_result=$BUFFER
-      typeset -gi _history_substring_search_cursor=CURSOR
-      unset _dotsh_substring_search_highlight
-      [[ -z $_history_substring_search_query_highlight ]] && return
-      local query_part escaped_query_part REPLY
-      local -i highlight_start_index highlight_end_index query_part_match_index
-      for query_part in $_history_substring_search_query_parts; do
-        escaped_query_part=${query_part//(#m)[\][()|\\*?#<>~^]/\\$MATCH}
-        query_part_match_index=${${BUFFER:$highlight_start_index}[(i)(#$HISTORY_SUBSTRING_SEARCH_GLOBBING_FLAGS)${escaped_query_part}]}
-        (( query_part_match_index > $#BUFFER - highlight_start_index )) && continue
-        highlight_start_index=$(( highlight_start_index + query_part_match_index ))
-        highlight_end_index=$(( highlight_start_index + ${#query_part} ))
-        _dotsh_substring_search_highlight+=(
-            "$((highlight_start_index - 1)) $((highlight_end_index - 1)) $_history_substring_search_query_highlight")
-      done
-    }
-
-    # This function is buggy in the original implementation when vicmd is active.
-    _history-substring-search-up-buffer() {
-      builtin eval "$_dotsh_opt"
-
-      # The original implementation is equivalent to this one with the exception
-      # of the condition on the next line being (( CURSOR != $#BUFFER )).
-      (( CURSOR != _dotsh_cursor_max() )) || return
-
-      [[ $LBUFFER == *$'\n'* ]]         || return
-      builtin zle up-line-or-history    || true
-    }
-
-    # See _history-substring-search-up-buffer above.
-    _history-substring-search-down-buffer() {
-      builtin eval "$_dotsh_opt"
-      (( CURSOR != _dotsh_cursor_max() )) || return
-      [[ $RBUFFER == *$'\n'* ]]         || return
-      builtin zle down-line-or-history  || true
-    }
-  elif (( $+functions[_history-substring-search-end] )); then
-    # Turn off highlighting in _history-substring-search-end. It doesn't work anyway.
-    function _history-substring-search-end() {
-      emulate -L zsh
-      _history_substring_search_result=$BUFFER
-      if (( _history_substring_search_refresh_display )); then
-        typeset -gi CURSOR='_dotsh_cursor_max()'
-      fi
-    }
   fi
 
   if (( _dotsh_use[zsh-autosuggestions] )); then

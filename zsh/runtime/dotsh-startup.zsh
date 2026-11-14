@@ -1,5 +1,5 @@
 # Standalone startup policy extracted from the upstream v5 runtime.
-# Source first in .zshrc; configure styles/fpath, then call dotsh_init once.
+# Source first in .zshrc; user overrides and plugin setup follow before dotsh_init.
 # Runtime attribution and license: zsh/runtime/LICENSE.
 [[ -z ${_DOTSH_STARTUP_LOADED-} ]] || return 0
 typeset -g _DOTSH_STARTUP_LOADED=1
@@ -133,7 +133,7 @@ dotsh_prepare_runtime() {
   for file in "$DOTSH_RUNTIME"/fn/[^.]#~*.zwc(N); do
     -dotsh-compile "$file" || return
   done
-  for file in "$DOTFILES_DIR/zsh/dotsh-startup.zsh" \
+  for file in "$DOTFILES_DIR/zsh/runtime/dotsh-startup.zsh" \
       "$DOTFILES_DIR/zsh/home/.zshrc" "$DOTFILES_DIR/zsh/.zshenv.init"; do
     -dotsh-compile "$file" || return
   done
@@ -163,6 +163,16 @@ dotsh_load() {
 }
 
 dotsh_bindkey() { -dotsh-cmd-bindkey "$@" }
+
+dotsh_bind_default_keys() {
+  dotsh_bindkey undo Ctrl+/
+  dotsh_bindkey redo Option+/
+  dotsh_bindkey dotsh-cd-back Shift+Left
+  dotsh_bindkey dotsh-cd-forward Shift+Right
+  dotsh_bindkey dotsh-cd-up Shift+Up
+  dotsh_bindkey up-history Up
+  dotsh_bindkey down-history Down
+}
 
 # Select abstract key names from the keyboard layout, independently of the OS.
 # The platform supplies a default; an Apple keyboard on Linux can override it.
@@ -236,8 +246,7 @@ dotsh_init() {
     /opt/homebrew/share/zsh/site-functions(-/N)
     /usr{/local,}/share/zsh/{site-functions,vendor-completions}(-/N)
     $fpath)
-  path=(~/bin(N-/) ~/.local/bin(N-/) ~/.cargo/bin(N-/) "$DOTSH_PACKAGES/fzf/bin" $path /snap/bin(N-/))
-  manpath+=("$DOTSH_PACKAGES/fzf/man")
+  path=(~/bin(N-/) ~/.local/bin(N-/) ~/.cargo/bin(N-/) $path /snap/bin(N-/))
   export DOTSH_EXE=$_dotsh_exe
   if [[ ${commands[zsh]:-} != $_dotsh_exe ]]; then
     path=("$DOTSH_RUNTIME/bin" $path)
@@ -256,7 +265,7 @@ dotsh_init() {
   if (( _dotsh_zle )); then
     local -a required
     local pkg
-    for pkg in powerlevel10k zsh-autosuggestions zsh-history-substring-search zsh-syntax-highlighting; do
+    for pkg in powerlevel10k zsh-autosuggestions; do
       zstyle -t :dotsh:$pkg channel none || required+=($pkg)
     done
     for pkg in $required; do
@@ -284,3 +293,56 @@ dotsh_init() {
   [[ ${${:-grep}:c:A:t} == busybox* ]] || alias grep='grep --color=auto --exclude-dir={.bzr,CVS,.git,.hg,.svn}'
 }
 setopt aliases
+
+# Framework defaults. Because this file is sourced before the user's .zshrc
+# layer, later assignments and zstyles can override these values.
+if [[ -o interactive ]]; then
+  dotsh_configure_keyboard || return
+  zstyle ':dotsh:' term-shell-integration yes
+  zstyle ':dotsh:autosuggestions' forward-char accept
+  zstyle ':dotsh:fzf-complete' recurse-dirs no
+  zstyle ':dotsh:compinit' dump-path "$DOTSH_CACHE/zcompdump-${EUID}-${ZSH_VERSION}"
+  zstyle ':completion:*' list-colors ${(s.:.)LS_COLORS}
+  zstyle ':completion:*:descriptions' format '[%d]'
+  zstyle ':completion:*:git-checkout:*' sort false
+
+  # General shell defaults migrated from the repository's former .zshrc.
+  path=("$HOME/.local/bin" $path)
+  typeset -gU path PATH
+  if [[ ${_DOTSH_PATH_SNAPSHOT-} != "$PATH" ]]; then
+    rehash
+    typeset -g _DOTSH_PATH_SNAPSHOT="$PATH"
+  fi
+  [[ -n ${TMUX:-} ]] || export TERM=xterm-256color
+  [[ -n ${TERM_PROGRAM:-} ]] || export TERM_PROGRAM=xterm
+  alias tmux='TERM=screen-256color-bce tmux'
+  typeset -g TMUX_DEFAULT_SESSION=tmux
+  alias t='tmux a -d -t ${TMUX_DEFAULT_SESSION} 2>/dev/null || tmux new -s ${TMUX_DEFAULT_SESSION}'
+
+  if [[ $TERM == screen && ${SHOWED_SCREEN_MESSAGE:-} != true ]]; then
+    typeset detached_screens=$(screen -list 2>/dev/null | grep Detached)
+    if [[ -n $detached_screens ]]; then
+      print -r -- '+---------------------------------------+' '| Detached screens are available:       |' "$detached_screens" '+---------------------------------------+'
+    fi
+    unset detached_screens
+  fi
+
+  export GPG_TTY=$TTY
+  autoload -Uz zmv
+
+  function md() {
+    [[ $# == 1 ]] && mkdir -p -- "$1" && cd -- "$1"
+  }
+
+  [[ -z $dotsh_win_home ]] || hash -d w=$dotsh_win_home
+  alias tree='tree -a -I .git'
+
+  setopt glob_dots no_auto_menu complete_in_word pushd_ignore_dups interactive_comments
+  REPORTTIME=${REPORTTIME:-2}
+  TIMEFMT="%U user %S system %P cpu %*Es total"
+
+  TRAPINT() {
+    print -n -u2 '^C'
+    return $((128 + $1))
+  }
+fi

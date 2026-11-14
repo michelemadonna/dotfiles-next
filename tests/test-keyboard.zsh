@@ -2,7 +2,7 @@
 # Run with zsh -df after entering the project through root fhome.sh.
 emulate -L zsh
 [[ ${DOTFILES_FAKE_HOME:-} == $HOME && $DOTFILES_DIR == $HOME/* ]] || exit 1
-source "$DOTFILES_DIR/zsh/dotsh-startup.zsh" || exit 1
+source "$DOTFILES_DIR/zsh/runtime/dotsh-startup.zsh" || exit 1
 () {
   local OSTYPE DOTSH_KEYBOARD actual
   for OSTYPE in darwin26.0 linux-gnu; do

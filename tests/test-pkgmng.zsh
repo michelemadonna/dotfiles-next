@@ -24,6 +24,8 @@ mkdir -p \
     "$MACPORTS_PREFIX/sbin" \
     "$HOMEBREW_PREFIX/bin" \
     "$HOMEBREW_PREFIX/sbin" \
+    "$HOMEBREW_PREFIX/share/zsh/site-functions" \
+    "$HOMEBREW_PREFIX/completions/zsh" \
     "$HOMEBREW_PREFIX/opt/jq/bin"
 
 cat >"$TEST_ROOT/test-bin/uname" <<'EOF'
@@ -109,6 +111,8 @@ path=("$TEST_ROOT/test-bin" "$HOMEBREW_PREFIX/bin" "$HOMEBREW_PREFIX/sbin" /usr/
 source "$ROOT/zsh/dotsh.custom.plugins/dotsh-pkgmng.plugin.zsh"
 
 [[ -f $PKGMGR_DB ]]
+[[ $fpath[1] == "$HOMEBREW_PREFIX/share/zsh/site-functions" ]]
+[[ $fpath[2] == "$HOMEBREW_PREFIX/completions/zsh" ]]
 [[ $path[1] == "$MACPORTS_PREFIX/bin" ]]
 [[ ${path[(Ie)$HOMEBREW_PREFIX/bin]} == 0 ]]
 [[ ${path[(Ie)$HOMEBREW_PREFIX/sbin]} == 0 ]]
@@ -171,8 +175,9 @@ multiple_output=$(brew-bottle-check multi-one multi-two)
 typeset -gA _comps
 functions[compdef]='_comps[$2]=$1'
 _comps[jq]=_jq
-_pkgmgr_setup_completions
+_dotsh_register_brew_completions
 [[ $_comps[jq] == _jq ]]
+[[ $_comps[brew] == _brew ]]
 [[ $_comps[brew-bottle-check] == _brew_bottle_check_completion ]]
 
 cat >"$TEST_ROOT/test-shell" <<'EOF'

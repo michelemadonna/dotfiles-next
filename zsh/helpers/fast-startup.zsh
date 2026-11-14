@@ -1,7 +1,6 @@
 #!/usr/bin/env zsh
 
-# Opt-in startup path. The default profile deliberately keeps the existing
-# standalone/fzf load order in zsh/home/.zshrc.
+# Always-enabled startup path. Interactive integrations load on first use.
 
 emulate -L zsh
 
@@ -129,7 +128,9 @@ zle -N _dotsh_fast_fzf_history_widget
 zle -N _dotsh_fast_fzf_file_widget
 zle -N _dotsh_fast_fzf_cd_widget
 zle -N _dotsh_fast_fzf_git_widget
-zle -N _dotsh_fast_gencomp_widget
+if [[ ${DOTSH_ENABLE_AUTO_GENCOMP:-true} == true ]]; then
+	zle -N _dotsh_fast_gencomp_widget
+fi
 
 for _dotsh_fast_keymap in emacs viins vicmd; do
 	bindkey -M $_dotsh_fast_keymap '^I' _dotsh_fast_fzf_tab_widget
@@ -137,7 +138,9 @@ for _dotsh_fast_keymap in emacs viins vicmd; do
 	bindkey -M $_dotsh_fast_keymap '^T' _dotsh_fast_fzf_file_widget
 	bindkey -M $_dotsh_fast_keymap '^[c' _dotsh_fast_fzf_cd_widget
 	bindkey -M $_dotsh_fast_keymap '^G' _dotsh_fast_fzf_git_widget
-	bindkey -M $_dotsh_fast_keymap '^[[Z' _dotsh_fast_gencomp_widget
+	if [[ ${DOTSH_ENABLE_AUTO_GENCOMP:-true} == true ]]; then
+		bindkey -M $_dotsh_fast_keymap '^[[Z' _dotsh_fast_gencomp_widget
+	fi
 done
 unset _dotsh_fast_keymap
 

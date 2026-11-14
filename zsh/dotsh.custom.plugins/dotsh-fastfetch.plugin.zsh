@@ -24,3 +24,5 @@ run-fastfetch() {
 		unset active_terminals show_fastfetch
 	fi
 }
+
+run-fastfetch

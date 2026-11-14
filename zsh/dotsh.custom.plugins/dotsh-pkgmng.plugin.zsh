@@ -36,6 +36,34 @@
 #   brew-shell
 #
 
+# Keep Homebrew's completions available in every installation mode, not only
+# the Intel MacPorts/Homebrew coexistence mode below.
+if (( $+commands[brew] )) || [[ -x ${HOMEBREW_BREW:-} ]]; then
+    typeset _dotsh_brew_prefix=${HOMEBREW_PREFIX:-${commands[brew]:A:h:h}}
+    fpath=(
+        $_dotsh_brew_prefix/share/zsh/site-functions(N-/)
+        $_dotsh_brew_prefix/completions/zsh(N-/)
+        $fpath
+    )
+    unset _dotsh_brew_prefix
+fi
+typeset -gU fpath
+
+# Called after dotsh_init, when the runtime's compdef queue is available.
+_dotsh_register_brew_completions() {
+    (( $+commands[brew] )) || [[ -x ${HOMEBREW_BREW:-} ]] || return 0
+    (( $+functions[compdef] )) || return 0
+
+    autoload -Uz _brew
+    typeset -gA _comps
+    _comps[brew]=_brew
+    compdef _brew brew
+
+    if (( $+functions[_pkgmgr_setup_completions] )); then
+        _pkgmgr_setup_completions
+    fi
+}
+
 # Load only on Intel macOS when MacPorts is selected and both package managers
 # are installed.
 if [[ ${DOTFILES_INTEL_PACKAGE_MANAGER:-macports} == macports ]] &&

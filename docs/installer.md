@@ -33,10 +33,9 @@ package operations can still request the administrator password through
 Intel defaults to MacPorts; `DOTFILES_INTEL_PACKAGE_MANAGER=homebrew` selects
 Homebrew, and an existing generated preference is reused when the environment
 does not override it.
-The generated preferences persist `DOTSH_STARTUP_PROFILE_DEFAULT=default`.
-Set `DOTSH_STARTUP_PROFILE=fast` in the environment to use the deferred startup
-profile for a shell without changing that persisted default; the installer
-does not replace the default with this runtime override.
+Shell startup always uses the deferred fast path. The installer does not expose
+a startup-profile choice, and removes obsolete `DOTSH_STARTUP_PROFILE*` entries
+when migrating an existing generated environment file.
 The installer prepares the revisions in `zsh/vendor/packages.lock` through
 `zsh/helpers/prepare-shell-dependencies.sh`. Startup uses the local runtime
 and prepared plugins without a framework bootstrap or network access.

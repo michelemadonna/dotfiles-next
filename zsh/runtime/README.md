@@ -1,16 +1,21 @@
 # Standalone Zsh runtime
 
-Extracted from the local upstream v5 checkout at revision
+The `fn/` tree was extracted from the local upstream v5 checkout at revision
 `c0c29f999635f58e2b1bdb442e633c01a1b9ecc2`. Roman Perepelitsa's MIT notice is retained
-in `LICENSE`. This source tree is self-contained; it does not source or require
+in `LICENSE`. `dotsh-startup.zsh` is the repository-owned entrypoint around
+that extraction. The runtime is self-contained; it does not source or require
 the original checkout, framework dispatcher, bootstrap, or cache.
 
-`../dotsh-startup.zsh` owns the options, startup policy, compiled source
-loader, dependency loading, and initialization API. Call it first in `.zshrc`,
-configure styles and `fpath`, then call `dotsh_init`. Plugin dependencies live
+`dotsh-startup.zsh` owns the options, generic shell defaults, compiled source
+loader, dependency loading, and initialization API. Source it first in
+`.zshrc`, then apply user overrides and configure styles and `fpath` before
+calling `dotsh_init`. Plugin dependencies live
 in `../vendor/packages`; runtime state lives in the XDG Zsh cache/state roots.
 `dotsh_prepare_runtime` explicitly prepares autoload wordcode; startup does not
 recompile the whole tree. `.zwc` files are generated artifacts.
+
+`dotsh_bind_default_keys` applies the repository's default keybindings after
+plugins load. Call it before user-specific bindings so they can take precedence.
 
 ## Retained mechanisms
 
@@ -40,9 +45,10 @@ recompile the whole tree. `.zwc` files are generated artifacts.
 - History limits, local/global search, directory history and stack navigation,
   word movement, acceptance, paste, clear-screen, named key translations,
   terminal title/OSC integration, and lazily generated command completions.
-- Standalone terminal UI helpers and the legacy-style fzf widgets for the
-  applicable non-fzf-tab configuration. User plugins supply fzf-tab, FSH,
-  history substring search, and the optional fast profile separately.
+- Default completion and history widgets without runtime-owned legacy fzf,
+  highlighting, or substring-search modules. The always-enabled fast startup
+  helper loads independent fzf-tab, FSH, history search, and generated
+  completions on first use.
 
 ## Removed framework responsibilities
 

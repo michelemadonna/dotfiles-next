@@ -68,7 +68,7 @@ fi
 GITSTATUS_CACHE_DIR="$packages/powerlevel10k/gitstatus/usrbin" \
   sh "$packages/powerlevel10k/gitstatus/install"
 DOTFILES_DIR="$DOTFILES_ROOT" zsh -dfc \
-  'source "$DOTFILES_DIR/zsh/dotsh-startup.zsh" && dotsh_prepare_runtime'
+  'source "$DOTFILES_DIR/zsh/runtime/dotsh-startup.zsh" && dotsh_prepare_runtime'
 mkdir -p "${XDG_CONFIG_HOME:-$HOME/.config}"
 for config in fastfetch mise oh-my-posh; do
   destination="${XDG_CONFIG_HOME:-$HOME/.config}/$config"

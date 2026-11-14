@@ -232,6 +232,8 @@ The project-specific plugins live in [`zsh/dotsh.custom.plugins`](zsh/dotsh.cust
 | `dotsh-mise`         | Caches Mise activation and completion, avoids duplicate hooks, refreshes immediately after directory changes and successful `mise` commands, throttles unchanged prompts, provides `asdf` compatibility, and synchronizes `mise use` selections to `.tool-versions`.                                         |
 | `dotsh-pkgmng`       | On Intel macOS with MacPorts selected and both managers installed, keeps MacPorts primary while exposing explicitly selected Homebrew commands, completions, rescans, and an isolated Homebrew shell.                                                                                |
 | `dotsh-oh-my-posh`   | Loads Oh My Posh only when selected and caches the generated Zsh initialization until the binary, theme, or plugin changes.                                                                                                                                                                                  |
+| `dotsh-fastfetch`    | Displays Fastfetch on interactive startup according to `DOTSH_SHOW_FASTFETCH`, avoiding editor and nested terminal sessions.                                                                                                                                                                                |
+| `dotsh-ssh`          | Starts or reuses the local SSH agent, loads available private keys when enabled, and optionally displays the loaded keys.                                                                                                                                                                                   |
 | `dotsh-misc`         | Provides compatibility aliases, the optional allafine behavior, and a searchable `Ctrl-K` keybinding reference for Zsh, fzf, tmux, and Micro.                                                                                                                                                                |
 
 ---
@@ -298,20 +300,19 @@ Because the installer marker is removed, the next installer run executes the bas
 
 ## 4. 🔧 Customization
 
-The primary shell configuration is [`zsh/home/.zshrc`](zsh/home/.zshrc).
+The primary shell configuration is [`zsh/home/.zshrc`](zsh/home/.zshrc), which
+sources generic defaults from `zsh/runtime/dotsh-startup.zsh` before applying
+user overrides and loading plugins.
 The installer creates or retain [`zsh/home/.zshenv`](zsh/home/.zshenv), and creates a symlink `~/.zshenv` that points to it.
-Shell startup puts `$HOME/.local/bin` at the front of `PATH`; `.zshrc` reapplies
-it before runtime initialization so macOS login-shell startup cannot discard it.
+Shell startup puts `$HOME/.local/bin` at the front of `PATH`; runtime startup
+reapplies it so macOS login-shell startup cannot discard it.
 Cached Mise activation also preserves the current startup paths.
 
-The installer persists `DOTSH_STARTUP_PROFILE_DEFAULT=default`. The default
-profile is the normal as-is startup path, including the prepared fzf and the
-eager fzf-tab and picker integrations. Set `DOTSH_STARTUP_PROFILE=fast` for an
-opt-in faster shell; this leaves the persisted default unchanged and defers
-fzf-tab, pickers, fzf-git, syntax highlighting, history search, and generated
-completions until first use. Autosuggestions remain managed natively by dotsh in
-both profiles so their ghost text stays synchronized with dotsh's redraw cycle.
-Fastfetch and SSH remain synchronous in both profiles.
+Startup always uses the fast path: fzf-tab and picker integrations load on first
+use, syntax highlighting and history search load at the first prompt line, and
+generated completions load when requested with `Shift-Tab`. Autosuggestions
+remain managed natively by dotsh so ghost text stays synchronized with its
+redraw cycle. Fastfetch and SSH remain synchronous.
 
 ### Intel macOS package providers
 
@@ -382,8 +383,6 @@ When `python3` is available, the generated environment also defines `python`
 as an alias for `python3`.
 
 * `DOTSH_PROMPT` Selects the prompt theme. Supported values are `powerlevel10k`, `ohmyposh`, and `minimal`.
-* `DOTSH_STARTUP_PROFILE_DEFAULT` Selects the persisted startup profile. The installer default is `default`; supported values are `default` and `fast`.
-* `DOTSH_STARTUP_PROFILE` Temporarily overrides the persisted profile for the current shell. Set it to `fast` to enable deferred feature loading without rewriting the installer preference.
 * `DOTFILES_INTEL_PACKAGE_MANAGER` selects `macports` or `homebrew` as the Intel macOS installer and shell provider. It defaults to `macports` and has no effect on Apple Silicon or Linux.
 * `DOTSH_SHOW_FASTFETCH` Controls when Fastfetch is displayed. Set it to `false` to disable Fastfetch, `true` to display it at every interactive terminal startup, or `first` to display it only in the first active terminal session.
 * `DOTSH_ENABLE_AUTO_GENCOMP` Enables on-demand generation of Zsh completions for commands that do not already provide them. Completions are generated from the command’s `--help` output.
@@ -391,7 +390,6 @@ as an alias for `python3`.
 * `DOTSH_SSH_SHOW_KEY` Controls whether the SSH keys currently loaded in the agent are displayed during shell startup.
 * `DOTSH_SSH_ASKPASS_REQUIRE` Controls SSH passphrase prompting. When enabled, SSH is required to use an askpass mechanism whenever a private key needs to be unlocked.
 * `DOTSH_USE_MISE` Enables Mise integration when Mise is installed, including activation, completions, and asdf-compatible plugins. Install missing tools explicitly with the installer.
-* `DOTSH_USE_FZF_TAB` is always `true`; it remains exported for compatibility.
 * `DOTSH_ENABLE_OH_MY_ZSH` is always `true`; it remains exported for compatibility.
 * `DOTSH_KEYBOARD` selects the named-key mapping, `mac` or `pc`. It defaults to `mac` on macOS and `pc` on other systems. The setting selects names for terminal key sequences; a Mac keyboard on Linux can use `DOTSH_KEYBOARD=mac`.
 * `DOTSH_MISE_REFRESH_SECONDS` Controls the periodic safety refresh performed by Mise. The default is `5` seconds. Directory changes, `PATH` changes, and successful `mise` commands always trigger an immediate refresh. Set it to `0` to refresh Mise before

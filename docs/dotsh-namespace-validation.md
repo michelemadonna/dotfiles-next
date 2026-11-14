@@ -8,7 +8,7 @@ The live configuration and upstream reference checkout were not changed.
 
 - Preferences, widget names, helpers, cache labels and Git picker subprocess
   variables now use `DOTSH`/`dotsh`. No legacy runtime aliases are exported.
-- `zsh/dotsh-startup.zsh` replaces the earlier startup filename and remains
+- `zsh/runtime/dotsh-startup.zsh` replaces the earlier startup filename and remains
   the first source in `.zshrc`. Custom plugins use `zsh/dotsh.custom.plugins`
   and `dotsh-*.plugin.zsh` filenames throughout the installer, tests and docs.
 - The obsolete framework/local fzf selector was removed. The prepared local

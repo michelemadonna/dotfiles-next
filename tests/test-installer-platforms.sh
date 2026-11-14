@@ -120,6 +120,14 @@ assert_equal "$interactive_provider" 'homebrew:homebrew'
 
 mkdir -p "$TEST_ROOT/generated-dotfiles/zsh/home"
 cp "$ROOT/zsh/.zshenv.init" "$TEST_ROOT/generated-dotfiles/zsh/.zshenv.init"
+cat >> "$TEST_ROOT/generated-dotfiles/zsh/.zshenv.init" <<'OLD_PROFILE'
+  export DOTSH_USE_FZF_TAB=false
+  export DOTSH_STARTUP_PROFILE_DEFAULT=default
+  case ${DOTSH_STARTUP_PROFILE:-$DOTSH_STARTUP_PROFILE_DEFAULT} in
+    default|fast) export DOTSH_STARTUP_PROFILE=${DOTSH_STARTUP_PROFILE:-$DOTSH_STARTUP_PROFILE_DEFAULT} ;;
+    *) export DOTSH_STARTUP_PROFILE=$DOTSH_STARTUP_PROFILE_DEFAULT ;;
+  esac
+OLD_PROFILE
 DOTFILES_DIR="$TEST_ROOT/generated-dotfiles" sh -c '
   . "$1"
   MODE=interactive
@@ -129,7 +137,9 @@ DOTFILES_DIR="$TEST_ROOT/generated-dotfiles" sh -c '
   info() { :; }
   generate_zshenv
   grep -q "^  export DOTFILES_INTEL_PACKAGE_MANAGER=homebrew$" "$DOTFILES_DIR/zsh/home/.zshenv"
-  grep -q "^  export DOTSH_STARTUP_PROFILE_DEFAULT=default$" "$DOTFILES_DIR/zsh/home/.zshenv"
+  ! grep -Eq "^  export DOTSH_STARTUP_PROFILE(_DEFAULT)?=" "$DOTFILES_DIR/zsh/home/.zshenv"
+  ! grep -q "DOTSH_STARTUP_PROFILE:-DOTSH_STARTUP_PROFILE_DEFAULT" "$DOTFILES_DIR/zsh/home/.zshenv"
+  ! grep -q "DOTSH_USE_FZF_TAB" "$DOTFILES_DIR/zsh/home/.zshenv"
 ' sh "$TEST_ROOT/install-lib.sh"
 
 # Migrating generated preferences removes the known bootstrap, preserving
@@ -143,6 +153,7 @@ if [ -n "${ZSH_VERSION-}" ]; then
   export PREVIOUS_MISE_REFRESH_SECONDS=60
   export PREVIOUS_SSH_ASKPASS_REQUIRE=false
   export PREVIOUS_USE_FZF_FROM_PREVIOUS=true
+  export DOTSH_USE_FZF_TAB=false
   export CUSTOM_PROMPT=untouched
   export CUSTOM_STARTUP_PROFILE=unrelated
   export CUSTOM_MESSAGE='PREVIOUS is my label'
@@ -171,7 +182,9 @@ DOTFILES_DIR="$TEST_ROOT/migration" sh -c '
   grep -q "CUSTOM_PREVIOUS_SETTING=retained" "$result"
   grep -q "custom_preference=preserved" "$result"
   grep -q "custom-history-pattern" "$result"
-  grep -q "DOTSH_STARTUP_PROFILE_DEFAULT=fast" "$result"
+  ! grep -Eq "^  export DOTSH_STARTUP_PROFILE(_DEFAULT)?=" "$result"
+  ! grep -q "DOTSH_STARTUP_PROFILE:-DOTSH_STARTUP_PROFILE_DEFAULT" "$result"
+  ! grep -q "DOTSH_USE_FZF_TAB" "$result"
   ! grep -q "obsolete_bootstrap\|tool-bootstrap\|dotsh_zshenv\|export PREVIOUS_\|previous_zshenv\|DOTSH_USE_FZF_FROM_" "$result"
   [ "$(grep -c "setopt no_global_rcs" "$result")" = 1 ]
   cp "$result" "$result.expected"

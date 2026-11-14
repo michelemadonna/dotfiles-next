@@ -840,7 +840,6 @@ install_base_links() {
 
 set_interactive_defaults() {
   prompt=powerlevel10k
-  startup_profile_default=default
   editor=micro
   show_fastfetch=false
   use_mise=true
@@ -864,7 +863,6 @@ h|homebrew|Homebrew (Tier 3; no new Intel bottles)'
 }
 
 set_fixed_preferences() {
-  use_fzf_tab=true
   enable_oh_my_zsh=true
 }
 
@@ -1330,16 +1328,20 @@ normalize_zsh_preferences() {
     }
     {
       if (!selected++) {
-        for (namespace in score) {
-          if (score[namespace] >= 2 && score[namespace] > highest) {
-            highest = score[namespace]; previous = namespace; ambiguous = 0
-          } else if (score[namespace] == highest && highest >= 2) {
-            ambiguous = 1
+        if (score["DOTSH"] >= 2) {
+          previous = "DOTSH"
+        } else {
+          for (namespace in score) {
+            if (score[namespace] >= 2 && score[namespace] > highest) {
+              highest = score[namespace]; previous = namespace; ambiguous = 0
+            } else if (score[namespace] == highest && highest >= 2) {
+              ambiguous = 1
+            }
           }
-        }
-        if (ambiguous) {
-          print "Ambiguous preference namespaces; migration was not applied." > "/dev/stderr"
-          exit 1
+          if (ambiguous) {
+            print "Ambiguous preference namespaces; migration was not applied." > "/dev/stderr"
+            exit 1
+          }
         }
         if (previous == "DOTSH") previous = ""
       }
@@ -1378,21 +1380,29 @@ generate_zshenv() {
 
   printf '%s\n' "$normalized_preferences" | awk \
     -v intel_package_manager="$generated_intel_package_manager" \
-    -v startup_profile_default="$startup_profile_default" \
     -v prompt="$prompt" \
     -v editor="$editor" \
     -v show_fastfetch="$show_fastfetch" \
-    -v use_fzf_tab="$use_fzf_tab" \
     -v use_mise="$use_mise" \
     -v enable_auto_gencomp="$enable_auto_gencomp" \
     -v enable_oh_my_zsh="$enable_oh_my_zsh" \
     -v load_ssh_key="$load_ssh_key" \
     -v show_ssh_key="$show_ssh_key" \
     -v askpass_require="$askpass_require" '
-      BEGIN { fixed_startup_profile = 0; skip_bootstrap = 0 }
+      BEGIN { skip_bootstrap = 0; skip_startup_profile = 0 }
       /^  dotsh_zshenv=/ { skip_bootstrap = 1; next }
       skip_bootstrap && /^  : \$\{ZDOTDIR:=~\}/ { skip_bootstrap = 0 }
       skip_bootstrap { next }
+      /^  case \$\{DOTSH_STARTUP_PROFILE:-\$DOTSH_STARTUP_PROFILE_DEFAULT\} in$/ {
+        skip_startup_profile = 1
+        next
+      }
+      skip_startup_profile {
+        if (/^  esac$/) skip_startup_profile = 0
+        next
+      }
+      /^  export DOTSH_STARTUP_PROFILE(_DEFAULT)?=/ { next }
+      /^  export DOTSH_USE_FZF_TAB=/ { next }
       /source "\$DOTFILES_DIR\/zsh\/helpers\/tool-bootstrap.zsh"/ { next }
       /^if \[ -n "\$\{ZSH_VERSION-\}" \]; then/ {
         print
@@ -1405,32 +1415,10 @@ generate_zshenv() {
       /if \[\[ \$\(uname -m\) == x86_64 \]\]; then/ { $0 = "    if [[ $CPUTYPE == x86_64 ]]; then" }
       /^  export DOTFILES_DIR=/ { $0 = "  export DOTFILES_DIR=${DOTFILES_DIR:-$HOME/.dotfiles}" }
       /^  export DOTFILES_INTEL_PACKAGE_MANAGER=/ { $0 = "  export DOTFILES_INTEL_PACKAGE_MANAGER=" intel_package_manager; }
-      /^  export DOTSH_STARTUP_PROFILE=/ {
-        if (!fixed_startup_profile) print "  export DOTSH_STARTUP_PROFILE_DEFAULT=" startup_profile_default
-        fixed_startup_profile = 1
-        print "  case ${DOTSH_STARTUP_PROFILE:-$DOTSH_STARTUP_PROFILE_DEFAULT} in"
-        print "    default|fast) export DOTSH_STARTUP_PROFILE=${DOTSH_STARTUP_PROFILE:-$DOTSH_STARTUP_PROFILE_DEFAULT} ;;"
-        print "    *) export DOTSH_STARTUP_PROFILE=$DOTSH_STARTUP_PROFILE_DEFAULT ;;"
-        print "  esac"
-        next
-      }
-      /^  export DOTSH_STARTUP_PROFILE_DEFAULT=/ {
-        if (fixed_startup_profile) next
-        $0 = "  export DOTSH_STARTUP_PROFILE_DEFAULT=" startup_profile_default
-        fixed_startup_profile = 1
-      }
       /^  export DOTSH_PROMPT=/ {
-        if (!fixed_startup_profile) {
-          print "  export DOTSH_STARTUP_PROFILE_DEFAULT=" startup_profile_default
-          fixed_startup_profile = 1
-        }
         $0 = "  export DOTSH_PROMPT=\"" prompt "\""
       }
       /^  export DOTSH_SHOW_FASTFETCH=/ { $0 = "  export DOTSH_SHOW_FASTFETCH=" show_fastfetch; }
-      /^  export DOTSH_USE_FZF_TAB=/ {
-        if (++fixed_fzf_tab > 1) next
-        $0 = "  export DOTSH_USE_FZF_TAB=" use_fzf_tab
-      }
       /^  export DOTSH_USE_FZF_FROM_[A-Z0-9_]+=/ { next }
       /^  export DOTSH_USE_MISE=/ { $0 = "  export DOTSH_USE_MISE=" use_mise; }
       /^  export DOTSH_ENABLE_AUTO_GENCOMP=/ { $0 = "  export DOTSH_ENABLE_AUTO_GENCOMP=" enable_auto_gencomp; }
@@ -1443,9 +1431,6 @@ generate_zshenv() {
       /^  export DOTSH_SSH_ASKPASS_REQUIRE=/ { $0 = "  export DOTSH_SSH_ASKPASS_REQUIRE=" askpass_require; }
       /^  export EDITOR=/ { $0 = "  export EDITOR=\"" editor "\""; }
       { print }
-      END {
-        if (!fixed_startup_profile) print "  export DOTSH_STARTUP_PROFILE_DEFAULT=" startup_profile_default
-      }
     ' >| "$temporary_file" || {
     rm -f "$temporary_file"
     die "Cannot generate Zsh environment file: $generated_file"
@@ -1461,7 +1446,6 @@ generate_zshenv() {
 configure_non_interactive() {
   # Keep package selection aligned with the defaults in zsh/.zshenv.init.
   prompt=powerlevel10k
-  startup_profile_default=default
   editor=micro
   show_fastfetch=first
   use_mise=true
@@ -1490,7 +1474,6 @@ load_non_interactive_choices() {
   }
 
   for choice in \
-    'startup_profile_default DOTSH_STARTUP_PROFILE_DEFAULT' \
     'prompt DOTSH_PROMPT' 'editor EDITOR' 'show_fastfetch DOTSH_SHOW_FASTFETCH' \
     'use_mise DOTSH_USE_MISE' 'enable_auto_gencomp DOTSH_ENABLE_AUTO_GENCOMP' \
     'load_ssh_key DOTSH_SSH_LOAD_KEY' \
@@ -1498,10 +1481,6 @@ load_non_interactive_choices() {
     choice_name=${choice%% *}
     choice_variable=${choice#* }
     choice_value=$(value_from_choices "$choice_variable")
-    if [ "$choice_name" = startup_profile_default ] && [ -z "$choice_value" ]; then
-      # Migrate the old persisted profile without persisting an environment override.
-      choice_value=$(value_from_choices DOTSH_STARTUP_PROFILE)
-    fi
     [ -n "$choice_value" ] && eval "$choice_name=\$choice_value"
   done
 }

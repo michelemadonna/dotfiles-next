@@ -1,9 +1,12 @@
 # Standalone Zsh migration
 
-The shell uses an independent local runtime. The extracted runtime is stored in
-`zsh/runtime`, with its original MIT license and source revision recorded in
-its README. `zsh/dotsh-startup.zsh` is the first source in `.zshrc` and
-owns startup options, source compilation, runtime preparation, and initialization.
+The shell uses an independent local runtime. The extracted functions are stored
+in `zsh/runtime/fn`, with their original MIT license and source revision
+recorded in the runtime README. `zsh/runtime/dotsh-startup.zsh` is the first
+source in `.zshrc` and owns startup options, source compilation, runtime
+preparation, and initialization.
+Generic shell defaults live in the runtime; `.zshrc` applies user overrides
+before `dotsh_init`, then loads plugins, SSH behavior, and prompt selection.
 The supporting autoload functions retain completion caching, redraw scheduling,
 and prefix-cached autosuggestions; this is not a stock-plugin substitution.
 
@@ -47,7 +50,8 @@ Powerlevel10k remains the default; Oh My Posh remains available.
 
 User preferences use `DOTSH_*` names, and custom plugins and functions use the
 `dotsh` namespace. Runtime APIs are `dotsh_source`, `dotsh_load`,
-`dotsh_bindkey`, and `dotsh_init`; internal runtime symbols/styles use `dotsh`.
+`dotsh_bindkey`, `dotsh_bind_default_keys`, and `dotsh_init`; internal runtime
+symbols/styles use `dotsh`.
 The `dotsh-reset-zsh-cache` command preserves prepared plugins and does not
 request a framework download on restart.
 
@@ -82,7 +86,7 @@ namespace in `zsh/runtime/fn`.
 | ZLE line handlers and redraw | `-dotsh-zle-line-*` and `-dotsh-redraw-buffer` retain event flow and `zle -F` input coalescing; skip lexical work only for an empty editable buffer without a multiline prefix |
 | Autosuggestions and widget rebinding | Extracted prefix cache, suggestion invalidation, acceptance and highlighting integration |
 | Terminal integration and title handling | Extracted handlers, ordered OSC records, cached unchanged metadata and titles with command/widget/job invalidation |
-| Existing fast profile and custom integrations | Local `fast-startup.zsh`, fzf widgets and completion generator; no download on first use |
+| Deferred interactive integrations | Always-enabled local `fast-startup.zsh`; fzf widgets and completion generator load on demand, without downloads |
 | Existing Mise activation cache | Existing custom Mise plugin retained; launcher confines its output directories |
 
 The original framework's executable installer, package updates, self-update,
@@ -90,12 +94,14 @@ managed tmux and SSH transport lifecycle are intentionally excluded. Ordinary
 terminal integration, directory history and SSH-agent helper behavior remain.
 The fake HOME uses a separate agent and avoids importing host Keychain keys.
 
-Both `default` and `fast` startup profiles remain supported. The fast profile
-loads the fzf integrations and generated-completion helper on first use; FSH
-and history substring search load through a one-time callback in the runtime's
-existing line-init handler. First use never downloads
-dependencies. Shared preview/hidden-file state and Shift-Tab generation remain
-owned by the existing custom plugins.
+Startup always follows the fast path: fzf integrations and generated
+completions load on demand, while FSH and history substring search load through
+a one-time callback in the runtime's existing line-init handler. First use
+never downloads dependencies. Shared preview/hidden-file state and Shift-Tab
+generation remain owned by the existing custom plugins.
+The runtime no longer ships its legacy fzf widgets and does not load its own
+fzf, syntax-highlighting, or history-substring-search modules during
+`dotsh_init`.
 
 ## Verification
 

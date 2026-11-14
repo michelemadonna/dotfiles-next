@@ -4,10 +4,12 @@
 
 - `install.sh` owns installation, preferences, links, and explicit dependency preparation.
 - `zsh/.zshenv.init` defines the environment without a framework bootstrap.
-- `zsh/home/.zshrc` sources `zsh/dotsh-startup.zsh` first, configures the
-  local runtime, and loads the existing custom plugins and helpers.
-- `zsh/runtime` contains the attributed runtime extraction; it has no package
-  manager, updater, chsh, SSH teleportation, or tmux launcher.
+- `zsh/home/.zshrc` sources `zsh/runtime/dotsh-startup.zsh` first, applies
+  user overrides, then configures the local runtime and loads custom plugins.
+- `zsh/runtime/fn` contains the attributed runtime extraction, while
+  `zsh/runtime/dotsh-startup.zsh` owns startup defaults and initialization.
+  Neither includes a package manager, updater, chsh, SSH teleportation, or a
+  tmux launcher.
 - `zsh/vendor/packages.lock` pins independent plugins installed by
   `zsh/helpers/prepare-shell-dependencies.sh`. They are not fetched during startup.
 - Powerlevel10k remains the default prompt; Oh My Posh is optional.
@@ -32,12 +34,15 @@ are prepared by `zsh/helpers/prepare-mise-cache.sh`.
 Loading the cached Mise activation preserves any entries already present in
 the current startup `PATH`, since the generated activation script contains the
 environment that was active when the cache was created.
-After the local runtime initializes completion, `.zshrc` explicitly registers Homebrew's
-native `_brew` function so an older compinit dump cannot suppress formula and
-cask completion or its fzf-tab preview context.
+The `dotsh-pkgmng` plugin adds Homebrew completion directories to `fpath` before
+runtime initialization and exposes a registration helper that `.zshrc` calls
+after `dotsh_init`; this restores native `_brew` completion even when an older
+compinit dump predates Homebrew's current paths.
 On macOS Tahoe, the fzf plugin also supplies Homebrew's generated completion
 with the local API name indexes when Homebrew 6 returns an empty completion
 list, and invalidates only previously serialized empty brew completion caches.
+The `dotsh-git` plugin restores native macOS Git completion when available and
+removes candidate filters that hide Git refs and commits.
 On Intel, `dotsh-pkgmng` owns Brew execution and provider wrappers; the fzf plugin
 owns only completion fallback and previews. The plugin also provides the
 metadata-only `brew-bottle-check` preflight for requested formulae and their
@@ -52,15 +57,16 @@ uses XDG Zsh cache/state paths, independently of the former dotsh cache.
 Mise/ASDF project runtimes are shown in the right prompt. Each active runtime
 has its own light capsule; the right prompt is hidden when it cannot fit.
 
-`default` loads the independent fzf/fzf-tab integrations during initialization.
-`fast` defers fzf-tab, picker widgets, fzf-git, and generated completion until
-first use; highlighting and history substring search load at the first ZLE
-line. Both use the local runtime for autosuggestions and redraw. No profile
-loads the framework or performs dependency installation.
+Startup always defers fzf-tab, picker widgets, fzf-git, and generated
+completion until first use; highlighting and history substring search load at
+the first ZLE line. The local runtime handles autosuggestions and redraw.
+The runtime does not register its legacy fzf widgets or source its own
+highlighting/history-search plugins. Startup does not load the framework or
+install dependencies.
 
 ## Shell contracts
 
-Both profiles provide `Ctrl-T`, `Ctrl-R`, and `Alt-C` through independent fzf.
+The shell provides `Ctrl-T`, `Ctrl-R`, and `Alt-C` through independent fzf.
 fzf-tab and the file widgets share hidden-file and preview state: `Ctrl-P`
 cycles preview layout and `Ctrl-H` toggles hidden files. Completion generation
 is explicitly requested with `Shift-Tab`.

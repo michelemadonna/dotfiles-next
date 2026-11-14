@@ -20,8 +20,12 @@
   [[ $HISTSIZE == 1000000000 && $SAVEHIST == 1000000000 && $KEYTIMEOUT == 20 ]] || return 1
   # No compatibility commands or variables from a retired namespace are needed.
   (( ! $+functions[dotsh] )) || return 1
-  [[ -r $DOTFILES_DIR/zsh/dotsh-startup.zsh &&
-     -r $DOTFILES_DIR/zsh/dotsh.custom.plugins/dotsh-fzf.plugin.zsh ]] || return 1
+  [[ -r $DOTFILES_DIR/zsh/runtime/dotsh-startup.zsh &&
+     -r $DOTFILES_DIR/zsh/dotsh.custom.plugins/dotsh-fzf.plugin.zsh &&
+     -r $DOTFILES_DIR/zsh/dotsh.custom.plugins/dotsh-fastfetch.plugin.zsh &&
+     -r $DOTFILES_DIR/zsh/dotsh.custom.plugins/dotsh-ssh.plugin.zsh ]] || return 1
+  (( $+functions[run-fastfetch] )) || return 1
+  (( $+functions[load-our-ssh-keys] )) || return 1
   [[ $(zsh -dfc 'print -r -- "$ZSH_VERSION:$ZSH_PATCHLEVEL"') == "$ZSH_VERSION:$ZSH_PATCHLEVEL" ]] || {
     print -u2 -- 'Child processes use a different Zsh executable.'
     return 1
@@ -35,16 +39,36 @@
   [[ $HISTFILE == $HOME/.local/state/zsh/history && $DOTSH_CACHE == $HOME/.cache/zsh &&
      $DOTSH_STATE == $HOME/.local/state/zsh && $GITSTATUS_AUTO_INSTALL == 0 ]] || return 1
   [[ $SSH_AUTH_SOCK == $HOME/* ]] || return 1
+  [[ -o interactive_comments && -o glob_dots && -o complete_in_word &&
+     -o pushd_ignore_dups && $REPORTTIME == 2 &&
+     $TIMEFMT == '%U user %S system %P cpu %*Es total' ]] || return 1
+  (( $+functions[md] && $+functions[dotsh_bind_default_keys] &&
+     $+aliases[tree] && $+aliases[tmux] && $+aliases[t] )) || return 1
+  local style_value
+  zstyle -s ':dotsh:autosuggestions' forward-char style_value
+  [[ $style_value == accept ]] || return 1
+  (( ! $+_dotsh_use[fzf] && ! $+_dotsh_use[zsh-syntax-highlighting] &&
+     ! $+_dotsh_use[zsh-history-substring-search] )) || {
+    print -u2 -- 'dotsh_init enabled a runtime-owned fzf/highlighting/history-search module.'
+    return 1
+  }
+  (( ! $+widgets[dotsh-fzf-complete] && ! $+widgets[dotsh-fzf-history] &&
+     ! $+widgets[dotsh-fzf-dir-history] )) || return 1
 
-  if [[ $DOTSH_STARTUP_PROFILE == fast ]]; then
-    dotsh_fast_load_zle_features || return 1
-    dotsh_fast_load_fzf || return 1
+  dotsh_fast_load_zle_features || return 1
+  dotsh_fast_load_fzf || return 1
+  if [[ ${DOTSH_ENABLE_AUTO_GENCOMP:-true} == true ]]; then
     dotsh_fast_load_gencomp || return 1
   fi
   (( $+functions[compdef] && $+_ZSH_AUTOSUGGEST_BIND_COUNTS && $+FAST_HIGHLIGHT_VERSION )) || return 1
-  (( $+functions[_fzf_tab_complete_with_dots] && $+functions[_zqs_gencomp_generate] )) || return 1
+  (( $+functions[_fzf_tab_complete_with_dots] )) || return 1
+  if [[ ${DOTSH_ENABLE_AUTO_GENCOMP:-true} == true ]]; then
+    (( $+functions[_zqs_gencomp_generate] )) || return 1
+  fi
   [[ ${_comps[md]:-} == _directories ]] || return 1
-  [[ $(bindkey '^[[Z') == *(_zqs_gencomp_for_current_command|_dotsh_fast_gencomp_widget)* ]] || return 1
+  if [[ ${DOTSH_ENABLE_AUTO_GENCOMP:-true} == true ]]; then
+    [[ $(bindkey '^[[Z') == *(_zqs_gencomp_for_current_command|_dotsh_fast_gencomp_widget)* ]] || return 1
+  fi
   [[ $DOTSH_FZF_GIT_ADAPTER == $DOTFILES_DIR/zsh/helpers/fzf-git.zsh ]] || {
     print -u2 -- 'Compiled helper lost its original source path.'
     return 1

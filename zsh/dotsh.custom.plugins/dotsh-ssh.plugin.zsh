@@ -80,3 +80,21 @@ function load-our-ssh-keys() {
 		done
 	fi
 }
+
+if [[ -o interactive && -z ${SSH_CLIENT-} && -z ${SSH_CONNECTION-} &&
+      ${DOTSH_SSH_LOAD_KEY:-true} != false ]]; then
+	[[ ${DOTSH_SSH_ASKPASS_REQUIRE:-false} != true ]] || export SSH_ASKPASS_REQUIRE=force
+	load-our-ssh-keys
+fi
+
+if [[ ${DOTSH_SSH_SHOW_KEY:-false} == true ]]; then
+	print
+	print 'Current SSH Keys:'
+	if (( ${_ZQS_SSH_KEYS_VALID:-0} )) && (( ${_ZQS_SSH_KEYS_STATUS:-2} == 0 )); then
+		print -r -- "$_ZQS_SSH_KEYS"
+	else
+		ssh-add -l
+	fi
+	print
+fi
+unset _ZQS_SSH_KEYS _ZQS_SSH_KEYS_STATUS _ZQS_SSH_KEYS_VALID

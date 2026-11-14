@@ -22,7 +22,7 @@ Docker usage, or user-facing UX changes.
   cycles preview layout and `Ctrl-H` toggles hidden files.
 - Completion generation is explicitly triggered with `Shift-Tab`.
 - Edit persistent repository sources, never generated files or cache artifacts.
-- Source `zsh/dotsh-startup.zsh` first in `.zshrc`; preserve its options,
+- Source `zsh/runtime/dotsh-startup.zsh` first in `.zshrc`; preserve its options,
   deferred completion, redraw, and autosuggestion integration. Prepare pinned
   dependencies explicitly; never install or update them during shell startup.
 - Use `DOTSH_*` for preferences and `dotsh` for helper/plugin names. Custom
