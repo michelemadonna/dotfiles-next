@@ -51,6 +51,10 @@ the lockfile resolve to the current default-branch commit and are recorded.
 
 ## Tools and state
 
+Archive previews use 7-Zip. Required packages include `7zip` for Ubuntu/APT
+and MacPorts, and `sevenzip` for Homebrew. The preview resolves `7zz` first,
+then `7z`, accommodating both provider layouts and existing installations.
+
 The selected editor may be `vim`, `nano`, `fresh`, or `micro`. The Vim choice
 requires the full Vim package (`+eval`); Ubuntu's `vi`/`vim-tiny` is not
 supported. macOS installs
@@ -75,13 +79,15 @@ Managed destinations are backed up as `.backup.YYYYMMDDhhmmss`; existing
 correct symbolic links are retained. Base packages and fonts are guarded by:
 
 ```text
-${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles-next/base-packages-v3-<platform>-<provider>.done
+${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles-next/base-packages-v4-<platform>-<provider>.done
 ```
 
 The marker is written only after success. On macOS, Apple Git remains a
 separate bootstrap prerequisite for cloning; the selected package manager's
 Git is part of the versioned base packages. Optional tools are reevaluated on
 every run.
+Version 4 adds 7-Zip. Earlier markers trigger the base-package step again on
+the next installer run; a successful run writes the new marker.
 
 Fastfetch `first` counts distinct `ttys*` devices on macOS and `pts/*` devices
 on Linux. SSH sessions, IDE terminals, and other terminal applications also

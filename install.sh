@@ -7,7 +7,7 @@ DEFAULT_REPO_URL="https://github.com/michelemadonna/dotfiles-next.git"
 REPO_URL=${DOTFILES_REPO_URL:-$DEFAULT_REPO_URL}
 DOTFILES_DIR=${DOTFILES_DIR:-"$HOME/.dotfiles"}
 MODE=interactive
-BASE_PACKAGES_MARKER_VERSION=3
+BASE_PACKAGES_MARKER_VERSION=4
 PLATFORM=
 PACKAGE_MANAGER=
 MACOS_ARCH=
@@ -781,17 +781,17 @@ install_required_packages() {
     run_macports 'update the MacPorts index before installing required packages' selfupdate
     install_macports_ports \
       bat eza fd git git-delta htop ripgrep tmux tree wget chafa \
-      mediainfo poppler file bind9
+      mediainfo poppler file bind9 7zip
     mkdir -p "$HOME/Library/Fonts"
     cp "$DOTFILES_DIR"/fonts/* "$HOME/Library/Fonts/"
   elif [ "$PACKAGE_MANAGER" = homebrew ]; then
-    brew install -y bat eza fd git git-delta htop ripgrep tmux tree wget chafa mediainfo poppler file bind
+    brew install -y bat eza fd git git-delta htop ripgrep tmux tree wget chafa mediainfo poppler file bind sevenzip || return 1
     brew install -y --cask font-fira-code-nerd-font
   else
     run_apt_get update
     run_apt_get install -y \
       bat eza chafa mediainfo poppler-utils tree file dnsutils fd-find wget \
-      grc ripgrep python3-pip command-not-found git-delta tmux htop unzip curl fontconfig
+      grc ripgrep python3-pip command-not-found git-delta tmux htop unzip curl fontconfig 7zip
 
     mkdir -p "$HOME/.local/bin"
     fdfind_path=$(command -v fdfind || true)

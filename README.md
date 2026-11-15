@@ -199,6 +199,7 @@ The base package set is installed once per platform. It supplies the commands us
 | 🧩 **git-delta**                                         | Readable, side-by-side diffs.                                                                                                                                                           |
 | 🔍 **fzf** and **fzf-tab**                               | Fuzzy file selection and interactive Zsh completion, using pinned dependencies.                                                                                    |
 | 📺 **chafa**, **mediainfo**, **poppler**, and **file**   | Image, media, PDF, and generic file previews inside fzf.                                                                                                                                |
+| 📦 **7-Zip**                                             | Lists ZIP, 7z, RAR, TAR, gzip, XZ, and bzip2 archives in fzf previews, including members inside compressed TAR files. Uses `7zz` or `7z`. |
 | 🔀 **tmux**                                              | Persistent terminal sessions with the included mouse and keyboard configuration.                                                                                                        |
 | 🛠️ **htop**, **tree**, **wget**, and DNS tools          | Process inspection, directory views, downloads, and host/DNS inspection.                                                                                                                |
 | 🔤 [Nerd fonts](https://github.com/ryanoasis/nerd-fonts) | Prompt, file, Git, and tmux glyphs.                                                                                                                                                     |
@@ -285,6 +286,9 @@ exec zsh -l
 ```
 
 The installer prepares the pinned external plugins and executables.
+Archive previews require `7zip` on Ubuntu/APT and MacPorts, or `sevenzip` on
+Homebrew. The base-package marker is version 4, so the next installer run
+adds this dependency to existing installations as well.
 `dotsh_load` downloads a missing plugin and loads it in the same call, with or
 without `-c` / `--compile`. Add a GitHub repository to your `.zshrc` using this
 syntax, replacing `owner/plugin` with the repository you want:
@@ -521,6 +525,13 @@ docker build \
 | <kbd>Ctrl</kbd> + <kbd>H</kbd>                                | Toggle hidden files in FZF search.                                              |
 
 ### 7.2. 🔍 fzf
+
+Archive previews use 7-Zip, preferring `7zz` and accepting `7z`. ZIP, 7z, RAR,
+TAR, gzip, XZ, and bzip2 listings are limited to 300 lines. Compressed TAR
+members are listed through an in-memory pipeline. Single compressed files
+show their container listing. Archives with encrypted headers, corrupt or
+unsupported archives, and missing 7-Zip installations produce a brief message
+without a password prompt.
 
 | Key                                           | Action                                                                                                                      |
 | --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |

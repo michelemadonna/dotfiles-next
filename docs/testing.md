@@ -30,6 +30,14 @@ recording, compilation, offline reuse, nested plugins, failures, concurrent
 loaders, and full installer preparation. Run `tests/test-dependency-patch.sh`
 with a disposable fake HOME to verify Powerlevel10k patch migration.
 
+For archive preview changes run `python3 tests/test-archive-preview.py` with
+`7zz` or `7z` installed. It creates disposable ZIP, 7z, RAR, TAR, compressed
+TAR, and single compressed-file fixtures. It covers executable selection,
+paths with spaces, renamed archives, encrypted headers, corrupt input,
+missing tools, and the 300-line output limit. The installer tests assert the
+APT, Homebrew, and MacPorts packages plus marker migration and idempotency.
+Also inspect an archive through the actual fzf preview in a writable PTY.
+
 ## Interactive validation
 
 Use a real writable PTY, preferably the Docker demo for Docker-specific work.

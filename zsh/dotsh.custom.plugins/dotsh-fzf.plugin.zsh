@@ -23,6 +23,7 @@ fi
 #       eza \
 #       chafa \
 #       mediainfo \
+#       sevenzip \
 #       poppler \
 #       tree \
 #       file \

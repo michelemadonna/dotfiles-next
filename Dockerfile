@@ -8,6 +8,7 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
+      7zip \
       bat \
       ca-certificates \
       chafa \
@@ -118,7 +119,7 @@ FROM dotfiles-${DOTFILES_SOURCE} AS final
 # installer's versioned marker. Local builds configure the checkout now;
 # remote builds defer the required interactive installer to docker run -it.
 RUN mkdir -p /home/demo/.local/state/dotfiles-next \
-    && touch /home/demo/.local/state/dotfiles-next/base-packages-v1-linux.done \
+    && touch /home/demo/.local/state/dotfiles-next/base-packages-v4-linux-apt.done \
     && if [ "$DOTFILES_SOURCE_MODE" = local ]; then \
       cd /home/demo/.dotfiles \
       && EDITOR=micro \

@@ -84,6 +84,13 @@ fzf-tab and the file widgets share hidden-file and preview state: `Ctrl-P`
 cycles preview layout and `Ctrl-H` toggles hidden files. Completion generation
 is explicitly requested with `Shift-Tab`.
 
+The shared file preview helper lists ZIP, 7z, RAR, TAR, gzip, XZ, and bzip2
+archives through 7-Zip (`7zz`, then `7z`). Compressed TAR contents pass between
+7-Zip processes in memory; standalone compressed files use the container's
+listing. Output is limited to 300 lines while draining the producer to avoid
+SIGPIPE failures. Missing tools and unreadable archives produce preview
+messages, and encrypted headers never trigger an interactive password prompt.
+
 The vendored `fzf-git.sh` integration is loaded after fzf and fzf-tab, then the
 local adapter adds command-aware Git dispatch before the final `dotsh-fzf`
 widget bindings. Upstream owns picker UI, previews, parsing, and `Ctrl-G`

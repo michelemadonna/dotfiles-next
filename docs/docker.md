@@ -11,9 +11,11 @@ these paths with hand-written setup logic.
 Keep expensive tools, demo repositories, and Mise runtimes before the
 source-selection stages so local source edits remain cache-friendly. The image
 uses Ubuntu 26.04, an unprivileged passwordless-sudo `demo` user, and installs
-Fresh, Micro, Mise, Fastfetch, Oh My Posh, Java, Node.js, Python, and preview
+Fresh, Micro, Mise, Fastfetch, Oh My Posh, Java, Node.js, Python, 7-Zip, and preview
 sample repositories. It seeds the base-package marker because the base stage
-already installed those packages.
+already installed those packages. The APT package is `7zip`, and the seeded
+marker is `base-packages-v4-linux-apt.done`, matching the host installer's
+current base-package version and provider.
 
 The demo clones Java/Maven, Node.js, Python, and image repositories under
 `/home/demo/Developer`, then selects Java `17.0.2`, Python `3.13.6`, and Node.js

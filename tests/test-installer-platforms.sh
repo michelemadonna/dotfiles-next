@@ -396,6 +396,8 @@ case $required_packages in
     ;;
 esac
 
+printf '%s\n' "$required_packages" | grep -Eq '(^|[[:space:]])7zip([[:space:]]|$)'
+
 required_packages=$(
   sh -c '
     . "$1"
@@ -423,9 +425,33 @@ case $required_packages in
     ;;
 esac
 
+for archive_arch in x86_64 arm64; do
+  printf '%s\n' "$required_packages" | grep -Eq "^BREW:${archive_arch}:install -y .* sevenzip$"
+done
+
+printf '#!/bin/sh\nexit 0\n' >"$TEST_ROOT/fc-cache"
+chmod +x "$TEST_ROOT/fc-cache"
+required_packages=$(
+  PATH="$TEST_ROOT:$PATH" sh -c '
+    . "$1"
+    PLATFORM=linux
+    PACKAGE_MANAGER=apt
+    HOME=$2/home
+    DOTFILES_DIR=$2/dotfiles
+    info() { :; }
+    run_apt_get() { printf "APT:%s\n" "$*"; }
+    mkdir() { :; }
+    cp() { :; }
+    ln() { :; }
+    install_required_packages
+  ' sh "$TEST_ROOT/install-lib.sh" "$TEST_ROOT"
+)
+printf '%s\n' "$required_packages" | grep -Eq '^APT:install -y .* 7zip$'
+
 legacy_marker_root=$TEST_ROOT/legacy-marker-state
 mkdir -p "$legacy_marker_root/dotfiles-next"
 : >"$legacy_marker_root/dotfiles-next/base-packages-v2-macos-homebrew.done"
+: >"$legacy_marker_root/dotfiles-next/base-packages-v3-macos-homebrew.done"
 marker_log=$TEST_ROOT/marker.log
 XDG_STATE_HOME=$legacy_marker_root MARKER_LOG=$marker_log sh -c '
   . "$1"
@@ -436,9 +462,28 @@ XDG_STATE_HOME=$legacy_marker_root MARKER_LOG=$marker_log sh -c '
   export MARKER_LOG
   install_required_packages_once
   install_required_packages_once
-  [ -f "$XDG_STATE_HOME/dotfiles-next/base-packages-v3-macos-homebrew.done" ]
+  [ -f "$XDG_STATE_HOME/dotfiles-next/base-packages-v4-macos-homebrew.done" ]
 ' sh "$TEST_ROOT/install-lib.sh"
 assert_equal "$(cat "$marker_log")" 'INSTALL'
+grep -q 'base-packages-v4-linux-apt.done' "$ROOT/Dockerfile"
+
+XDG_STATE_HOME="$TEST_ROOT/failed-archive-packages" sh -ec '
+  . "$1"
+  PLATFORM=macos
+  PACKAGE_MANAGER=homebrew
+  info() { :; }
+  brew() {
+    case $* in
+      *--cask*) return 0 ;;
+      *) return 1 ;;
+    esac
+  }
+  if install_required_packages_once; then
+    printf "Failed base packages were marked as installed\n" >&2
+    exit 1
+  fi
+  [ ! -f "$base_packages_marker" ]
+' sh "$TEST_ROOT/install-lib.sh"
 
 grep -q "report_macports_tool_version 'Git' git 1 --version" "$ROOT/install.sh"
 grep -q "report_homebrew_tool_version 'Git' git git 1 --version" "$ROOT/install.sh"
