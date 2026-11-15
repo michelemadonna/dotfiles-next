@@ -847,6 +847,7 @@ set_interactive_defaults() {
   load_ssh_key=true
   show_ssh_key=true
   askpass_require=false
+  load_saved_fzf_preference
   set_fixed_preferences
 }
 
@@ -1229,8 +1230,8 @@ ui_summary() {
     ui_summary_line 'Prompt' "$prompt"
     ui_summary_line 'Editor' "$editor"
     ui_summary_line 'Fastfetch' "$(human_boolean "$show_fastfetch")"
-    ui_summary_line 'fzf-tab' 'Enabled (fixed)'
-    ui_summary_line 'fzf binary' 'Latest release from a local Git checkout (fixed)'
+    ui_summary_line 'fzf integrations' "$(human_boolean "$use_fzf")"
+    ui_summary_line 'fzf binary' 'Pinned local Git checkout (installed)'
     ui_summary_line 'Completion generator' "$(human_boolean "$enable_auto_gencomp")"
     ui_summary_line 'Oh My Zsh helpers' 'Enabled (fixed)'
     ui_summary_line 'Load SSH keys' "$(human_boolean "$load_ssh_key")"
@@ -1267,9 +1268,10 @@ normalize_zsh_preferences() {
       plain = name
       sub(/^_+/, "", plain)
       leading = substr(name, 1, length(name) - length(plain))
-      if (index(plain, previous "_") == 1)
-        return leading "DOTSH" substr(plain, length(previous) + 1)
-      if (name == tolower(previous) "_zshenv") return "dotsh_zshenv"
+      if (previous != "" && index(plain, previous "_") == 1)
+        name = leading "DOTSH" substr(plain, length(previous) + 1)
+      if (previous != "" && name == tolower(previous) "_zshenv") return "dotsh_zshenv"
+      if (name == "DOTSH_USE_FZF_TAB") return "DOTSH_USE_FZF"
       return name
     }
     function rewrite(line, result, i, c, nextc, token, j) {
@@ -1316,6 +1318,12 @@ normalize_zsh_preferences() {
     }
     BEGIN { single = sprintf("%c", 39) }
     NR == FNR {
+      if ($0 ~ /^[[:space:]]*export [A-Z][A-Z0-9]*_USE_FZF(_TAB)?=/) {
+        candidate = $0
+        sub(/^[[:space:]]*export /, "", candidate)
+        sub(/=.*/, "", candidate)
+        fzf_names[candidate] = 1
+      }
       if ($0 ~ /^[[:space:]]*export [A-Z][A-Z0-9]*_(PROMPT|STARTUP_PROFILE(_DEFAULT)?|SHOW_FASTFETCH|USE_MISE|ENABLE_AUTO_GENCOMP|SSH_LOAD_KEY|SSH_SHOW_KEY|SSH_ASKPASS_REQUIRE)=/) {
         candidate = $0
         sub(/^[[:space:]]*export /, "", candidate)
@@ -1345,10 +1353,15 @@ normalize_zsh_preferences() {
         }
         if (previous == "DOTSH") previous = ""
       }
-      if (previous != "") {
-        sub("\\." tolower(previous) "-zprof-enabled", ".dotsh-zprof-enabled")
-        $0 = rewrite($0)
+      if ($0 ~ /^[[:space:]]*export [A-Z][A-Z0-9]*_USE_FZF_TAB=/) {
+        candidate = $0
+        sub(/^[[:space:]]*export /, "", candidate)
+        sub(/=.*/, "", candidate)
+        if ((candidate == "DOTSH_USE_FZF_TAB" || candidate == previous "_USE_FZF_TAB") &&
+            (fzf_names["DOTSH_USE_FZF"] || fzf_names[previous "_USE_FZF"])) next
       }
+      if (previous != "") sub("\\." tolower(previous) "-zprof-enabled", ".dotsh-zprof-enabled")
+      $0 = rewrite($0)
       print
     }
   ' "$1" "$1"
@@ -1384,6 +1397,7 @@ generate_zshenv() {
     -v editor="$editor" \
     -v show_fastfetch="$show_fastfetch" \
     -v use_mise="$use_mise" \
+    -v use_fzf="${use_fzf:-true}" \
     -v enable_auto_gencomp="$enable_auto_gencomp" \
     -v enable_oh_my_zsh="$enable_oh_my_zsh" \
     -v load_ssh_key="$load_ssh_key" \
@@ -1402,12 +1416,13 @@ generate_zshenv() {
         next
       }
       /^  export DOTSH_STARTUP_PROFILE(_DEFAULT)?=/ { next }
-      /^  export DOTSH_USE_FZF_TAB=/ { next }
+      /^  export DOTSH_USE_FZF=/ { next }
       /source "\$DOTFILES_DIR\/zsh\/helpers\/tool-bootstrap.zsh"/ { next }
       /^if \[ -n "\$\{ZSH_VERSION-\}" \]; then/ {
         print
         print "  setopt no_global_rcs"
         print "  [[ ! -o interactive ]] || umask o-w"
+        print "  export DOTSH_USE_FZF=" use_fzf
         next
       }
       /^  setopt no_global_rcs$/ { next }
@@ -1420,6 +1435,12 @@ generate_zshenv() {
       }
       /^  export DOTSH_SHOW_FASTFETCH=/ { $0 = "  export DOTSH_SHOW_FASTFETCH=" show_fastfetch; }
       /^  export DOTSH_USE_FZF_FROM_[A-Z0-9_]+=/ { next }
+      /^  export FZF_COMPLETION_TRIGGER=/ {
+        print "  if [[ $DOTSH_USE_FZF == true ]]; then"
+        print "  " $0
+        print "  fi"
+        next
+      }
       /^  export DOTSH_USE_MISE=/ { $0 = "  export DOTSH_USE_MISE=" use_mise; }
       /^  export DOTSH_ENABLE_AUTO_GENCOMP=/ { $0 = "  export DOTSH_ENABLE_AUTO_GENCOMP=" enable_auto_gencomp; }
       /^  export DOTSH_ENABLE_OH_MY_ZSH=/ {
@@ -1449,6 +1470,7 @@ configure_non_interactive() {
   editor=micro
   show_fastfetch=first
   use_mise=true
+  use_fzf=true
   enable_auto_gencomp=true
   load_ssh_key=true
   show_ssh_key=true
@@ -1456,26 +1478,39 @@ configure_non_interactive() {
   set_fixed_preferences
 }
 
+value_from_choices() {
+  printf '%s\n' "$normalized_choices" | awk -v variable="$1" '
+    $0 ~ "^  export " variable "=" {
+      sub("^  export " variable "=", "")
+      sub(/[[:space:]]+#.*/, "")
+      gsub(/^"|"$/, "")
+      if (substr($0, 1, 1) == sprintf("%c", 39)) $0 = substr($0, 2, length($0) - 2)
+      print
+      exit
+    }
+  '
+}
+
+load_saved_fzf_preference() {
+  use_fzf=true
+  choices_file="$DOTFILES_DIR/zsh/home/.zshenv"
+  [ -f "$choices_file" ] || return 0
+  normalized_choices=$(normalize_zsh_preferences "$choices_file") || die 'Cannot read saved Zsh preferences.'
+  saved_fzf=$(value_from_choices DOTSH_USE_FZF)
+  case $saved_fzf in
+    true | false) use_fzf=$saved_fzf ;;
+  esac
+}
+
 load_non_interactive_choices() {
   choices_file="$DOTFILES_DIR/zsh/home/.zshenv"
   [ -f "$choices_file" ] || return 0
   normalized_choices=$(normalize_zsh_preferences "$choices_file") || die 'Cannot read saved Zsh preferences.'
 
-  value_from_choices() {
-    printf '%s\n' "$normalized_choices" | awk -v variable="$1" '
-      $0 ~ "^  export " variable "=" {
-        sub("^  export " variable "=", "")
-        sub(/[[:space:]]+#.*/, "")
-        gsub(/^"|"$/, "")
-        print
-        exit
-      }
-    '
-  }
-
   for choice in \
     'prompt DOTSH_PROMPT' 'editor EDITOR' 'show_fastfetch DOTSH_SHOW_FASTFETCH' \
     'use_mise DOTSH_USE_MISE' 'enable_auto_gencomp DOTSH_ENABLE_AUTO_GENCOMP' \
+    'use_fzf DOTSH_USE_FZF' \
     'load_ssh_key DOTSH_SSH_LOAD_KEY' \
     'show_ssh_key DOTSH_SSH_SHOW_KEY' 'askpass_require DOTSH_SSH_ASKPASS_REQUIRE'; do
     choice_name=${choice%% *}
@@ -1483,6 +1518,7 @@ load_non_interactive_choices() {
     choice_value=$(value_from_choices "$choice_variable")
     [ -n "$choice_value" ] && eval "$choice_name=\$choice_value"
   done
+  return 0
 }
 
 install_editor() {

@@ -9,6 +9,7 @@ if [ -n "${ZSH_VERSION-}" ]; then
   [[ ! -o interactive ]] || umask o-w
   export DOTSH_PROMPT=${DOTSH_PROMPT:="powerlevel10k"} # powerlevel10k/ohmyposh/minimal
   export DOTSH_SHOW_FASTFETCH=${DOTSH_SHOW_FASTFETCH:=first} #false/true/first
+  export DOTSH_USE_FZF=${DOTSH_USE_FZF:=true} #true/false
   export DOTSH_ENABLE_ALLAFINE=false
   export DOTSH_ENABLE_AUTO_GENCOMP=${DOTSH_ENABLE_AUTO_GENCOMP:=true} #true/false
   export DOTSH_ENABLE_OH_MY_ZSH=true
@@ -94,7 +95,9 @@ if [ -n "${ZSH_VERSION-}" ]; then
     export BAT_THEME="Solarized (dark)"
   fi
   
-  export FZF_COMPLETION_TRIGGER='**' # change ** to whatever you like 
+  if [[ $DOTSH_USE_FZF == true ]]; then
+    export FZF_COMPLETION_TRIGGER='**' # change ** to whatever you like
+  fi
   
   export POWERLEVEL9K_CONFIG_FILE="$DOTFILES_DIR/powerlevel10k/.p10k.zsh" 
   export DOTSH_OH_MY_POSH_CONFIG="$DOTFILES_DIR/oh-my-posh/custom.omp.json"

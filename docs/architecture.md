@@ -62,7 +62,7 @@ uses XDG Zsh cache/state paths, independently of the former dotsh cache.
 Mise/ASDF project runtimes are shown in the right prompt. Each active runtime
 has its own light capsule; the right prompt is hidden when it cannot fit.
 
-Startup always defers fzf-tab, picker widgets, fzf-git, and generated
+Startup defers enabled fzf-tab, picker widgets, fzf-git, and generated
 completion until first use; highlighting and history substring search load at
 the first ZLE line. The local runtime handles autosuggestions and redraw.
 The runtime does not register its legacy fzf widgets or source its own
@@ -72,7 +72,14 @@ are downloaded before loading, including deferred plugin loading on first use.
 
 ## Shell contracts
 
-The shell provides `Ctrl-T`, `Ctrl-R`, and `Alt-C` through independent fzf.
+`DOTSH_USE_FZF` defaults to `true` and gates the fzf loaders, widget registration,
+fzf-tab configuration, fzf-git, command-specific previews, the fuzzy keybinding
+reference, and Mise's fuzzy version selector. With `false`, the shell uses
+native keybindings and completion. Highlighting, history substring search,
+autosuggestions, native Git/Brew completion, and optional `Shift-Tab` generation
+operate independently. The installer owns migration of the previous flag name.
+
+When enabled, the shell provides `Ctrl-T`, `Ctrl-R`, and `Alt-C` through independent fzf.
 fzf-tab and the file widgets share hidden-file and preview state: `Ctrl-P`
 cycles preview layout and `Ctrl-H` toggles hidden files. Completion generation
 is explicitly requested with `Shift-Tab`.

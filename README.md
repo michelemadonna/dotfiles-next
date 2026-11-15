@@ -211,7 +211,7 @@ The base package set is installed once per platform. It supplies the commands us
 | 🚀 **Powerlevel10k**                                 | Default                      | Fast, Git-aware two-line prompt configured by [`powerlevel10k/.p10k.zsh`](powerlevel10k/.p10k.zsh).                                                                                                              |
 | 🎨 **Oh My Posh**                                    | Optional                     | Alternative prompt using the repository's custom JSON theme. Installed only when `ohmyposh` is selected.                                                                                                         |
 | 🛠️ **Oh My Zsh helpers**                            | Always enabled                 | Loads selected libraries and plugins such as `sudo`, `command-not-found`, and the macOS/Homebrew helpers without sourcing the complete `oh-my-zsh.sh`.                                                           |
-| 🔍 **fzf-tab stack**                                 | Always enabled                 | Adds fuzzy completion, previews, syntax highlighting, history search, and suggestions.                                                                                                                           |
+| 🔍 **fzf integration**                               | `DOTSH_USE_FZF=true` by default | Enables fzf-tab, fuzzy file/history/directory selection, previews, and Git pickers.                                                                                                                           |
 | 🧠 **Completion generator**                          | Optional, enabled by default | Generates and caches getopt-style completion for the current command when explicitly requested with `Shift-Tab`.                                                                                                 |
 | 🎨 **Fastfetch**                                     | Optional                     | Displays a visual overview of the operating system, hardware, memory, disks, shell, terminal, and other system details. It can run at every interactive Zsh startup or only at the first active terminal prompt. |
 | 📦 **Mise**                                          | Optional, enabled by default | Installs and activates language/tool runtimes, and maintains compatibility with `.tool-versions`. It is also preinstalled in the Docker demo.                                                                    |
@@ -276,7 +276,7 @@ git clone https://github.com/michelemadonna/dotfiles-next.git ~/.dotfiles
 sh ~/.dotfiles/install.sh
 ```
 
-Existing regular files or directories at managed destinations are moved to a timestamped `.backup.YYYYMMDDhhmmss` path before linking. Existing symbolic links are replaced. Repeated non-interactive runs retain existing generated preferences while normalizing the three fixed fzf/Oh My Zsh values; interactive runs write the newly approved choices. Both modes reevaluate optional tools and skip the versioned base-package step when its marker exists.
+Existing regular files or directories at managed destinations are moved to a timestamped `.backup.YYYYMMDDhhmmss` path before linking. Existing symbolic links are replaced. Repeated non-interactive runs retain existing generated preferences while enabling the fixed Oh My Zsh helpers. Interactive runs write the newly approved choices and retain the saved fzf preference. Both modes reevaluate optional tools and skip the versioned base-package step when its marker exists.
 
 After installation, start a fresh login shell:
 
@@ -334,11 +334,20 @@ Shell startup puts `$HOME/.local/bin` at the front of `PATH`; runtime startup
 reapplies it so macOS login-shell startup cannot discard it.
 Cached Mise activation also preserves the current startup paths.
 
-Startup always uses the fast path: fzf-tab and picker integrations load on first
+Startup always uses the fast path: enabled fzf-tab and picker integrations load on first
 use, syntax highlighting and history search load at the first prompt line, and
 generated completions load when requested with `Shift-Tab`. Autosuggestions
 remain managed natively by dotsh so ghost text stays synchronized with its
 redraw cycle. Fastfetch and SSH remain synchronous.
+
+Set `DOTSH_USE_FZF=false` in your Zsh preferences to use native completion and
+keybindings. This disables automatic loading of fzf, fzf-tab, fzf-git, previews
+and command-specific fuzzy integrations, the `Ctrl-K` fuzzy reference, and the
+Mise fuzzy version selector. `Shift-Tab` uses native completion when
+`DOTSH_ENABLE_AUTO_GENCOMP=true`. The setting takes effect in a new shell.
+The installer migrates `DOTSH_USE_FZF_TAB` to `DOTSH_USE_FZF`, preserving its
+value and preferring the current name when both are present. Dependencies
+continue to be prepared by the installer.
 
 ### Intel macOS package providers
 
@@ -411,6 +420,7 @@ as an alias for `python3`.
 * `DOTSH_PROMPT` Selects the prompt theme. Supported values are `powerlevel10k`, `ohmyposh`, and `minimal`.
 * `DOTFILES_INTEL_PACKAGE_MANAGER` selects `macports` or `homebrew` as the Intel macOS installer and shell provider. It defaults to `macports` and has no effect on Apple Silicon or Linux.
 * `DOTSH_SHOW_FASTFETCH` Controls when Fastfetch is displayed. Set it to `false` to disable Fastfetch, `true` to display it at every interactive terminal startup, or `first` to display it only in the first active terminal session.
+* `DOTSH_USE_FZF` Enables fzf, fzf-tab, Git pickers, previews, and related fuzzy integrations. Defaults to `true`. Set it to `false` for native Zsh completion, including generated completions requested with `Shift-Tab`.
 * `DOTSH_ENABLE_AUTO_GENCOMP` Enables on-demand generation of Zsh completions for commands that do not already provide them. Completions are generated from the command’s `--help` output.
 * `DOTSH_SSH_LOAD_KEY` Controls automatic SSH key loading. When enabled, private keys found in `$HOME/.ssh` are loaded into the active SSH agent or platform keychain.
 * `DOTSH_SSH_SHOW_KEY` Controls whether the SSH keys currently loaded in the agent are displayed during shell startup.

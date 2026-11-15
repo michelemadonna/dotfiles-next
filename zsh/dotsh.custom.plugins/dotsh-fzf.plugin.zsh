@@ -1,6 +1,7 @@
 #!/usr/bin/env zsh
 #This file is sourced by zshrc to set up fzf integration.
 #includes private functions for toggling hidden files, setting default commands, and configuring fzf options.
+[[ ${DOTSH_USE_FZF:-true} == true ]] || return 0
 (( ! $+commands[fzf] )) && return
 
 # ============================================================

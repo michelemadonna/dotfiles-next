@@ -99,12 +99,15 @@ managed tmux and SSH transport lifecycle are intentionally excluded. Ordinary
 terminal integration, directory history and SSH-agent helper behavior remain.
 The fake HOME uses a separate agent and avoids importing host Keychain keys.
 
-Startup always follows the fast path: fzf integrations and generated
+Startup always follows the fast path: enabled fzf integrations and generated
 completions load on demand, while FSH and history substring search load through
 a one-time callback in the runtime's existing line-init handler. First use
 prepares missing packages requested through `dotsh_load`. Installed plugins
 are reused without network access. Shared preview/hidden-file state and Shift-Tab
 generation remain owned by the existing custom plugins.
+`DOTSH_USE_FZF=false` selects native completion and keybindings, including the
+native fallback for generated completions. The installer migrates the old
+`DOTSH_USE_FZF_TAB` preference; startup reads `DOTSH_USE_FZF` with default `true`.
 The runtime no longer ships its legacy fzf widgets and does not load its own
 fzf, syntax-highlighting, or history-substring-search modules during
 `dotsh_init`.

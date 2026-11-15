@@ -318,7 +318,7 @@ _zqs_mise_completion() {
         return 1
       fi
 
-      if (( $+commands[fzf] )); then
+      if [[ ${DOTSH_USE_FZF:-true} == true ]] && (( $+commands[fzf] )); then
         chosen=$(print -r -- "$versions" |
           FZF_DEFAULT_OPTS= command fzf \
             --ansi --prompt="Select version > " --height=20 --reverse --cycle \
@@ -327,7 +327,8 @@ _zqs_mise_completion() {
           compadd -Q -S '' -- "${runtime}@${chosen}"
         fi
       else
-        compadd -Q -S '' -- ${(f)versions}
+        local -a version_candidates=("${(@f)versions}")
+        compadd -Q -S '' -- "${runtime}@"${^version_candidates}
       fi
       return 0
     fi

@@ -20,8 +20,10 @@ On Intel macOS the wizard first selects MacPorts or Homebrew as the package
 provider. It recommends and defaults to MacPorts and warns that Homebrew on
 Intel is Tier 3, has no CI support, and receives no new binary bottles. The wizard also selects the prompt (`powerlevel10k` or `ohmyposh`), editor
 (`vim`, `nano`, `fresh`, or `micro`), Fastfetch mode, generated completion,
-Mise, and SSH key loading/display/askpass behavior. fzf-tab, the local fzf
-checkout, and Oh My Zsh helpers are always enabled and are not prompted.
+Mise, and SSH key loading/display/askpass behavior. The saved `DOTSH_USE_FZF`
+preference controls fuzzy integration and defaults to `true`; the wizard
+shows its effective value. The local fzf checkout is installed and Oh My Zsh
+helpers are enabled automatically.
 `q` exits without changes; `a` or `Enter` accepts the review;
 `r` restarts the wizard.
 
@@ -29,7 +31,12 @@ Non-interactive mode never opens menus, clears the screen, asks installer
 questions, or installs Mise because of an environment override. Privileged
 package operations can still request the administrator password through
 `sudo`. Remaining user choices come from
-`zsh/home/.zshenv`; the two fixed integration flags are always normalized.
+`zsh/home/.zshenv`; Oh My Zsh helpers are enabled automatically.
+Both modes migrate `DOTSH_USE_FZF_TAB` to `DOTSH_USE_FZF`, preserving its value.
+An existing `DOTSH_USE_FZF` takes precedence. Repeating generation retains
+exactly one current preference. The flag controls shell integration, including
+Mise's fuzzy selector and the fuzzy keybinding reference. On-demand completion
+generation uses native Zsh when fzf is disabled.
 Intel defaults to MacPorts; `DOTFILES_INTEL_PACKAGE_MANAGER=homebrew` selects
 Homebrew, and an existing generated preference is reused when the environment
 does not override it.

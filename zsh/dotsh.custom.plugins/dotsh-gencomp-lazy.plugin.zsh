@@ -110,7 +110,7 @@ _zqs_gencomp_for_current_command() {
         fi
       fi
 
-      if (( $+widgets[_fzf_tab_complete_with_dots] )); then
+      if [[ ${DOTSH_USE_FZF:-true} == true ]] && (( $+widgets[_fzf_tab_complete_with_dots] )); then
         zle _fzf_tab_complete_with_dots
       else
         zle expand-or-complete
@@ -120,7 +120,7 @@ _zqs_gencomp_for_current_command() {
     _ZQS_GENCOMP_FAILED[$program]=1
   fi
 
-  if (( $+widgets[_fzf_tab_complete_with_dots] )); then
+  if [[ ${DOTSH_USE_FZF:-true} == true ]] && (( $+widgets[_fzf_tab_complete_with_dots] )); then
     zle _fzf_tab_complete_with_dots
   else
     zle expand-or-complete

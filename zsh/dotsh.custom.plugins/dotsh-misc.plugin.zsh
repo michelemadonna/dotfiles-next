@@ -146,7 +146,7 @@ fi
 
 
 
-if (( $+commands[fzf] )); then
+if [[ ${DOTSH_USE_FZF:-true} == true ]] && (( $+commands[fzf] )); then
 
   __keybinds() {
     local data

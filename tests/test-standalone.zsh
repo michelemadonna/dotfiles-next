@@ -56,12 +56,34 @@
      ! $+widgets[dotsh-fzf-dir-history] )) || return 1
 
   dotsh_fast_load_zle_features || return 1
-  dotsh_fast_load_fzf || return 1
+  if [[ ${DOTSH_USE_FZF:-true} == true ]]; then
+    dotsh_fast_load_fzf || return 1
+    (( $+functions[_fzf_tab_complete_with_dots] )) || return 1
+    [[ $DOTSH_FZF_GIT_ADAPTER == $DOTFILES_DIR/zsh/helpers/fzf-git.zsh ]] || {
+      print -u2 -- 'Compiled helper lost its original source path.'
+      return 1
+    }
+  else
+    ! dotsh_fast_prepare_fzf && ! dotsh_fast_load_fzf || return 1
+    dotsh_source "$DOTFILES_DIR/zsh/helpers/fzf-git.zsh" || return 1
+    dotsh_source "$DOTFILES_DIR/zsh/dotsh.custom.plugins/dotsh-fzf.plugin.zsh" || return 1
+    [[ $DOTSH_FAST_FZF_LOADED == false &&
+       ${DOTSH_FZF_GIT_LOADED:-false} == false &&
+       ${DOTSH_FZF_GIT_VENDOR_LOADED:-false} == false ]] || return 1
+    (( ! $+functions[_fzf_tab_complete_with_dots] && ! $+functions[_fzf_git_files] &&
+       ! $+functions[__fzf_default_command] && ! $+functions[__keybinds] )) || return 1
+    [[ -z $(zstyle -L ':fzf-tab:*') ]] || return 1
+    local keymap key
+    for keymap in emacs viins vicmd; do
+      for key in '^I' '^R' '^T' '^[c' '^G' '^K'; do
+        [[ $(bindkey -M "$keymap" "$key") != *fzf* ]] || return 1
+      done
+    done
+  fi
   if [[ ${DOTSH_ENABLE_AUTO_GENCOMP:-true} == true ]]; then
     dotsh_fast_load_gencomp || return 1
   fi
   (( $+functions[compdef] && $+_ZSH_AUTOSUGGEST_BIND_COUNTS && $+FAST_HIGHLIGHT_VERSION )) || return 1
-  (( $+functions[_fzf_tab_complete_with_dots] )) || return 1
   if [[ ${DOTSH_ENABLE_AUTO_GENCOMP:-true} == true ]]; then
     (( $+functions[_zqs_gencomp_generate] )) || return 1
   fi
@@ -69,10 +91,6 @@
   if [[ ${DOTSH_ENABLE_AUTO_GENCOMP:-true} == true ]]; then
     [[ $(bindkey '^[[Z') == *(_zqs_gencomp_for_current_command|_dotsh_fast_gencomp_widget)* ]] || return 1
   fi
-  [[ $DOTSH_FZF_GIT_ADAPTER == $DOTFILES_DIR/zsh/helpers/fzf-git.zsh ]] || {
-    print -u2 -- 'Compiled helper lost its original source path.'
-    return 1
-  }
 
   # Confirm wordcode preserves source identity and invalidates changed sources.
   local probe="$HOME/.cache/dotsh-loader-test-$$.zsh" stamp

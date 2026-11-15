@@ -185,12 +185,64 @@ DOTFILES_DIR="$TEST_ROOT/migration" sh -c '
   ! grep -Eq "^  export DOTSH_STARTUP_PROFILE(_DEFAULT)?=" "$result"
   ! grep -q "DOTSH_STARTUP_PROFILE:-DOTSH_STARTUP_PROFILE_DEFAULT" "$result"
   ! grep -q "DOTSH_USE_FZF_TAB" "$result"
+  grep -q "^  export DOTSH_USE_FZF=false$" "$result"
   ! grep -q "obsolete_bootstrap\|tool-bootstrap\|dotsh_zshenv\|export PREVIOUS_\|previous_zshenv\|DOTSH_USE_FZF_FROM_" "$result"
   [ "$(grep -c "setopt no_global_rcs" "$result")" = 1 ]
   cp "$result" "$result.expected"
   generate_zshenv
   cmp "$result" "$result.expected"
 ' sh "$TEST_ROOT/install-lib.sh"
+
+# Preserve the FZF choice in both modes, preferring the current name when both
+# names are present. Regeneration must also introduce the flag into old files.
+for fzf_case in legacy_false legacy_true current_false both_false both_true absent; do
+  fzf_root="$TEST_ROOT/fzf-$fzf_case"
+  mkdir -p "$fzf_root/zsh/home"
+  cp "$ROOT/zsh/.zshenv.init" "$fzf_root/zsh/.zshenv.init"
+  fzf_preferences="$fzf_root/zsh/home/.zshenv"
+  # shellcheck disable=SC2016
+  printf '%s\n' 'if [ -n "${ZSH_VERSION-}" ]; then' > "$fzf_preferences"
+  case $fzf_case in
+    legacy_false) printf '%s\n' '  export DOTSH_USE_FZF_TAB=false' >> "$fzf_preferences" ;;
+    legacy_true) printf '%s\n' '  export DOTSH_USE_FZF_TAB=true' >> "$fzf_preferences" ;;
+    current_false) printf '%s\n' '  export DOTSH_USE_FZF=false' >> "$fzf_preferences" ;;
+    both_false) printf '%s\n' '  export DOTSH_USE_FZF=false' '  export DOTSH_USE_FZF_TAB=true' >> "$fzf_preferences" ;;
+    both_true) printf '%s\n' '  export DOTSH_USE_FZF_TAB=false' '  export DOTSH_USE_FZF=true' >> "$fzf_preferences" ;;
+  esac
+  # shellcheck disable=SC2016
+  printf '%s\n' '  export CUSTOM_FZF_FLAG=$DOTSH_USE_FZF_TAB' 'fi' >> "$fzf_preferences"
+  cp "$fzf_preferences" "$fzf_preferences.original"
+  case $fzf_case in
+    legacy_false | current_false | both_false) fzf_expected=false ;;
+    *) fzf_expected=true ;;
+  esac
+  for fzf_mode in interactive non-interactive; do
+    cp "$fzf_preferences.original" "$fzf_preferences"
+    DOTFILES_DIR="$fzf_root" sh -ec '
+      . "$1"
+      MODE=$2
+      if is_non_interactive; then
+        configure_non_interactive
+        load_non_interactive_choices
+      else
+        set_interactive_defaults
+      fi
+      [ "$use_fzf" = "$3" ]
+      info() { :; }
+      generate_zshenv
+      result="$DOTFILES_DIR/zsh/home/.zshenv"
+      grep -q "^  export DOTSH_USE_FZF=$3$" "$result"
+      [ "$(grep -c "export DOTSH_USE_FZF=" "$result")" = 1 ]
+      ! grep -q "DOTSH_USE_FZF_TAB" "$result"
+      if is_non_interactive; then
+        grep -Fq "CUSTOM_FZF_FLAG=\$DOTSH_USE_FZF" "$result"
+      fi
+      cp "$result" "$result.expected"
+      generate_zshenv
+      cmp "$result" "$result.expected"
+    ' sh "$TEST_ROOT/install-lib.sh" "$fzf_mode" "$fzf_expected"
+  done
+done
 
 privilege_log=$TEST_ROOT/privilege.log
 PRIVILEGE_LOG=$privilege_log sh -c '

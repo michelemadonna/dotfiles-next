@@ -33,6 +33,12 @@ with a disposable fake HOME to verify Powerlevel10k patch migration.
 ## Interactive validation
 
 Use a real writable PTY, preferably the Docker demo for Docker-specific work.
+Run the standalone runtime check in fresh isolated shells with
+`DOTSH_USE_FZF=true` and `DOTSH_USE_FZF=false`. With `false`, exercise the native
+Tab/history/editing keys and generated `Shift-Tab` completion while an fzf
+binary is available. Assert that fuzzy widgets, styles, Git hooks, previews,
+and the fuzzy keybinding reference are absent. Verify that Mise version
+completion uses native candidates in this mode.
 For temporary macOS tests use:
 
 ```text

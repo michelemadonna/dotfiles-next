@@ -59,6 +59,11 @@ plugins load. Call it before user-specific bindings so they can take precedence.
   helper loads independent fzf-tab, FSH, history search, and generated
   completions on first use.
 
+`DOTSH_USE_FZF` defaults to `true`. With `false`, the deferred fzf widgets,
+fzf-tab, fzf-git, command previews, fuzzy keybinding reference, and Mise fuzzy
+selector are skipped. Generated completions retain their native Zsh fallback.
+The installer converts the previous preference name once.
+
 ## Removed framework responsibilities
 
 No install/update/reset dispatcher, package channels, bootstrap, automatic

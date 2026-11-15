@@ -10,6 +10,7 @@ typeset -g DOTSH_FAST_ZLE_LOADED=${DOTSH_FAST_ZLE_LOADED:-false}
 
 dotsh_fast_prepare_fzf() {
 	emulate -L zsh
+	[[ ${DOTSH_USE_FZF:-true} == true ]] || return 1
 	local fzf_repo=${FZF_LOCAL_REPO:-$DOTSH_PACKAGES/fzf}
 	local fzf_bin=${FZF_LOCAL_BIN:-$DOTSH_PACKAGES/fzf/bin/fzf}
 
@@ -32,6 +33,7 @@ dotsh_fast_prepare_fzf() {
 
 dotsh_fast_load_fzf() {
 	emulate -L zsh
+	[[ ${DOTSH_USE_FZF:-true} == true ]] || return 1
 	[[ $DOTSH_FAST_FZF_LOADED == true ]] && return 0
 
 	dotsh_fast_prepare_fzf || {
@@ -64,7 +66,9 @@ dotsh_fast_load_gencomp() {
 	emulate -L zsh
 	[[ $DOTSH_FAST_GENCOMP_LOADED == true ]] && return 0
 
-	dotsh_fast_load_fzf || return 1
+	if [[ ${DOTSH_USE_FZF:-true} == true ]]; then
+		dotsh_fast_load_fzf || return 1
+	fi
 	[[ -d $DOTSH_PACKAGES/zsh-completion-generator ]] || { print -u2 -- "Missing prepared dependency: $DOTSH_PACKAGES/zsh-completion-generator"; return 1; }
 	dotsh_source --compile "$DOTFILES_DIR/zsh/dotsh.custom.plugins/dotsh-gencomp-lazy.plugin.zsh" || return 1
 	typeset -g DOTSH_FAST_GENCOMP_LOADED=true
@@ -119,21 +123,25 @@ _dotsh_fast_gencomp_widget() {
 		zle _zqs_gencomp_for_current_command
 }
 
-zle -N _dotsh_fast_fzf_tab_widget
-zle -N _dotsh_fast_fzf_history_widget
-zle -N _dotsh_fast_fzf_file_widget
-zle -N _dotsh_fast_fzf_cd_widget
-zle -N _dotsh_fast_fzf_git_widget
+if [[ ${DOTSH_USE_FZF:-true} == true ]]; then
+	zle -N _dotsh_fast_fzf_tab_widget
+	zle -N _dotsh_fast_fzf_history_widget
+	zle -N _dotsh_fast_fzf_file_widget
+	zle -N _dotsh_fast_fzf_cd_widget
+	zle -N _dotsh_fast_fzf_git_widget
+fi
 if [[ ${DOTSH_ENABLE_AUTO_GENCOMP:-true} == true ]]; then
 	zle -N _dotsh_fast_gencomp_widget
 fi
 
 for _dotsh_fast_keymap in emacs viins vicmd; do
-	bindkey -M $_dotsh_fast_keymap '^I' _dotsh_fast_fzf_tab_widget
-	bindkey -M $_dotsh_fast_keymap '^R' _dotsh_fast_fzf_history_widget
-	bindkey -M $_dotsh_fast_keymap '^T' _dotsh_fast_fzf_file_widget
-	bindkey -M $_dotsh_fast_keymap '^[c' _dotsh_fast_fzf_cd_widget
-	bindkey -M $_dotsh_fast_keymap '^G' _dotsh_fast_fzf_git_widget
+	if [[ ${DOTSH_USE_FZF:-true} == true ]]; then
+		bindkey -M $_dotsh_fast_keymap '^I' _dotsh_fast_fzf_tab_widget
+		bindkey -M $_dotsh_fast_keymap '^R' _dotsh_fast_fzf_history_widget
+		bindkey -M $_dotsh_fast_keymap '^T' _dotsh_fast_fzf_file_widget
+		bindkey -M $_dotsh_fast_keymap '^[c' _dotsh_fast_fzf_cd_widget
+		bindkey -M $_dotsh_fast_keymap '^G' _dotsh_fast_fzf_git_widget
+	fi
 	if [[ ${DOTSH_ENABLE_AUTO_GENCOMP:-true} == true ]]; then
 		bindkey -M $_dotsh_fast_keymap '^[[Z' _dotsh_fast_gencomp_widget
 	fi

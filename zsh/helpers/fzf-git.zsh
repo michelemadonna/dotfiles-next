@@ -4,6 +4,8 @@
 # fixed revision; this adapter owns command-aware TAB completion and the
 # compatibility path for older independently installed fzf versions.
 
+[[ ${DOTSH_USE_FZF:-true} == true ]] || return 0
+
 emulate -L zsh
 setopt extended_glob no_aliases
 

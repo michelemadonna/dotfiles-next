@@ -16,11 +16,13 @@ Docker usage, or user-facing UX changes.
 - Preserve installer modes, environment contracts, and idempotency.
   Non-interactive mode skips installer questions but may request a sudo password.
 - Preserve Docker remote/local source behavior and cache boundaries.
-- Independent fzf supplies `Ctrl-T`, `Ctrl-R`, and `Alt-C`; do not restore
+- `DOTSH_USE_FZF` controls fzf, fzf-tab, and their integrations, defaulting to
+  `true`. When enabled, independent fzf supplies `Ctrl-T`, `Ctrl-R`, and `Alt-C`; do not restore
   `unixorn/fzf-zsh-plugin`.
 - fzf-tab, `Ctrl-T`, and `Alt-C` share preview/hidden-file state. `Ctrl-P`
   cycles preview layout and `Ctrl-H` toggles hidden files.
-- Completion generation is explicitly triggered with `Shift-Tab`.
+- Completion generation is explicitly triggered with `Shift-Tab` and supports
+  native Zsh completion when fzf is disabled.
 - Edit persistent repository sources, never generated files or cache artifacts.
 - Source `zsh/runtime/dotsh-startup.zsh` first in `.zshrc`; preserve its options,
   deferred completion, redraw, and autosuggestion integration. The installer

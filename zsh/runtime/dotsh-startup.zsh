@@ -16,6 +16,7 @@ setopt glob_dots no_auto_menu complete_in_word pushd_ignore_dups no_global_rcs
 
 typeset -g DOTSH_RUNTIME="$DOTFILES_DIR/zsh/runtime"
 typeset -g DOTSH_PACKAGES="$DOTFILES_DIR/zsh/vendor/packages"
+export DOTSH_USE_FZF=${DOTSH_USE_FZF:-true}
 typeset -g DOTSH_CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/zsh"
 typeset -g DOTSH_STATE="${XDG_STATE_HOME:-$HOME/.local/state}/zsh"
 typeset -gr _dotsh_opt='emulate -L zsh &&
@@ -312,7 +313,9 @@ if [[ -o interactive ]]; then
   dotsh_configure_keyboard || return
   zstyle ':dotsh:' term-shell-integration yes
   zstyle ':dotsh:autosuggestions' forward-char accept
-  zstyle ':dotsh:fzf-complete' recurse-dirs no
+  if [[ $DOTSH_USE_FZF == true ]]; then
+    zstyle ':dotsh:fzf-complete' recurse-dirs no
+  fi
   zstyle ':dotsh:compinit' dump-path "$DOTSH_CACHE/zcompdump-${EUID}-${ZSH_VERSION}"
   zstyle ':completion:*' list-colors ${(s.:.)LS_COLORS}
   zstyle ':completion:*:descriptions' format '[%d]'
