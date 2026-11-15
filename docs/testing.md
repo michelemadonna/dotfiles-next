@@ -38,6 +38,15 @@ missing tools, and the 300-line output limit. The installer tests assert the
 APT, Homebrew, and MacPorts packages plus marker migration and idempotency.
 Also inspect an archive through the actual fzf preview in a writable PTY.
 
+For filesystem icon changes run `python3 tests/test-fzf-icons.py` with the
+pinned fzf prepared and eza installed. It verifies eza glyphs, one batched
+lookup, exact selected paths with spaces and metacharacters, icon-free search,
+hidden-file reload lists, fallback behavior, and fzf-tab group/metadata
+preservation. In a writable PTY inspect the actual icons in `Ctrl-T`, `Alt-C`,
+and filesystem Tab completion; verify previews, multiple selection,
+cancellation, and `Ctrl-H`/`Ctrl-P`. Exercise both fzf-tab generators when a
+compiled native module is available.
+
 ## Interactive validation
 
 Use a real writable PTY, preferably the Docker demo for Docker-specific work.

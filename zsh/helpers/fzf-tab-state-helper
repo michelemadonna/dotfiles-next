@@ -12,32 +12,40 @@ state_dir=${state_file:h}
 mkdir -p -- "$state_dir" || exit 1
 
 if [[ $action == list-files || $action == list-directories ]]; then
-    state=''
-    [[ -r $state_file ]] && state=$(<"$state_file")
+    dotsh_fzf_list_paths() {
+        state=''
+        [[ -r $state_file ]] && state=$(<"$state_file")
 
-    if (( $+commands[fd] )); then
-        fd_args=(--follow --color=never --exclude .git --exclude node_modules)
-        [[ $state == on ]] && fd_args+=(--hidden)
-        [[ $action == list-files ]] && fd_args+=(--type f) || fd_args+=(--type d)
-        command fd "${fd_args[@]}" . | command sort -f
-    elif [[ $action == list-files ]]; then
-        if [[ $state == on ]]; then
+        if (( $+commands[fd] )); then
+            fd_args=(--follow --color=never --exclude .git --exclude node_modules)
+            [[ $state == on ]] && fd_args+=(--hidden)
+            [[ $action == list-files ]] && fd_args+=(--type f) || fd_args+=(--type d)
+            command fd "${fd_args[@]}" . | command sort -f
+        elif [[ $action == list-files ]]; then
+            if [[ $state == on ]]; then
+                command find . \
+                    \( -path '*/.git/*' -o -path '*/node_modules/*' \) -prune -o \
+                    -type f -print | command sort -f
+            else
+                command find . \
+                    \( -path '*/.*' -o -path '*/node_modules/*' \) -prune -o \
+                    -type f -print | command sort -f
+            fi
+        elif [[ $state == on ]]; then
             command find . \
-                \( -path '*/.git/*' -o -path '*/node_modules/*' \) -prune -o \
-                -type f -print | command sort -f
+                \( -path '*/.git' -o -path '*/node_modules' \) -prune -o \
+                -type d -print | command sort -f
         else
             command find . \
-                \( -path '*/.*' -o -path '*/node_modules/*' \) -prune -o \
-                -type f -print | command sort -f
+                \( -path '*/.*' -o -path '*/node_modules' \) -prune -o \
+                -type d -print | command sort -f
         fi
-    elif [[ $state == on ]]; then
-        command find . \
-            \( -path '*/.git' -o -path '*/node_modules' \) -prune -o \
-            -type d -print | command sort -f
+    }
+    if [[ $marker_file == --icons ]]; then
+        source "${0:A:h}/fzf-icons.zsh" || exit 1
+        dotsh_fzf_list_paths | dotsh_fzf_icon_records
     else
-        command find . \
-            \( -path '*/.*' -o -path '*/node_modules' \) -prune -o \
-            -type d -print | command sort -f
+        dotsh_fzf_list_paths
     fi
     exit
 fi

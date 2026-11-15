@@ -526,6 +526,11 @@ docker build \
 
 ### 7.2. 🔍 fzf
 
+The candidate panel shows eza's file and directory icons in `Ctrl-T`, `Alt-C`,
+and filesystem Tab completion. Use a Nerd Font to display the glyphs. Icons
+do not affect matching, inserted paths, or previews. If eza is unavailable or
+cannot identify a candidate, that candidate remains selectable without an icon.
+
 Archive previews use 7-Zip, preferring `7zz` and accepting `7z`. ZIP, 7z, RAR,
 TAR, gzip, XZ, and bzip2 listings are limited to 300 lines. Compressed TAR
 members are listed through an in-memory pipeline. Single compressed files

@@ -84,6 +84,16 @@ fzf-tab and the file widgets share hidden-file and preview state: `Ctrl-P`
 cycles preview layout and `Ctrl-H` toggles hidden files. Completion generation
 is explicitly requested with `Shift-Tab`.
 
+`zsh/helpers/fzf-icons.zsh` obtains icons from one eza invocation per candidate
+list. `Ctrl-T` and `Alt-C` carry the original path and icon in separate NUL
+fields; fzf displays the icon first but searches and returns only the path.
+Preview commands receive the original path. Hidden-file reloads rebuild the
+decoration. A repository-owned wrapper decorates fzf-tab's generated display
+field while preserving its group colors, completion values, and preview
+metadata, including the native module's record format. Non-filesystem
+completions remain unchanged. Missing eza or unrenderable paths fall back to
+plain candidates. The adapter loads only when `DOTSH_USE_FZF=true`.
+
 The shared file preview helper lists ZIP, 7z, RAR, TAR, gzip, XZ, and bzip2
 archives through 7-Zip (`7zz`, then `7z`). Compressed TAR contents pass between
 7-Zip processes in memory; standalone compressed files use the container's

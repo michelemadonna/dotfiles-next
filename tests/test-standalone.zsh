@@ -59,6 +59,8 @@
   if [[ ${DOTSH_USE_FZF:-true} == true ]]; then
     dotsh_fast_load_fzf || return 1
     (( $+functions[_fzf_tab_complete_with_dots] )) || return 1
+    (( $+functions[dotsh_fzf_icon_records] &&
+       $+functions[-dotsh-ftb-generate-complist] )) || return 1
     [[ $DOTSH_FZF_GIT_ADAPTER == $DOTFILES_DIR/zsh/helpers/fzf-git.zsh ]] || {
       print -u2 -- 'Compiled helper lost its original source path.'
       return 1
@@ -71,7 +73,9 @@
        ${DOTSH_FZF_GIT_LOADED:-false} == false &&
        ${DOTSH_FZF_GIT_VENDOR_LOADED:-false} == false ]] || return 1
     (( ! $+functions[_fzf_tab_complete_with_dots] && ! $+functions[_fzf_git_files] &&
-       ! $+functions[__fzf_default_command] && ! $+functions[__keybinds] )) || return 1
+       ! $+functions[__fzf_default_command] && ! $+functions[__keybinds] &&
+       ! $+functions[dotsh_fzf_icon_records] &&
+       ! $+functions[-dotsh-ftb-generate-complist] )) || return 1
     [[ -z $(zstyle -L ':fzf-tab:*') ]] || return 1
     local keymap key
     for keymap in emacs viins vicmd; do

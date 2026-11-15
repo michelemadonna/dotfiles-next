@@ -50,6 +50,8 @@ dotsh_fast_load_fzf() {
 	source "$fzf_bindings"
 	bindkey '^I' expand-or-complete
 	dotsh_load -c "$DOTSH_PACKAGES/fzf-tab" || return 1
+	dotsh_source --compile "$DOTFILES_DIR/zsh/helpers/fzf-icons.zsh" || return 1
+	dotsh_fzf_setup_icons || return 1
 
 	if [[ ${DOTSH_FZF_GIT_VENDOR_LOADED:-false} != true ]]; then
 		typeset -g DOTSH_FZF_GIT_VENDOR_LOADED=true

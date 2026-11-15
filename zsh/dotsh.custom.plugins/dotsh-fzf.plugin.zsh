@@ -312,8 +312,8 @@ typeset _fzf_state_command_q="${(q)FZF_TAB_STATE_COMMAND}"
 typeset _fzf_state_helper_q="${(q)FZF_TAB_STATE_HELPER}"
 typeset _fzf_hidden_state_file_q="${(q)FZF_TAB_HIDDEN_STATE_FILE}"
 typeset _fzf_toggle_hidden_command="${_fzf_state_command_q} ${_fzf_state_helper_q} toggle-hidden ${_fzf_hidden_state_file_q}"
-typeset _fzf_list_files_command="${_fzf_state_command_q} ${_fzf_state_helper_q} list-files ${_fzf_hidden_state_file_q}"
-typeset _fzf_list_directories_command="${_fzf_state_command_q} ${_fzf_state_helper_q} list-directories ${_fzf_hidden_state_file_q}"
+typeset _fzf_list_files_command="${_fzf_state_command_q} ${_fzf_state_helper_q} list-files ${_fzf_hidden_state_file_q} --icons"
+typeset _fzf_list_directories_command="${_fzf_state_command_q} ${_fzf_state_helper_q} list-directories ${_fzf_hidden_state_file_q} --icons"
 
 export FZF_CTRL_T_COMMAND="$_fzf_list_files_command"
 export FZF_ALT_C_COMMAND="$_fzf_list_directories_command"
@@ -329,13 +329,15 @@ _fzf_widget_refresh_flags() {
     local state_command_q="${(q)FZF_TAB_STATE_COMMAND}"
     local state_helper_q="${(q)FZF_TAB_STATE_HELPER}"
     local toggle_hidden_command="${state_command_q} ${state_helper_q} toggle-hidden ${hidden_state_q}"
-    local list_files_command="${state_command_q} ${state_helper_q} list-files ${hidden_state_q}"
-    local list_directories_command="${state_command_q} ${state_helper_q} list-directories ${hidden_state_q}"
+    local list_files_command="${state_command_q} ${state_helper_q} list-files ${hidden_state_q} --icons"
+    local list_directories_command="${state_command_q} ${state_helper_q} list-directories ${hidden_state_q} --icons"
+    local preview_command_q="${(q)FZF_TAB_PREVIEW_COMMAND}"
+    local icon_flags="--delimiter='\\x00' --with-nth=2,1 --nth=2 --accept-nth=1"
     _fzf_height
     local fzf_height=$reply[1]
 
-    export FZF_CTRL_T_OPTS="--no-sort --height=${fzf_height} --header='TAB/SHIFT-TAB move  ·  CTRL-SPACE select  ·  CTRL-A mark all  ·  CTRL-J/K preview scroll  ·  CTRL-P preview  ·  CTRL-H hidden  ·  ENTER insert  ·  ESC close' --preview '$FZF_TAB_PREVIEW_COMMAND {}' --preview-window=${preview_window} --bind='ctrl-a:toggle-all,ctrl-j:preview-down,ctrl-k:preview-up,ctrl-p:execute-silent(${state_command_q} ${state_helper_q} cycle-preview ${preview_state_q})+change-preview-window(${preview_cycle})+refresh-preview,ctrl-h:execute-silent(${toggle_hidden_command})+reload(${list_files_command})'"
-    export FZF_ALT_C_OPTS="--no-sort --height=${fzf_height} --header='TAB/SHIFT-TAB move  ·  CTRL-J/K preview scroll  ·  CTRL-P preview  ·  CTRL-H hidden  ·  ENTER cd  ·  ESC close' --preview '$FZF_TAB_PREVIEW_COMMAND {}' --preview-window=${preview_window} --bind='ctrl-j:preview-down,ctrl-k:preview-up,ctrl-p:execute-silent(${state_command_q} ${state_helper_q} cycle-preview ${preview_state_q})+change-preview-window(${preview_cycle})+refresh-preview,ctrl-h:execute-silent(${toggle_hidden_command})+reload(${list_directories_command})'"
+    export FZF_CTRL_T_OPTS="${icon_flags} --no-sort --height=${fzf_height} --header='TAB/SHIFT-TAB move  ·  CTRL-SPACE select  ·  CTRL-A mark all  ·  CTRL-J/K preview scroll  ·  CTRL-P preview  ·  CTRL-H hidden  ·  ENTER insert  ·  ESC close' --preview '${preview_command_q} {1}' --preview-window=${preview_window} --bind='ctrl-a:toggle-all,ctrl-j:preview-down,ctrl-k:preview-up,ctrl-p:execute-silent(${state_command_q} ${state_helper_q} cycle-preview ${preview_state_q})+change-preview-window(${preview_cycle})+refresh-preview,ctrl-h:execute-silent(${toggle_hidden_command})+reload(${list_files_command})'"
+    export FZF_ALT_C_OPTS="${icon_flags} --no-sort --height=${fzf_height} --header='TAB/SHIFT-TAB move  ·  CTRL-J/K preview scroll  ·  CTRL-P preview  ·  CTRL-H hidden  ·  ENTER cd  ·  ESC close' --preview '${preview_command_q} {1}' --preview-window=${preview_window} --bind='ctrl-j:preview-down,ctrl-k:preview-up,ctrl-p:execute-silent(${state_command_q} ${state_helper_q} cycle-preview ${preview_state_q})+change-preview-window(${preview_cycle})+refresh-preview,ctrl-h:execute-silent(${toggle_hidden_command})+reload(${list_directories_command})'"
 }
 
 _dotsh_fzf_file_widget() {
