@@ -23,6 +23,13 @@ in a disposable Intel VM.
 For modified Zsh files run `/bin/zsh -n` on every file. Static startup checks
 do not prove ZLE, fzf-tab, prompt, Fastfetch, or terminal behavior.
 
+For package loader or dependency preparation changes run
+`python3 tests/test-shell-packages.py`. It uses disposable HOME directories
+and local Git repositories to exercise pinned/latest downloads, lockfile
+recording, compilation, offline reuse, nested plugins, failures, concurrent
+loaders, and full installer preparation. Run `tests/test-dependency-patch.sh`
+with a disposable fake HOME to verify Powerlevel10k patch migration.
+
 ## Interactive validation
 
 Use a real writable PTY, preferably the Docker demo for Docker-specific work.

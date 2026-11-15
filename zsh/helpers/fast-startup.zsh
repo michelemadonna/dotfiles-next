@@ -45,8 +45,6 @@ dotsh_fast_load_fzf() {
 		return 1
 	}
 
-	[[ -d $DOTSH_PACKAGES/fzf-tab ]] || { print -u2 -- "Missing prepared dependency: $DOTSH_PACKAGES/fzf-tab"; return 1; }
-
 	source "$fzf_bindings"
 	bindkey '^I' expand-or-complete
 	dotsh_load -c "$DOTSH_PACKAGES/fzf-tab" || return 1
@@ -76,8 +74,6 @@ dotsh_fast_load_zle_features() {
 	emulate -L zsh
 	[[ $DOTSH_FAST_ZLE_LOADED == true ]] && return 0
 
-	[[ -d $DOTSH_PACKAGES/fast-syntax-highlighting ]] || { print -u2 -- "Missing prepared dependency: $DOTSH_PACKAGES/fast-syntax-highlighting"; return 1; }
-	[[ -d $DOTSH_PACKAGES/zsh-history-substring-search ]] || { print -u2 -- "Missing prepared dependency: $DOTSH_PACKAGES/zsh-history-substring-search"; return 1; }
 	dotsh_load_highlighting || return 1
 	dotsh_load -c "$DOTSH_PACKAGES/zsh-history-substring-search" || return 1
 

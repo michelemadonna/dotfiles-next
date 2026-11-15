@@ -140,11 +140,23 @@ dotsh_prepare_runtime() {
 }
 
 dotsh_load() {
-  local directory entry
-  local -a flags
+  local requested directory entry
+  local -a flags reply
   if [[ ${1-} == (-c|--compile) ]]; then flags=(-c); shift; fi
-  for directory in "$@"; do
+  [[ ${1-} != -- ]] || shift
+  for requested in "$@"; do
+    directory=$requested
+    if [[ ! -d $directory ]]; then
+      (( $+functions[dotsh_resolve_package] )) ||
+        builtin source "$DOTFILES_DIR/zsh/helpers/shell-packages.zsh" || return
+      dotsh_resolve_package "$requested" || return
+      directory=$reply[1]
+      if [[ ! -d $directory ]]; then
+        directory=$(dotsh_prepare_package "$requested") || return
+      fi
+    fi
     [[ -d $directory ]] || { print -ru2 -- "dotsh: missing plugin: $directory"; return 1; }
+    directory=${directory:a}
     fpath+=("$directory" "$directory"/functions(N-/))
     local -a funcs=("$directory"/functions/^([_.]*|prompt_*_setup|README*|*~|*.zwc)(N-.:t))
     (( ! $#funcs )) || autoload -Uz -- $funcs

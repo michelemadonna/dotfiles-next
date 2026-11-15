@@ -8,10 +8,15 @@
   user overrides, then configures the local runtime and loads custom plugins.
 - `zsh/runtime/fn` contains the attributed runtime extraction, while
   `zsh/runtime/dotsh-startup.zsh` owns startup defaults and initialization.
-  Neither includes a package manager, updater, chsh, SSH teleportation, or a
-  tmux launcher.
+  Package resolution and preparation are shared with the installer through
+  `zsh/helpers/shell-packages.zsh`.
 - `zsh/vendor/packages.lock` pins independent plugins installed by
-  `zsh/helpers/prepare-shell-dependencies.sh`. They are not fetched during startup.
+  `zsh/helpers/prepare-shell-dependencies.sh`. `dotsh_load` also prepares missing
+  packages on demand. Unpinned repositories resolve to the default branch's
+  current commit, which is recorded in the lockfile. A kernel file lock
+  serializes preparation and atomic lockfile replacement across shells and
+  the installer. Prepared packages are published after downloads, patches,
+  and package-specific executable setup succeed.
 - Powerlevel10k remains the default prompt; Oh My Posh is optional.
 
 See [Standalone Zsh migration](standalone-zsh.md) for runtime boundaries,
@@ -62,7 +67,8 @@ completion until first use; highlighting and history substring search load at
 the first ZLE line. The local runtime handles autosuggestions and redraw.
 The runtime does not register its legacy fzf widgets or source its own
 highlighting/history-search plugins. Startup does not load the framework or
-install dependencies.
+update installed packages. Missing packages requested through `dotsh_load`
+are downloaded before loading, including deferred plugin loading on first use.
 
 ## Shell contracts
 

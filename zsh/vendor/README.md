@@ -2,9 +2,12 @@
 
 ## Standalone runtime dependencies
 
-`packages.lock` pins the independent upstream repositories prepared explicitly
-by `../helpers/prepare-shell-dependencies.sh`. The generated `packages/` tree
-is ignored; preserve this manifest and the local patches as persistent sources.
+`packages.lock` pins the independent upstream repositories prepared by
+`../helpers/prepare-shell-dependencies.sh` and by `dotsh_load` for missing
+packages. Both use `../helpers/shell-packages.zsh`. An unpinned GitHub repository
+resolves to its default branch's current commit and records that commit here.
+The generated `packages/` tree is ignored; preserve this manifest and the local
+patches as persistent sources. Existing packages are reused during startup.
 
 `patches/powerlevel10k-dotsh-runtime.patch` preserves Powerlevel10k's direct
 ZLE widget dispatch optimization for the extracted `dotsh` namespace, including
@@ -50,4 +53,5 @@ To update the vendored revision manually:
 4. Resolve upstream drift by updating only the patch, then run the static,
    fixture, and real-PTY checks documented in `docs/testing.md`.
 
-Do not add update or download work to shell startup.
+Updates to `fzf-git.sh` follow this manual process. Package downloads use the
+shared preparation helper.

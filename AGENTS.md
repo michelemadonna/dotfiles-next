@@ -23,8 +23,10 @@ Docker usage, or user-facing UX changes.
 - Completion generation is explicitly triggered with `Shift-Tab`.
 - Edit persistent repository sources, never generated files or cache artifacts.
 - Source `zsh/runtime/dotsh-startup.zsh` first in `.zshrc`; preserve its options,
-  deferred completion, redraw, and autosuggestion integration. Prepare pinned
-  dependencies explicitly; never install or update them during shell startup.
+  deferred completion, redraw, and autosuggestion integration. The installer
+  prepares core dependencies. `dotsh_load` downloads missing packages using
+  locked commits, or resolves latest and records its commit when unpinned.
+  Startup reuses installed packages without automatic updates.
 - Use `DOTSH_*` for preferences and `dotsh` for helper/plugin names. Custom
   plugins live in `zsh/dotsh.custom.plugins`. Import old preference names only
   through the installer's one-time conversion; do not export runtime aliases.

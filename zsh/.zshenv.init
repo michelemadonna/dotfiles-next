@@ -64,7 +64,7 @@ if [ -n "${ZSH_VERSION-}" ]; then
 
   export VIMINIT='source ~/.config/vim/vimrc'
 
-  # Dependencies are prepared explicitly by install.sh, never during startup.
+  # The installer prepares core dependencies; dotsh_load fetches missing plugins.
 
   ## customize your color scheme and keep them in sync
   ## across Linux and OS X/*BSD at http://geoff.greer.fm/lscolors/

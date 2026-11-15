@@ -14,6 +14,15 @@ in `../vendor/packages`; runtime state lives in the XDG Zsh cache/state roots.
 `dotsh_prepare_runtime` explicitly prepares autoload wordcode; startup does not
 recompile the whole tree. `.zwc` files are generated artifacts.
 
+`dotsh_load` accepts local directories, locked package names, and GitHub
+`owner/repo` identifiers, with optional `-c` / `--compile`. Missing packages
+are downloaded through the shared package helper. Locked commits are used
+exactly; missing revisions resolve to the default branch's HEAD and are
+recorded in `../vendor/packages.lock`. Installed packages are reused offline.
+New repositories live under `../vendor/packages/owner/repo`; existing lockfile
+names retain their original paths. Package preparation and lockfile writes
+are serialized across shells and the installer.
+
 `dotsh_bind_default_keys` applies the repository's default keybindings after
 plugins load. Call it before user-specific bindings so they can take precedence.
 
@@ -28,8 +37,8 @@ plugins load. Call it before user-specific bindings so they can take precedence.
   pagers, colors, prompt and history defaults.
 - Source wordcode using the original source/+1-second mtime validation,
   atomic publication, and optional explicit runtime precompilation.
-- Powerlevel10k instant prompt and Git status cache; downloads are disabled
-  during startup, so explicit dependency preparation must install gitstatus.
+- Powerlevel10k instant prompt and Git status cache; package preparation
+  installs gitstatus, while its own automatic downloads remain disabled.
 - Deferred compsys initialization, queued `compdef` replay, and compiled
   completion dumps invalidated by Zsh version/patchlevel plus completion
   filenames and mtimes. Stock `compinit` replaces the framework-generated

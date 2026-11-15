@@ -43,7 +43,7 @@ fresh/tsconfig.json
 fresh/types/fresh.d.ts
 fresh/types/plugins.d.ts
 
-# Explicitly prepared pinned shell dependencies
+# Prepared shell dependencies, including packages fetched by dotsh_load
 zsh/vendor/packages/
 zsh/home/.zshenv.pre-standalone
 docs/benchmarks/

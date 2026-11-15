@@ -38,7 +38,9 @@ a startup-profile choice, and removes obsolete `DOTSH_STARTUP_PROFILE*` entries
 when migrating an existing generated environment file.
 The installer prepares the revisions in `zsh/vendor/packages.lock` through
 `zsh/helpers/prepare-shell-dependencies.sh`. Startup uses the local runtime
-and prepared plugins without a framework bootstrap or network access.
+and prepared plugins. Missing packages requested through `dotsh_load` are
+prepared on demand through the same per-package helper. Versions absent from
+the lockfile resolve to the current default-branch commit and are recorded.
 
 ## Tools and state
 
@@ -57,7 +59,8 @@ prepared.
 The pinned fzf checkout is linked at `~/.local/share/fzf`, and its binary is
 copied to `~/.local/bin/fzf`. Repeating installation reuses matching revisions.
 This path supplies the modern fzf actions used by the vendored fzf-git
-integration. Missing dependencies must be repaired by explicitly running the installer.
+integration. The installer repairs core dependencies and standalone tools;
+`dotsh_load` repairs missing packages it loads directly.
 Mise uses the official installer on macOS and Linux, then prepares activation,
 completion, and ASDF compatibility data. Shell startup never invokes the installer.
 
@@ -114,8 +117,8 @@ isolates Homebrew from the normal `PATH` and exposes explicit exceptions.
 
 Installer logs use the dotsh palette: cyan 36, yellow 33, green 32, red 31,
 bold 1, reset 0, with Unicode icons/borders and an ASCII fallback. External
-package-manager output remains visible. Missing startup dependencies require
-explicit preparation; the shell does not launch the installer automatically.
+package-manager output remains visible. The loader prepares individual missing
+packages without invoking the full installer or changing configuration links.
 
 The cache reset function lists its targets and asks for confirmation. It may
 remove Zsh/Mise/Oh My Posh/completion caches and compiled checkout

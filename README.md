@@ -7,7 +7,7 @@
 `dotfiles-next` is an opinionated collection of shell settings, terminal tools, editor configurations, themes, fonts, and custom Zsh plugins. It provides an interactive installer for personal workstations, a deterministic non-interactive mode for automation, and a complete Docker image for exploring the setup without changing the host.
 
 The default prompt is **Powerlevel10k**. **Oh My Posh** is available as an explicit alternative. 
-The local `dotsh` runtime preserves the Zsh options, completion caching, and ZLE optimizations extracted from the upstream reference. Pinned independent plugins are prepared explicitly by the installer; shell startup performs no framework installation or update. See [the standalone migration](docs/standalone-zsh.md).
+The local `dotsh` runtime preserves the Zsh options, completion caching, and ZLE optimizations extracted from the upstream reference. The installer prepares pinned independent plugins. `dotsh_load` also downloads missing plugins on demand and records the resolved commit for new repositories. Installed plugins are reused on subsequent startups. See [the standalone migration](docs/standalone-zsh.md).
 
 ---
 
@@ -197,7 +197,7 @@ The base package set is installed once per platform. It supplies the commands us
 | ⚡️ **fd**                                                | Fast file discovery. On Ubuntu 26.04 the package is named `fd-find` and exposes `fdfind`; both the host installer and Docker image add an `fd` compatibility link under `~/.local/bin`. |
 | 🦸 **ripgrep**                                           | Fast recursive text search.                                                                                                                                                             |
 | 🧩 **git-delta**                                         | Readable, side-by-side diffs.                                                                                                                                                           |
-| 🔍 **fzf** and **fzf-tab**                               | Fuzzy file selection and interactive Zsh completion, using explicitly prepared, pinned dependencies.                                                                                    |
+| 🔍 **fzf** and **fzf-tab**                               | Fuzzy file selection and interactive Zsh completion, using pinned dependencies.                                                                                    |
 | 📺 **chafa**, **mediainfo**, **poppler**, and **file**   | Image, media, PDF, and generic file previews inside fzf.                                                                                                                                |
 | 🔀 **tmux**                                              | Persistent terminal sessions with the included mouse and keyboard configuration.                                                                                                        |
 | 🛠️ **htop**, **tree**, **wget**, and DNS tools          | Process inspection, directory views, downloads, and host/DNS inspection.                                                                                                                |
@@ -284,8 +284,34 @@ After installation, start a fresh login shell:
 exec zsh -l
 ```
 
-The installer explicitly prepares the pinned external plugins and executables.
-Shell startup uses those local dependencies and does not download or update them.
+The installer prepares the pinned external plugins and executables.
+`dotsh_load` downloads a missing plugin and loads it in the same call, with or
+without `-c` / `--compile`. Add a GitHub repository to your `.zshrc` using this
+syntax, replacing `owner/plugin` with the repository you want:
+
+```zsh
+dotsh_load -c owner/plugin
+```
+
+The loader accepts GitHub `owner/repo` identifiers, names from
+`zsh/vendor/packages.lock`, and local plugin directories. Registered packages
+retain their existing directories. New repositories are stored under
+`zsh/vendor/packages/owner/repo/`, which is ignored by Git.
+Missing registered packages use the exact commit in the lockfile. When a
+repository or its revision is absent, or the revision is `latest`, the loader
+downloads the current default-branch commit and writes it to the tracked
+lockfile. Later installations reproduce that commit. Startup reuses packages
+already on disk without fetching updates. The lockfile must be writable when
+recording a new commit, and Git/network access is required for downloads.
+If a new repository's directory overlaps an existing lockfile package, give
+it a separate name in the lockfile. The GitHub identifier will resolve to
+that registered name.
+
+`-c` compiles the plugin before loading it. Existing local directories are
+loaded directly. A missing path inside the packages directory resolves to its
+registered parent package, allowing Oh My Zsh plugin subdirectories to be
+recovered as well. Core dependencies loaded directly by the runtime and
+standalone tools are prepared by the installer.
 
 To clear the runtime caches and selected state files, run:
 

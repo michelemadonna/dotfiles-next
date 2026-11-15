@@ -41,9 +41,14 @@ The installer detects a previous preference namespace from the saved startup
 profile and converts it to `DOTSH_*` before reading or generating preferences.
 It preserves choices and custom settings without exporting legacy aliases.
 
-No framework package manager, update dispatcher, automatic installer, `chsh`,
+No framework package manager, update dispatcher, `chsh`,
 SSH teleportation, or managed tmux startup is loaded. Missing dependencies
-require explicit preparation. Gitstatus automatic downloads are disabled.
+loaded through `dotsh_load` are prepared on demand, using locked commits.
+GitHub identifiers absent from the lockfile use the current default-branch
+commit and record it for subsequent installations. Both `dotsh_load plugin`
+and `dotsh_load -c plugin` support this behavior. Existing local paths and
+registered package subdirectories remain supported. Gitstatus's own automatic
+downloads are disabled; package preparation installs its daemon when needed.
 Powerlevel10k remains the default; Oh My Posh remains available.
 
 ## Runtime interface
@@ -86,7 +91,7 @@ namespace in `zsh/runtime/fn`.
 | ZLE line handlers and redraw | `-dotsh-zle-line-*` and `-dotsh-redraw-buffer` retain event flow and `zle -F` input coalescing; skip lexical work only for an empty editable buffer without a multiline prefix |
 | Autosuggestions and widget rebinding | Extracted prefix cache, suggestion invalidation, acceptance and highlighting integration |
 | Terminal integration and title handling | Extracted handlers, ordered OSC records, cached unchanged metadata and titles with command/widget/job invalidation |
-| Deferred interactive integrations | Always-enabled local `fast-startup.zsh`; fzf widgets and completion generator load on demand, without downloads |
+| Deferred interactive integrations | Always-enabled local `fast-startup.zsh`; first-use loaders recover missing packages through `dotsh_load` |
 | Existing Mise activation cache | Existing custom Mise plugin retained; launcher confines its output directories |
 
 The original framework's executable installer, package updates, self-update,
@@ -97,7 +102,8 @@ The fake HOME uses a separate agent and avoids importing host Keychain keys.
 Startup always follows the fast path: fzf integrations and generated
 completions load on demand, while FSH and history substring search load through
 a one-time callback in the runtime's existing line-init handler. First use
-never downloads dependencies. Shared preview/hidden-file state and Shift-Tab
+prepares missing packages requested through `dotsh_load`. Installed plugins
+are reused without network access. Shared preview/hidden-file state and Shift-Tab
 generation remain owned by the existing custom plugins.
 The runtime no longer ships its legacy fzf widgets and does not load its own
 fzf, syntax-highlighting, or history-substring-search modules during
