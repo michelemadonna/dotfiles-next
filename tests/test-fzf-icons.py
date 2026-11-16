@@ -76,7 +76,7 @@ class FzfIconsTest(unittest.TestCase):
         records, _ = self.records(names)
         for name, record in zip(names, records):
             expected = subprocess.check_output(
-                [EZA, "-1dX", "--icons=always", "--color=never", "--hyperlink=never", "--no-quotes", "--", name],
+                [EZA, "-1dX", "--icons=always", "--color=never", "--no-quotes", "--", name],
                 cwd=self.directory, env=dict(self.environment, EZA_ICON_SPACING="1"),
             ).split(b" ", 1)[0] + b" "
             self.assertEqual(record[1], expected)

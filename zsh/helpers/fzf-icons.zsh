@@ -19,7 +19,7 @@ dotsh_fzf_icon_map() {
     # Consume whatever eza could render if a candidate disappeared meanwhile.
     output=$(print -rl -- "${filenames[@]}" |
         EZA_ICON_SPACING=1 command eza --stdin -1d -X --icons=always \
-            --color=never --hyperlink=never --no-quotes --sort=none 2>/dev/null)
+            --color=never --no-quotes --sort=none 2>/dev/null)
     for rendered in "${(@f)output}"; do
         [[ $rendered == *' /'* ]] || continue
         rendered_path=/${rendered#*' /'}
