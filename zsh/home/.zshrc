@@ -5,7 +5,7 @@ source "$DOTFILES_DIR/zsh/runtime/dotsh-startup.zsh" || return
 # Put framework overrides here, before dotsh_init consumes runtime styles.
 # General local shell commands can also go in ~/.env.zsh, sourced below.
 
-[[ $DOTSH_PROMPT != ohmyposh ]] || zstyle ':dotsh:powerlevel10k' channel none
+[[ $DOTSH_PROMPT == powerlevel10k ]] || zstyle ':dotsh:powerlevel10k' channel none
 
 # Plugin and integration loading stays grouped here. Preserve the phase order:
 # package-manager paths before dotsh_init, completion/widgets after it.

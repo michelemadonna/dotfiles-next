@@ -277,6 +277,14 @@ case "$mime" in
             exit 0
         fi
 
+        archive_type=$(file -b -- "$preview_path" 2>/dev/null)
+        archive_size=$(command wc -c < "$preview_path" 2>/dev/null)
+        archive_size=${archive_size//[[:space:]]/}
+        print -r -- "Archive: ${preview_path:t}"
+        print -r -- "Type: ${archive_type:-Unknown}"
+        print -r -- "Size: ${archive_size:-Unknown} bytes"
+        print
+
         case $mime in
             application/gzip|application/x-gzip|application/x-xz|application/x-bzip|application/x-bzip2)
                 # List a compressed TAR in memory. A single compressed file
@@ -293,7 +301,7 @@ case "$mime" in
                     if archive_listing=$(
                         "$archiver" x -so -bd -p- -- "$preview_path" </dev/null 2>/dev/null |
                             "$archiver" l -ba -bd -p- -si -ttar 2>/dev/null |
-                            awk 'NR <= 300'
+                            awk 'NR <= 296'
                     ); then
                         print -r -- "$archive_listing"
                         exit 0
@@ -307,7 +315,7 @@ case "$mime" in
         # Drain the listing so truncation cannot cause SIGPIPE errors.
         if archive_listing=$(
             "$archiver" l -ba -bd -p- -- "$preview_path" </dev/null 2>/dev/null |
-                awk 'NR <= 300'
+                awk 'NR <= 296'
         ); then
             print -r -- "$archive_listing"
         else

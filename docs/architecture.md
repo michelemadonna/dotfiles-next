@@ -94,14 +94,15 @@ metadata, including the native module's record format. Non-filesystem
 completions remain unchanged. Missing eza or unrenderable paths fall back to
 plain candidates. The adapter loads only when `DOTSH_USE_FZF=true`.
 
-The shared file preview helper lists ZIP, 7z, RAR, TAR, gzip, XZ, and bzip2
-archives through 7-Zip (`7zz`, then `7z`). Compressed TAR contents pass between
-7-Zip processes in memory; standalone compressed files use the container's
-listing. Both listing paths use `l -ba` to show only member rows and their
-available metadata, without banners, archive headers, or totals.
-Output is limited to 300 lines while draining the producer to avoid
-SIGPIPE failures. Missing tools and unreadable archives produce preview
-messages, and encrypted headers never trigger an interactive password prompt.
+The shared file preview helper shows an archive's name, detected type, and
+compressed size before listing its contents through 7-Zip (`7zz`, then `7z`).
+Compressed TAR contents pass between 7-Zip processes in memory; standalone
+compressed files use the container's listing. Both listing paths use `l -ba`
+to show only member rows and their available metadata, without banners, archive
+headers, or totals. The complete preview is limited to 300 lines while draining
+the producer to avoid SIGPIPE failures. Missing tools and unreadable archives
+produce preview messages, and encrypted headers never trigger an interactive
+password prompt.
 
 The vendored `fzf-git.sh` integration is loaded after fzf and fzf-tab, then the
 local adapter adds command-aware Git dispatch before the final `dotsh-fzf`

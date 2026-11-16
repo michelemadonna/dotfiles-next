@@ -68,9 +68,18 @@ class ArchivePreviewTest(unittest.TestCase):
         return result.stdout
 
     def assert_member_listing(self, output, member, size=None):
-        # Each fixture has one member: any banner/header/footer adds rows.
-        self.assertEqual(len(output.splitlines()), 1, output)
-        row = output.rstrip("\n")
+        # Archive metadata precedes the member rows; 7-Zip banners and table
+        # headers must remain absent from the listing section.
+        metadata, listing = output.split("\n\n", 1)
+        metadata_rows = metadata.splitlines()
+        self.assertEqual(len(metadata_rows), 3, metadata)
+        self.assertTrue(metadata_rows[0].startswith("Archive: "), metadata)
+        self.assertTrue(metadata_rows[1].startswith("Type: "), metadata)
+        self.assertTrue(metadata_rows[2].startswith("Size: "), metadata)
+        self.assertRegex(metadata_rows[2], r"\d+ bytes$", metadata)
+        rows = listing.splitlines()
+        self.assertEqual(len(rows), 1, listing)
+        row = rows[0]
         self.assertTrue(row.endswith(member), output)
         self.assertRegex(row[:-len(member)], r"\d", output)
         if size is not None:
@@ -118,7 +127,7 @@ class ArchivePreviewTest(unittest.TestCase):
                 output = self.preview(archive)
                 self.assertIn("single file", output)
                 self.assertNotIn("unavailable", output)
-                self.assertEqual(len(output.splitlines()), 1, output)
+                self.assertEqual(len(output.split("\n\n", 1)[1].splitlines()), 1, output)
 
     def test_7z_and_encrypted_headers(self):
         self.install_wrapper("7zz")
@@ -162,7 +171,9 @@ class ArchivePreviewTest(unittest.TestCase):
         self.install_wrapper("7zz")
         with zipfile.ZipFile(self.archive, "w"):
             pass
-        self.assertEqual(self.preview().strip(), "")
+        output = self.preview()
+        self.assertTrue(output.startswith("Archive: "), output)
+        self.assertEqual(output.split("\n\n", 1)[1].strip(), "")
 
     def test_corrupt_archive_has_readable_feedback(self):
         self.install_wrapper("7zz")
@@ -174,8 +185,9 @@ class ArchivePreviewTest(unittest.TestCase):
         with zipfile.ZipFile(self.archive, "w") as stream:
             for index in range(500):
                 stream.writestr(f"member-{index:04}.txt", self.content)
-        rows = self.preview().splitlines()
-        self.assertEqual(len(rows), 300)
+        output = self.preview()
+        rows = output.split("\n\n", 1)[1].splitlines()
+        self.assertEqual(len(rows), 296)
         for index, row in enumerate(rows):
             self.assertTrue(row.endswith(f"member-{index:04}.txt"), row)
 
