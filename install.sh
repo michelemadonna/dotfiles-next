@@ -1483,6 +1483,11 @@ value_from_choices() {
     $0 ~ "^  export " variable "=" {
       sub("^  export " variable "=", "")
       sub(/[[:space:]]+#.*/, "")
+      gsub(/^\"|\"$/, "")
+      if ($0 ~ /^\$\{[A-Za-z_][A-Za-z0-9_]*:=.*\}$/) {
+        sub(/^\$\{[A-Za-z_][A-Za-z0-9_]*:=/, "")
+        sub(/\}$/, "")
+      }
       gsub(/^"|"$/, "")
       if (substr($0, 1, 1) == sprintf("%c", 39)) $0 = substr($0, 2, length($0) - 2)
       print

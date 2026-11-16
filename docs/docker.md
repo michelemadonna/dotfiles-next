@@ -2,11 +2,27 @@
 
 ## Complete demo
 
+`./docker-demo.sh` builds and runs the remote demo from `main` by default.
+Select another branch with `./docker-demo.sh remote feature-branch`. The
+explicit branch overrides `DOTFILES_REF`; the environment variable remains
+the fallback before `main`. `DOTFILES_REPO_URL` selects the remote repository,
+and `DOCKER_IMAGE` selects the image name.
+
+Use `./docker-demo.sh local` for the current working tree. Local mode does not
+accept a branch argument and never changes the host checkout's branch.
+
 `Dockerfile` defaults to a remote GitHub checkout. Use
 `--build-arg DOTFILES_SOURCE=local` to copy the current repository instead.
 Remote images run the checkout's interactive installer at container startup;
 local images run `install.sh non-interactive` during the build. Do not replace
 these paths with hand-written setup logic.
+Local mode includes `zsh/home/.zshenv` and applies its preferences during the
+non-interactive install. The installer reads both literal preferences and
+defaults written as `${VARIABLE:=value}`, then uses its normal defaults for
+preferences that the file does not set.
+Prepared contents of `zsh/vendor/packages/` are excluded from the build
+context and fetched from the lockfile inside the Linux image, so host-specific
+executables such as macOS fzf binaries are never reused in Docker.
 
 Keep expensive tools, demo repositories, and Mise runtimes before the
 source-selection stages so local source edits remain cache-friendly. The image

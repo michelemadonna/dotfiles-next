@@ -19,3 +19,4 @@ build
 *.zwc
 *.zwc.old
 *.log
+zsh/vendor/packages/

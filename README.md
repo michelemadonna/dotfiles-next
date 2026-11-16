@@ -470,13 +470,22 @@ To test the files from the current directory instead, select the local source ex
 The script accepts `remote` (the default) or `local`, builds `dotfiles-next-demo`, and launches it with an interactive TTY. Set `DOCKER_IMAGE` to use another image name. 
 The equivalent manual commands are:
 
-```
+```sh
 docker build -t dotfiles-next-demo .
-docker run --rm -it dotfiles-next-demo \
-  --build-arg DOTFILES_SOURCE=local #to the build command for local sources.
+docker run --rm -it dotfiles-next-demo
 ```
 
+For local sources, add `--build-arg DOTFILES_SOURCE=local` to `docker build`.
+
 Remote builds can target another repository or branch without editing the Dockerfile:
+
+```sh
+./docker-demo.sh remote feature-branch
+```
+
+The optional branch argument overrides `DOTFILES_REF`; otherwise the launcher
+uses `DOTFILES_REF` or defaults to `main`. `local` copies the current working
+tree and does not accept a branch argument. For a direct build:
 
 ```sh
 docker build \
