@@ -3,6 +3,18 @@
 alias _dig=dogggo _ping=gping _hex=hexyl _curl=http _ps=procs _top=btop
 alias _ls='command ls' nodejs='command node'
 
+myip() {
+  local ipv4 ipv6
+  ipv4=$(curl --silent -4 https://ifconfig.me)
+  ipv6=$(curl --silent -6 https://ifconfig.co)
+
+  [[ -z ${ipv4} ]] && ipv4=$(curl --silent -4 https://ifconfig.co)
+  [[ -z ${ipv6} ]] && ipv6=$(curl --silent -6 https://ifconfig.me) 
+
+  [[ -z ${ipv4} ]] && echo "No IPv4 internet connectivity" || echo "IPv4: ${ipv4}"
+  [[ -z ${ipv6} ]] && echo "No IPv6 internet connectivity" || echo "IPv6: ${ipv6}"
+}
+
 dotsh-reset-zsh-cache() {
   emulate -L zsh
   setopt extended_glob
