@@ -345,7 +345,7 @@ remain managed natively by dotsh so ghost text stays synchronized with its
 redraw cycle. Fastfetch and SSH remain synchronous.
 
 Set `DOTSH_USE_FZF=false` in your Zsh preferences to use native completion and
-keybindings. This disables automatic loading of fzf, fzf-tab, fzf-git, previews
+keybindings. Tab cycles through the native completion candidates. This disables automatic loading of fzf, fzf-tab, fzf-git, previews
 and command-specific fuzzy integrations, the `Ctrl-K` fuzzy reference, and the
 Mise fuzzy version selector. `Shift-Tab` uses native completion when
 `DOTSH_ENABLE_AUTO_GENCOMP=true`. The setting takes effect in a new shell.

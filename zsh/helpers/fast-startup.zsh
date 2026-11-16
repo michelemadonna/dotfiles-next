@@ -131,6 +131,8 @@ if [[ ${DOTSH_USE_FZF:-true} == true ]]; then
 	zle -N _dotsh_fast_fzf_file_widget
 	zle -N _dotsh_fast_fzf_cd_widget
 	zle -N _dotsh_fast_fzf_git_widget
+else
+	zstyle ':completion:*' menu yes
 fi
 if [[ ${DOTSH_ENABLE_AUTO_GENCOMP:-true} == true ]]; then
 	zle -N _dotsh_fast_gencomp_widget
@@ -143,6 +145,8 @@ for _dotsh_fast_keymap in emacs viins vicmd; do
 		bindkey -M $_dotsh_fast_keymap '^T' _dotsh_fast_fzf_file_widget
 		bindkey -M $_dotsh_fast_keymap '^[c' _dotsh_fast_fzf_cd_widget
 		bindkey -M $_dotsh_fast_keymap '^G' _dotsh_fast_fzf_git_widget
+	else
+		bindkey -M $_dotsh_fast_keymap '^I' menu-complete
 	fi
 	if [[ ${DOTSH_ENABLE_AUTO_GENCOMP:-true} == true ]]; then
 		bindkey -M $_dotsh_fast_keymap '^[[Z' _dotsh_fast_gencomp_widget
