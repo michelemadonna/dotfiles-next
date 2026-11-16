@@ -6,7 +6,9 @@ source "$DOTFILES_DIR/zsh/runtime/dotsh-startup.zsh" || return
 # General local shell commands can also go in ~/.env.zsh, sourced below.
 
 [[ $DOTSH_PROMPT == powerlevel10k ]] || zstyle ':dotsh:powerlevel10k' channel none
-
+HISTSIZE=50000      # in-memory list for the session (Ctrl-R search)
+SAVEHIST=5000       # what is written to the file: capped for startup time
+                    # (1 MB of history = ~8 ms more before the prompt)
 # Plugin and integration loading stays grouped here. Preserve the phase order:
 # package-manager paths before dotsh_init, completion/widgets after it.
 dotsh_source -c "$DOTFILES_DIR/zsh/dotsh.custom.plugins/dotsh-pkgmng.plugin.zsh"
