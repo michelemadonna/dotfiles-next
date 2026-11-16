@@ -97,7 +97,9 @@ plain candidates. The adapter loads only when `DOTSH_USE_FZF=true`.
 The shared file preview helper lists ZIP, 7z, RAR, TAR, gzip, XZ, and bzip2
 archives through 7-Zip (`7zz`, then `7z`). Compressed TAR contents pass between
 7-Zip processes in memory; standalone compressed files use the container's
-listing. Output is limited to 300 lines while draining the producer to avoid
+listing. Both listing paths use `l -ba` to show only member rows and their
+available metadata, without banners, archive headers, or totals.
+Output is limited to 300 lines while draining the producer to avoid
 SIGPIPE failures. Missing tools and unreadable archives produce preview
 messages, and encrypted headers never trigger an interactive password prompt.
 

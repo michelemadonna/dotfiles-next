@@ -7,6 +7,7 @@ import io
 import lzma
 import os
 from pathlib import Path
+import re
 import shutil
 import struct
 import subprocess
@@ -66,6 +67,15 @@ class ArchivePreviewTest(unittest.TestCase):
         self.assertLessEqual(len(result.stdout.splitlines()), 300)
         return result.stdout
 
+    def assert_member_listing(self, output, member, size=None):
+        # Each fixture has one member: any banner/header/footer adds rows.
+        self.assertEqual(len(output.splitlines()), 1, output)
+        row = output.rstrip("\n")
+        self.assertTrue(row.endswith(member), output)
+        self.assertRegex(row[:-len(member)], r"\d", output)
+        if size is not None:
+            self.assertRegex(row, rf"\s{size}\s+(?:\d+\s+)?{re.escape(member)}$", output)
+
     def test_missing_archiver_has_readable_feedback(self):
         # Hide possible system-installed 7-Zip executables as well.
         self.environment["PATH"] = str(self.bin)
@@ -75,12 +85,12 @@ class ArchivePreviewTest(unittest.TestCase):
     def test_7zz_is_preferred(self):
         self.install_wrapper("7zz")
         self.install_wrapper("7z")
-        self.assertIn(self.member, self.preview())
+        self.assert_member_listing(self.preview(), self.member, len(self.content))
         self.assertEqual((self.root / "calls").read_text().splitlines(), ["7zz"])
 
     def test_7z_compatibility(self):
         self.install_wrapper("7z")
-        self.assertIn(self.member, self.preview())
+        self.assert_member_listing(self.preview(), self.member, len(self.content))
         self.assertEqual((self.root / "calls").read_text().splitlines(), ["7z"])
 
     def test_tar_and_compressed_tar_list_inner_members(self):
@@ -92,11 +102,11 @@ class ArchivePreviewTest(unittest.TestCase):
                     item = tarfile.TarInfo(self.member)
                     item.size = len(self.content)
                     stream.addfile(item, io.BytesIO(self.content))
-                self.assertIn(self.member, self.preview(archive))
+                self.assert_member_listing(self.preview(archive), self.member, len(self.content))
                 if suffix != "tar":
                     renamed = self.root / (suffix + ".data")
                     archive.rename(renamed)
-                    self.assertIn(self.member, self.preview(renamed))
+                    self.assert_member_listing(self.preview(renamed), self.member, len(self.content))
         self.assertFalse((self.root / "nested").exists())
 
     def test_single_compressed_files_list_the_container(self):
@@ -108,6 +118,7 @@ class ArchivePreviewTest(unittest.TestCase):
                 output = self.preview(archive)
                 self.assertIn("single file", output)
                 self.assertNotIn("unavailable", output)
+                self.assertEqual(len(output.splitlines()), 1, output)
 
     def test_7z_and_encrypted_headers(self):
         self.install_wrapper("7zz")
@@ -127,7 +138,7 @@ class ArchivePreviewTest(unittest.TestCase):
                 if encrypted:
                     self.assertIn("Archive preview unavailable", output)
                 else:
-                    self.assertIn(source.name, output)
+                    self.assert_member_listing(output, source.name, len(self.content))
 
     def test_rar_listing(self):
         self.install_wrapper("7zz")
@@ -145,7 +156,13 @@ class ArchivePreviewTest(unittest.TestCase):
         end = header(struct.pack("<BHH", 0x7B, 0x4000, 7))
         archive = self.root / "stored.rar"
         archive.write_bytes(b"Rar!\x1a\x07\x00" + main + member + self.content + end)
-        self.assertIn(self.member, self.preview(archive))
+        self.assert_member_listing(self.preview(archive), self.member, len(self.content))
+
+    def test_empty_archive_has_no_banner_or_summary(self):
+        self.install_wrapper("7zz")
+        with zipfile.ZipFile(self.archive, "w"):
+            pass
+        self.assertEqual(self.preview().strip(), "")
 
     def test_corrupt_archive_has_readable_feedback(self):
         self.install_wrapper("7zz")
@@ -157,7 +174,10 @@ class ArchivePreviewTest(unittest.TestCase):
         with zipfile.ZipFile(self.archive, "w") as stream:
             for index in range(500):
                 stream.writestr(f"member-{index:04}.txt", self.content)
-        self.assertEqual(len(self.preview().splitlines()), 300)
+        rows = self.preview().splitlines()
+        self.assertEqual(len(rows), 300)
+        for index, row in enumerate(rows):
+            self.assertTrue(row.endswith(f"member-{index:04}.txt"), row)
 
 
 if __name__ == "__main__":

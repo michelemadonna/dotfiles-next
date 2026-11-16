@@ -292,7 +292,7 @@ case "$mime" in
                 if [[ $inner_mime == application/x-tar || $inner_mime == application/x-gtar ]]; then
                     if archive_listing=$(
                         "$archiver" x -so -bd -p- -- "$preview_path" </dev/null 2>/dev/null |
-                            "$archiver" l -bd -p- -si -ttar 2>/dev/null |
+                            "$archiver" l -ba -bd -p- -si -ttar 2>/dev/null |
                             awk 'NR <= 300'
                     ); then
                         print -r -- "$archive_listing"
@@ -303,9 +303,10 @@ case "$mime" in
         esac
 
         # A supplied password prevents interactive prompts for encrypted
-        # headers. Drain the listing so truncation cannot cause SIGPIPE errors.
+        # headers. -ba keeps only member rows and their available metadata.
+        # Drain the listing so truncation cannot cause SIGPIPE errors.
         if archive_listing=$(
-            "$archiver" l -bd -p- -- "$preview_path" </dev/null 2>/dev/null |
+            "$archiver" l -ba -bd -p- -- "$preview_path" </dev/null 2>/dev/null |
                 awk 'NR <= 300'
         ); then
             print -r -- "$archive_listing"

@@ -534,7 +534,9 @@ cannot identify a candidate, that candidate remains selectable without an icon.
 Archive previews use 7-Zip, preferring `7zz` and accepting `7z`. ZIP, 7z, RAR,
 TAR, gzip, XZ, and bzip2 listings are limited to 300 lines. Compressed TAR
 members are listed through an in-memory pipeline. Single compressed files
-show their container listing. Archives with encrypted headers, corrupt or
+show their container listing. Only member rows and their available dates,
+attributes, sizes, and names are shown, without the 7-Zip banner, archive
+headers, or totals. Archives with encrypted headers, corrupt or
 unsupported archives, and missing 7-Zip installations produce a brief message
 without a password prompt.
 
