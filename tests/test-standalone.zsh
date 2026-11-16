@@ -54,6 +54,8 @@
   }
   (( ! $+widgets[dotsh-fzf-complete] && ! $+widgets[dotsh-fzf-history] &&
      ! $+widgets[dotsh-fzf-dir-history] )) || return 1
+  [[ $(bindkey -M emacs '^L') == *dotsh-clear-screen-soft-top &&
+     $(bindkey -M emacs '^[^L') == *dotsh-clear-screen-hard-top ]] || return 1
 
   dotsh_fast_load_zle_features || return 1
   if [[ ${DOTSH_USE_FZF:-true} == true ]]; then

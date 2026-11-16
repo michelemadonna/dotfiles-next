@@ -1102,11 +1102,3 @@ then
         '
 
 fi
-
-#fzf_tab_no_space_after_at() {
-#  if (( CURSOR == ${#BUFFER} )) && [[ $BUFFER == *'@'*' ' ]]; then
-#    zle backward-delete-char
-#  fi
-#  fzf-tab-complete
-#}
-#

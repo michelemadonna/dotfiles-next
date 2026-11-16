@@ -76,6 +76,12 @@ Exercise the actual key sequence for `Ctrl-T`, `Alt-C`, fzf-tab, preview, and
 hidden-file toggles. A non-empty option value or non-interactive `zsh -lic`
 test is insufficient evidence.
 
+For runtime cleanup, also verify directory navigation, autosuggestion redraw,
+and the effective `Ctrl-L`/`Ctrl-Alt-L` top-screen bindings in a writable PTY.
+The terminal-packet test exercises direct OSC output even with `TMUX` set.
+Check dynamic registration before treating an unreferenced autoload function
+or callback as unused, and inspect compiled counterparts after source removal.
+
 For fzf-git changes, use a disposable repository containing local and remote
 branches, tags, commits, modified/untracked paths, stashes, reflogs, and a
 linked worktree. In a writable PTY verify every `Ctrl-G` picker, all internal

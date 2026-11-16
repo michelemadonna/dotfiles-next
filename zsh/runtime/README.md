@@ -72,9 +72,9 @@ is included. `:dotsh:<component> channel none` remains only as a local enable
 switch for runtime features; it does not select or download package versions.
 Disabled reference direnv lifecycle was not retained. SSH-agent and custom
 command integrations remain owned by the existing repository helpers.
-Standalone Powerlevel10k owns screen capture; framework tmux/SSH transport
-capture functions are inert. Runtime symbols, styles, and preferences use the
-standalone `dotsh` namespace.
+Standalone Powerlevel10k owns screen capture. Terminal metadata is emitted
+directly, without framework tmux/SSH capture transport. Runtime symbols,
+styles, and preferences use the standalone `dotsh` namespace.
 
 ## Validation boundaries
 

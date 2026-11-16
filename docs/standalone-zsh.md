@@ -114,6 +114,33 @@ fzf, syntax-highlighting, or history-substring-search modules during
 
 ## Verification
 
+### Unused-code cleanup
+
+The cleanup preserves manual commands, optional integrations, platform-specific
+paths, and dynamically registered completions/widgets. An autoload declaration
+alone does not establish that an internal helper has callers. Tests and legacy
+migration fixtures are checked separately from production entrypoints.
+
+| Removed implementation | Reason |
+| --- | --- |
+| Runtime `-dotsh-flowing` and `-dotsh-help-bindkey` | No runtime, plugin, installer, hook, widget, or completion callers |
+| Runtime `-dotsh-prompt-length` | Used only by the removed `-dotsh-flowing` helper |
+| `zsh/helpers/tool-bootstrap.zsh` and its exclusive tests | No production caller; tool installation and config links belong to the installer |
+| `_dotsh_can_save_restore_screen` and its guarded branches | Always zero in the standalone runtime; retain the effective top-screen bindings and direct terminal output |
+| `:dotsh:fzf-complete` default style | Its legacy runtime widget has already been removed |
+| Commented implementations in the eza, misc, and fzf plugins | Superseded aliases and inactive completion wrappers |
+
+The installer still removes the old bootstrap source line from existing
+preferences. Its migration fixture remains even though the helper is gone.
+The eight command completion helpers remain registered by names constructed in
+`-dotsh-compinit`; autosuggestion callbacks and Zsh traps remain active through
+their respective dispatch mechanisms. Manual commands such as `kres`,
+`mise-install-usage`, `pkg-bootstrap`, and `pkg-list` remain available.
+Compiled `.zwc` counterparts of deleted sources are removed, and those of
+changed sources are invalidated locally. Prepared vendor packages are retained.
+
+### Runtime checks
+
 In an interactive `fhome.sh` shell, from the fake-home root:
 
 ```zsh

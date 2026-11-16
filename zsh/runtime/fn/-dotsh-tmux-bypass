@@ -3,8 +3,6 @@
 local x
 builtin printf -v x "$@"
 
-(( _dotsh_can_save_restore_screen )) && x+=$'\ePtmux;'${x//$'\e'/$'\e\e'}$'\e\\'
-
 if [[ -v _dotsh_tty_fd ]]; then
   # Reuse the terminal descriptor opened by initialization.
   print -rnu $_dotsh_tty_fd -- "$x"

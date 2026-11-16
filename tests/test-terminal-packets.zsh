@@ -40,6 +40,17 @@ trap 'command rm -f -- "$title_file"' EXIT
 local title_fd
 exec {title_fd}> "$title_file"
 typeset -gi _dotsh_tty_fd=$title_fd
+# Exercise the real output helper as well as the metadata spy above. Standalone
+# integration sends raw OSC packets, including when TMUX is set.
+unfunction -- -dotsh-tmux-bypass
+autoload -Uz -- -dotsh-tmux-bypass
+local TMUX=standalone-test
+local direct_packet=$'\e]1337;ShellIntegrationVersion=12;shell=zsh\a'
+-dotsh-tmux-bypass '%s' "$direct_packet"
+[[ $(<"$title_file") == $direct_packet ]]
+exec {title_fd}>&-
+exec {title_fd}> "$title_file"
+typeset -gi _dotsh_tty_fd=$title_fd
 autoload -Uz -- -dotsh-set-term-title
 _dotsh_terminal_dirty=1
 -dotsh-set-term-title standalone-test

@@ -133,15 +133,6 @@ if [[ ${DOTSH_ENABLE_ALLAFINE:-false} == true ]]; then
   }
   zle -N allafine
   bindkey '^M' allafine
-
-  #if (( $+functions[_fzf-tab-apply] )); then
-  #  functions[_zqs_orig_fzf_tab_apply]=$functions[_fzf-tab-apply]
-  #  _fzf-tab-apply() {
-  #    local -a prompt_lines=("${(@f)PS1}")
-  #    print -n "\e[${#prompt_lines}A\e[2K\e[9999;1H"
-  #    _zqs_orig_fzf_tab_apply "$@"
-  #  }
-  #fi
 fi
 
 

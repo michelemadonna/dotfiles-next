@@ -354,14 +354,8 @@ bindkey   '^[[1;2D' dotsh-cd-back                    # shift+left
 bindkey   '^[[1;2C' dotsh-cd-forward                 # shift+right
 # cd into the parent directory.
 bindkey   '^[[1;2A' dotsh-cd-up                      # shift+up
-if (( _dotsh_can_save_restore_screen )) &&
-   zstyle -T :dotsh: prompt-at-bottom; then
-  bindkey '^L'      dotsh-clear-screen-soft-bottom   # ctrl+l
-  bindkey '^[^L'    dotsh-clear-screen-hard-bottom   # ctrl+alt+l
-else
-  bindkey '^L'      dotsh-clear-screen-soft-top      # ctrl+l
-  bindkey '^[^L'    dotsh-clear-screen-hard-top      # ctrl+alt+l
-fi
+bindkey   '^L'      dotsh-clear-screen-soft-top      # ctrl+l
+bindkey   '^[^L'    dotsh-clear-screen-hard-top      # ctrl+alt+l
 
 if zstyle -T :dotsh:bindkey macos-option-as-alt; then
   typeset -grA _dotsh_macos_opt_key=(

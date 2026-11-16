@@ -272,9 +272,6 @@ dotsh_init() {
     typeset -gi _dotsh_tty_fd
     sysopen -o cloexec -rwu _dotsh_tty_fd -- /dev/tty 2>/dev/null || unset _dotsh_tty_fd
   fi
-  # Standalone p10k owns its screen management. Runtime terminal metadata uses
-  # direct OSC output; no tmux process, socket, bootstrap, or teleportation.
-  typeset -gri _dotsh_can_save_restore_screen=0
   if (( _dotsh_zle )); then
     local -a required
     local pkg
@@ -313,9 +310,6 @@ if [[ -o interactive ]]; then
   dotsh_configure_keyboard || return
   zstyle ':dotsh:' term-shell-integration yes
   zstyle ':dotsh:autosuggestions' forward-char accept
-  if [[ $DOTSH_USE_FZF == true ]]; then
-    zstyle ':dotsh:fzf-complete' recurse-dirs no
-  fi
   zstyle ':dotsh:compinit' dump-path "$DOTSH_CACHE/zcompdump-${EUID}-${ZSH_VERSION}"
   zstyle ':completion:*' list-colors ${(s.:.)LS_COLORS}
   zstyle ':completion:*:descriptions' format '[%d]'
