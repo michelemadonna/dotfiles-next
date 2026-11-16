@@ -878,7 +878,11 @@ function -dotsh-post-init() {
     builtin autoload -Uz -- $DOTSH_RUNTIME/fn/bracketed-paste-magic
   fi
 
-  if (( ! $+_dotsh_iterm_cmd )) && [[ $ITERM_SHELL_INTEGRATION_INSTALLED == Yes ]]; then
+  # iTerm2 can inject its official integration from .zshenv, before .zshrc.
+  # It owns command markers in that case; only diagnose an incomplete install.
+  if (( ! $+_dotsh_iterm_cmd )) && [[ $ITERM_SHELL_INTEGRATION_INSTALLED == Yes ]] &&
+     ! (( $+functions[iterm2_precmd] && $+functions[iterm2_preexec] &&
+          $precmd_functions[(Ie)iterm2_precmd] && $preexec_functions[(Ie)iterm2_preexec] )); then
     -dotsh-error-iterm2-integration
   fi
 
