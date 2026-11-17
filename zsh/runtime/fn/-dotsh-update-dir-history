@@ -1,0 +1,52 @@
+#!/usr/bin/env zsh
+
+if (( ${+_dotsh_dir_hist_fd} )); then
+  zle -F "$_dotsh_dir_hist_fd"
+  exec {_dotsh_dir_hist_fd}>&-
+  unset _dotsh_dir_hist_fd
+fi
+
+local dir
+zstyle -s :dotsh:dir-history: cwd dir || dir=${(%):-%~}
+[[ -z $dir || $dir == ${_dotsh_last_dir-} ]] && return
+
+eval "$_dotsh_opt"
+
+typeset -g _dotsh_last_dir=$dir
+[[ $dir != ('~'|/)* ]] && return
+
+-dotsh-read-dir-history || return
+
+if (( ! $#dirstack && (DIRSTACKSIZE || ! $+DIRSTACKSIZE) )); then
+  local d stack=()
+  for d in $_dotsh_dir_history; do
+    {
+      if [[ ($#stack -ne 0 || $d != $dir) ]]; then
+        d=${~d}
+        if [[ -d ${d::=${(g:oce:)d}} ]]; then
+          stack+=($d)
+          (( $+DIRSTACKSIZE && $#stack >= DIRSTACKSIZE - 1 )) && break
+        fi
+      fi
+    } always {
+      TRY_BLOCK_ERROR=0
+    }
+  done 2>/dev/null
+  dirstack=($stack)
+fi
+
+local -i pos=$_dotsh_dir_history[(ie)$dir]
+_dotsh_dir_history[pos]=()
+_dotsh_dir_history[1,0]=($dir)
+
+local max_size
+zstyle -s :dotsh:dir-history: max-size max_size
+if [[ $max_size != -<-> ]]; then
+  [[ $max_size == <-> ]] || max_size=10000
+  local -i drop=$(($#_dotsh_dir_history - max_size))
+  if (( drop > 0 )); then
+    _dotsh_dir_history[-drop,-1]=()
+  fi
+fi
+
+-dotsh-write-dir-history

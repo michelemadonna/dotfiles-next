@@ -5,6 +5,10 @@ set -eu
 ROOT=$(CDPATH='' cd -- "$(dirname "$0")/.." && pwd)
 TEST_ROOT=$(mktemp -d "${TMPDIR:-/tmp}/dotfiles-installer-test.XXXXXX")
 trap 'rm -rf -- "$TEST_ROOT"' 0 HUP INT TERM
+# Provider defaults must not come from the caller's generated preferences.
+unset DOTFILES_INTEL_PACKAGE_MANAGER
+DOTFILES_DIR="$TEST_ROOT/default-dotfiles"
+export DOTFILES_DIR
 
 awk '!/^main "\$@"$/' "$ROOT/install.sh" >"$TEST_ROOT/install-lib.sh"
 
@@ -116,6 +120,14 @@ assert_equal "$interactive_provider" 'homebrew:homebrew'
 
 mkdir -p "$TEST_ROOT/generated-dotfiles/zsh/home"
 cp "$ROOT/zsh/.zshenv.init" "$TEST_ROOT/generated-dotfiles/zsh/.zshenv.init"
+cat >> "$TEST_ROOT/generated-dotfiles/zsh/.zshenv.init" <<'OLD_PROFILE'
+  export DOTSH_USE_FZF_TAB=false
+  export DOTSH_STARTUP_PROFILE_DEFAULT=default
+  case ${DOTSH_STARTUP_PROFILE:-$DOTSH_STARTUP_PROFILE_DEFAULT} in
+    default|fast) export DOTSH_STARTUP_PROFILE=${DOTSH_STARTUP_PROFILE:-$DOTSH_STARTUP_PROFILE_DEFAULT} ;;
+    *) export DOTSH_STARTUP_PROFILE=$DOTSH_STARTUP_PROFILE_DEFAULT ;;
+  esac
+OLD_PROFILE
 DOTFILES_DIR="$TEST_ROOT/generated-dotfiles" sh -c '
   . "$1"
   MODE=interactive
@@ -125,8 +137,112 @@ DOTFILES_DIR="$TEST_ROOT/generated-dotfiles" sh -c '
   info() { :; }
   generate_zshenv
   grep -q "^  export DOTFILES_INTEL_PACKAGE_MANAGER=homebrew$" "$DOTFILES_DIR/zsh/home/.zshenv"
-  grep -q "^  export Z4H_STARTUP_PROFILE_DEFAULT=default$" "$DOTFILES_DIR/zsh/home/.zshenv"
+  ! grep -Eq "^  export DOTSH_STARTUP_PROFILE(_DEFAULT)?=" "$DOTFILES_DIR/zsh/home/.zshenv"
+  ! grep -q "DOTSH_STARTUP_PROFILE:-DOTSH_STARTUP_PROFILE_DEFAULT" "$DOTFILES_DIR/zsh/home/.zshenv"
+  ! grep -q "DOTSH_USE_FZF_TAB" "$DOTFILES_DIR/zsh/home/.zshenv"
 ' sh "$TEST_ROOT/install-lib.sh"
+
+# Migrating generated preferences removes the known bootstrap, preserving
+# custom settings rather than replacing the user's file with the template.
+mkdir -p "$TEST_ROOT/migration/zsh/home"
+cp "$ROOT/zsh/.zshenv.init" "$TEST_ROOT/migration/zsh/.zshenv.init"
+cat > "$TEST_ROOT/migration/zsh/home/.zshenv" <<'PREFERENCES'
+if [ -n "${ZSH_VERSION-}" ]; then
+  export PREVIOUS_STARTUP_PROFILE=fast
+  export PREVIOUS_PROMPT=powerlevel10k
+  export PREVIOUS_MISE_REFRESH_SECONDS=60
+  export PREVIOUS_SSH_ASKPASS_REQUIRE=false
+  export PREVIOUS_USE_FZF_FROM_PREVIOUS=true
+  export DOTSH_USE_FZF_TAB=false
+  export CUSTOM_PROMPT=untouched
+  export CUSTOM_STARTUP_PROFILE=unrelated
+  export CUSTOM_MESSAGE='PREVIOUS is my label'
+  export CUSTOM_PREVIOUS_SETTING=retained
+  export HISTORY_IGNORE='custom-history-pattern'
+  custom_preference=preserved
+  source "$DOTFILES_DIR/zsh/helpers/tool-bootstrap.zsh"
+  previous_zshenv="$ZDOTDIR/.zshenv_previous"
+  obsolete_bootstrap_must_disappear=true
+  : ${ZDOTDIR:=~}
+fi
+PREFERENCES
+DOTFILES_DIR="$TEST_ROOT/migration" sh -c '
+  . "$1"
+  MODE=non-interactive
+  configure_non_interactive
+  load_non_interactive_choices
+  info() { :; }
+  generate_zshenv
+  result="$DOTFILES_DIR/zsh/home/.zshenv"
+  [ -f "$result.pre-standalone" ]
+  grep -q "DOTSH_MISE_REFRESH_SECONDS=60" "$result"
+  grep -q "CUSTOM_PROMPT=untouched" "$result"
+  grep -q "CUSTOM_STARTUP_PROFILE=unrelated" "$result"
+  grep -q "PREVIOUS is my label" "$result"
+  grep -q "CUSTOM_PREVIOUS_SETTING=retained" "$result"
+  grep -q "custom_preference=preserved" "$result"
+  grep -q "custom-history-pattern" "$result"
+  ! grep -Eq "^  export DOTSH_STARTUP_PROFILE(_DEFAULT)?=" "$result"
+  ! grep -q "DOTSH_STARTUP_PROFILE:-DOTSH_STARTUP_PROFILE_DEFAULT" "$result"
+  ! grep -q "DOTSH_USE_FZF_TAB" "$result"
+  grep -q "^  export DOTSH_USE_FZF=false$" "$result"
+  ! grep -q "obsolete_bootstrap\|tool-bootstrap\|dotsh_zshenv\|export PREVIOUS_\|previous_zshenv\|DOTSH_USE_FZF_FROM_" "$result"
+  [ "$(grep -c "setopt no_global_rcs" "$result")" = 1 ]
+  cp "$result" "$result.expected"
+  generate_zshenv
+  cmp "$result" "$result.expected"
+' sh "$TEST_ROOT/install-lib.sh"
+
+# Preserve the FZF choice in both modes, preferring the current name when both
+# names are present. Regeneration must also introduce the flag into old files.
+for fzf_case in legacy_false legacy_true current_false both_false both_true absent; do
+  fzf_root="$TEST_ROOT/fzf-$fzf_case"
+  mkdir -p "$fzf_root/zsh/home"
+  cp "$ROOT/zsh/.zshenv.init" "$fzf_root/zsh/.zshenv.init"
+  fzf_preferences="$fzf_root/zsh/home/.zshenv"
+  # shellcheck disable=SC2016
+  printf '%s\n' 'if [ -n "${ZSH_VERSION-}" ]; then' > "$fzf_preferences"
+  case $fzf_case in
+    legacy_false) printf '%s\n' '  export DOTSH_USE_FZF_TAB=false' >> "$fzf_preferences" ;;
+    legacy_true) printf '%s\n' '  export DOTSH_USE_FZF_TAB=true' >> "$fzf_preferences" ;;
+    current_false) printf '%s\n' '  export DOTSH_USE_FZF=false' >> "$fzf_preferences" ;;
+    both_false) printf '%s\n' '  export DOTSH_USE_FZF=false' '  export DOTSH_USE_FZF_TAB=true' >> "$fzf_preferences" ;;
+    both_true) printf '%s\n' '  export DOTSH_USE_FZF_TAB=false' '  export DOTSH_USE_FZF=true' >> "$fzf_preferences" ;;
+  esac
+  # shellcheck disable=SC2016
+  printf '%s\n' '  export CUSTOM_FZF_FLAG=$DOTSH_USE_FZF_TAB' 'fi' >> "$fzf_preferences"
+  cp "$fzf_preferences" "$fzf_preferences.original"
+  case $fzf_case in
+    legacy_false | current_false | both_false) fzf_expected=false ;;
+    *) fzf_expected=true ;;
+  esac
+  for fzf_mode in interactive non-interactive; do
+    cp "$fzf_preferences.original" "$fzf_preferences"
+    DOTFILES_DIR="$fzf_root" sh -ec '
+      . "$1"
+      MODE=$2
+      if is_non_interactive; then
+        configure_non_interactive
+        load_non_interactive_choices
+      else
+        set_interactive_defaults
+      fi
+      [ "$use_fzf" = "$3" ]
+      info() { :; }
+      generate_zshenv
+      result="$DOTFILES_DIR/zsh/home/.zshenv"
+      grep -q "^  export DOTSH_USE_FZF=$3$" "$result"
+      [ "$(grep -c "export DOTSH_USE_FZF=" "$result")" = 1 ]
+      ! grep -q "DOTSH_USE_FZF_TAB" "$result"
+      if is_non_interactive; then
+        grep -Fq "CUSTOM_FZF_FLAG=\$DOTSH_USE_FZF" "$result"
+      fi
+      cp "$result" "$result.expected"
+      generate_zshenv
+      cmp "$result" "$result.expected"
+    ' sh "$TEST_ROOT/install-lib.sh" "$fzf_mode" "$fzf_expected"
+  done
+done
 
 privilege_log=$TEST_ROOT/privilege.log
 PRIVILEGE_LOG=$privilege_log sh -c '
@@ -280,6 +396,8 @@ case $required_packages in
     ;;
 esac
 
+printf '%s\n' "$required_packages" | grep -Eq '(^|[[:space:]])7zip([[:space:]]|$)'
+
 required_packages=$(
   sh -c '
     . "$1"
@@ -307,9 +425,33 @@ case $required_packages in
     ;;
 esac
 
+for archive_arch in x86_64 arm64; do
+  printf '%s\n' "$required_packages" | grep -Eq "^BREW:${archive_arch}:install -y .* sevenzip$"
+done
+
+printf '#!/bin/sh\nexit 0\n' >"$TEST_ROOT/fc-cache"
+chmod +x "$TEST_ROOT/fc-cache"
+required_packages=$(
+  PATH="$TEST_ROOT:$PATH" sh -c '
+    . "$1"
+    PLATFORM=linux
+    PACKAGE_MANAGER=apt
+    HOME=$2/home
+    DOTFILES_DIR=$2/dotfiles
+    info() { :; }
+    run_apt_get() { printf "APT:%s\n" "$*"; }
+    mkdir() { :; }
+    cp() { :; }
+    ln() { :; }
+    install_required_packages
+  ' sh "$TEST_ROOT/install-lib.sh" "$TEST_ROOT"
+)
+printf '%s\n' "$required_packages" | grep -Eq '^APT:install -y .* 7zip$'
+
 legacy_marker_root=$TEST_ROOT/legacy-marker-state
 mkdir -p "$legacy_marker_root/dotfiles-next"
 : >"$legacy_marker_root/dotfiles-next/base-packages-v2-macos-homebrew.done"
+: >"$legacy_marker_root/dotfiles-next/base-packages-v3-macos-homebrew.done"
 marker_log=$TEST_ROOT/marker.log
 XDG_STATE_HOME=$legacy_marker_root MARKER_LOG=$marker_log sh -c '
   . "$1"
@@ -320,9 +462,28 @@ XDG_STATE_HOME=$legacy_marker_root MARKER_LOG=$marker_log sh -c '
   export MARKER_LOG
   install_required_packages_once
   install_required_packages_once
-  [ -f "$XDG_STATE_HOME/dotfiles-next/base-packages-v3-macos-homebrew.done" ]
+  [ -f "$XDG_STATE_HOME/dotfiles-next/base-packages-v4-macos-homebrew.done" ]
 ' sh "$TEST_ROOT/install-lib.sh"
 assert_equal "$(cat "$marker_log")" 'INSTALL'
+grep -q 'base-packages-v4-linux-apt.done' "$ROOT/Dockerfile"
+
+XDG_STATE_HOME="$TEST_ROOT/failed-archive-packages" sh -ec '
+  . "$1"
+  PLATFORM=macos
+  PACKAGE_MANAGER=homebrew
+  info() { :; }
+  brew() {
+    case $* in
+      *--cask*) return 0 ;;
+      *) return 1 ;;
+    esac
+  }
+  if install_required_packages_once; then
+    printf "Failed base packages were marked as installed\n" >&2
+    exit 1
+  fi
+  [ ! -f "$base_packages_marker" ]
+' sh "$TEST_ROOT/install-lib.sh"
 
 grep -q "report_macports_tool_version 'Git' git 1 --version" "$ROOT/install.sh"
 grep -q "report_homebrew_tool_version 'Git' git git 1 --version" "$ROOT/install.sh"
@@ -547,6 +708,7 @@ homebrew_editor_result=$(
     PACKAGE_MANAGER=homebrew
     HOMEBREW_PREFIX=$2/editor-homebrew
     editor=nano
+    selected_tool_available() { return 1; }
     info() { :; }
     link_editor_config() { :; }
     install_macports_ports() { printf "PORTS:%s\n" "$*"; }
@@ -560,81 +722,6 @@ homebrew_editor_result=$(
   ' sh "$TEST_ROOT/install-lib.sh" "$TEST_ROOT"
 )
 assert_equal "$homebrew_editor_result" 'BREW:install -y nano'
-
-bootstrap_root=$TEST_ROOT/editor-bootstrap
-bootstrap_log=$TEST_ROOT/editor-bootstrap.log
-mkdir -p "$bootstrap_root"
-# shellcheck disable=SC2016
-printf '%s\n' \
-  '#!/bin/sh' \
-  'printf "%s\n" "$*" >>"$BOOTSTRAP_LOG"' \
-  >"$bootstrap_root/install.sh"
-chmod +x "$bootstrap_root/install.sh"
-BOOTSTRAP_LOG=$bootstrap_log \
-  DOTFILES_DIR=$bootstrap_root \
-  MACPORTS_PREFIX=$TEST_ROOT/bootstrap-macports \
-  XDG_CONFIG_HOME=$TEST_ROOT/bootstrap-config \
-  /bin/zsh -dfc '
-    OSTYPE=darwin26.0
-    EDITOR=vim
-    DOTFILES_INTEL_PACKAGE_MANAGER=macports
-    Z4H_PROMPT=powerlevel10k
-    Z4H_SHOW_FASTFETCH=false
-    Z4H_USE_MISE=false
-    Z4H_USE_FZF_FROM_Z4H=true
-    uname() { print -r -- x86_64; }
-    source "$1"
-  ' zsh "$ROOT/zsh/helpers/tool-bootstrap.zsh"
-assert_equal "$(cat "$bootstrap_log")" 'non-interactive'
-
-mkdir -p "$TEST_ROOT/bootstrap-macports/bin"
-printf '#!/bin/sh\nexit 0\n' >"$TEST_ROOT/bootstrap-macports/bin/vim"
-chmod +x "$TEST_ROOT/bootstrap-macports/bin/vim"
-BOOTSTRAP_LOG=$bootstrap_log \
-  DOTFILES_DIR=$bootstrap_root \
-  MACPORTS_PREFIX=$TEST_ROOT/bootstrap-macports \
-  XDG_CONFIG_HOME=$TEST_ROOT/bootstrap-config \
-  /bin/zsh -dfc '
-    OSTYPE=darwin26.0
-    EDITOR=vim
-    DOTFILES_INTEL_PACKAGE_MANAGER=macports
-    Z4H_PROMPT=powerlevel10k
-    Z4H_SHOW_FASTFETCH=false
-    Z4H_USE_MISE=false
-    Z4H_USE_FZF_FROM_Z4H=true
-    source "$1"
-  ' zsh "$ROOT/zsh/helpers/tool-bootstrap.zsh"
-assert_equal "$(cat "$bootstrap_log")" 'non-interactive'
-
-optional_bootstrap_root=$TEST_ROOT/optional-bootstrap
-optional_bootstrap_log=$TEST_ROOT/optional-bootstrap.log
-optional_macports_prefix=$TEST_ROOT/optional-bootstrap-macports
-optional_homebrew_prefix=$TEST_ROOT/optional-bootstrap-homebrew
-mkdir -p "$optional_bootstrap_root" "$optional_macports_prefix/bin" "$optional_homebrew_prefix/bin"
-printf '#!/bin/sh\nexit 0\n' >"$optional_macports_prefix/bin/vim"
-chmod +x "$optional_macports_prefix/bin/vim"
-for tool in fastfetch oh-my-posh; do
-  printf '#!/bin/sh\nexit 0\n' >"$optional_homebrew_prefix/bin/$tool"
-  chmod +x "$optional_homebrew_prefix/bin/$tool"
-done
-cp "$bootstrap_root/install.sh" "$optional_bootstrap_root/install.sh"
-BOOTSTRAP_LOG=$optional_bootstrap_log \
-  DOTFILES_DIR=$optional_bootstrap_root \
-  MACPORTS_PREFIX=$optional_macports_prefix \
-  HOMEBREW_PREFIX=$optional_homebrew_prefix \
-  XDG_CONFIG_HOME=$TEST_ROOT/optional-bootstrap-config \
-  /bin/zsh -dfc '
-    OSTYPE=darwin26.0
-    MACHTYPE=x86_64
-    EDITOR=vim
-    DOTFILES_INTEL_PACKAGE_MANAGER=macports
-    Z4H_PROMPT=ohmyposh
-    Z4H_SHOW_FASTFETCH=true
-    Z4H_USE_MISE=false
-    Z4H_USE_FZF_FROM_Z4H=true
-    source "$1"
-  ' zsh "$ROOT/zsh/helpers/tool-bootstrap.zsh"
-[ ! -e "$optional_bootstrap_log" ]
 
 mise_log=$TEST_ROOT/mise-install.log
 mkdir -p "$TEST_ROOT/mise-bin" "$TEST_ROOT/mise-home" "$TEST_ROOT/mise-dotfiles/mise"

@@ -1,0 +1,42 @@
+--- a/internal/p10k.zsh
++++ b/internal/p10k.zsh
+@@ -7990,7 +7990,7 @@
+ 
+   eval "$__p9k_intro"
+   (( _p9k__restore_prompt_fd )) && _p9k_restore_prompt $_p9k__restore_prompt_fd
+-  if [[ $1 == (clear-screen|z4h-clear-screen-*-top) ]]; then
++  if [[ $1 == (clear-screen|(z4h|dotsh)-clear-screen-*-top) ]]; then
+     P9K_TTY=new
+     _p9k__expanded=0
+     _p9k_reset_prompt
+@@ -8015,7 +8015,7 @@
+   local f=${widgets[._p9k_orig_$1]:-}
+   local -i res
+   [[ -z $f ]] || {
+-    [[ $f == user:-z4h-* ]] && {
++    [[ $f == user:-(z4h|dotsh)-* ]] && {
+       "${f#user:}" "${@:2}"
+       res=$?
+     } || {
+@@ -8071,6 +8071,8 @@
+       clear-screen
+       z4h-clear-screen-soft-top
+       z4h-clear-screen-hard-top
++      dotsh-clear-screen-soft-top
++      dotsh-clear-screen-hard-top
+       send-break
+       $_POWERLEVEL9K_HOOK_WIDGETS
+     )
+@@ -8119,6 +8121,12 @@
+   done 2>/dev/null  # `zle -A` fails for inexisting widgets and complains to stderr
+ 
+   case ${widgets[._p9k_orig_zle-line-pre-redraw]:-} in
++    user:-dotsh-zle-line-pre-redraw)
++      function _p9k_widget_zle-line-pre-redraw() {
++        -dotsh-zle-line-pre-redraw "$@"
++        _p9k_widget_zle-line-pre-redraw-impl
++      }
++    ;;
+     user:-z4h-zle-line-pre-redraw)
+       function _p9k_widget_zle-line-pre-redraw() {
+         -z4h-zle-line-pre-redraw "$@"

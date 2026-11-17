@@ -1,0 +1,11 @@
+# name repository pinned-commit
+powerlevel10k https://github.com/romkatv/powerlevel10k.git 433bb250037d1baf479adf06ce78b3a338c574a4
+zsh-autosuggestions https://github.com/zsh-users/zsh-autosuggestions.git 85919cd1ffa7d2d5412f6d3fe437ebdbeeec4fc5
+zsh-completions https://github.com/zsh-users/zsh-completions.git 989b23277ab33e8d5e82df6aed936e846db9d8b8
+zsh-history-substring-search https://github.com/zsh-users/zsh-history-substring-search.git a0bdb0d47dbaba31dba2db7af8c48a5d9c74049a
+fast-syntax-highlighting https://github.com/zdharma-continuum/fast-syntax-highlighting.git 4672ad5dd9ad68a7effc1476d65afb7c584ce2b3
+fzf-tab https://github.com/Aloxaf/fzf-tab.git 24105b15714bfec37989ed5c5b6e60f572253019
+ohmyzsh https://github.com/ohmyzsh/ohmyzsh.git 6010fb6260f359e71d99ba25f05f9215809b3ed2
+zsh-completion-generator https://github.com/RobSis/zsh-completion-generator.git d01700d037e87db97f51c5da201d63a3fef7e9f6
+fzf https://github.com/junegunn/fzf.git 4499615fe9c06c0651aa5650e5d0d0a5face99a8
+zsh-syntax-highlighting https://github.com/zsh-users/zsh-syntax-highlighting.git e6683f20e5c38d3e5447f45845d04ddda75d0f23

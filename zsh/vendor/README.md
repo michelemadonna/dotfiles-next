@@ -1,5 +1,33 @@
 # Vendored shell integrations
 
+## Standalone runtime dependencies
+
+`packages.lock` pins the independent upstream repositories prepared by
+`../helpers/prepare-shell-dependencies.sh` and by `dotsh_load` for missing
+packages. Both use `../helpers/shell-packages.zsh`. An unpinned GitHub repository
+resolves to its default branch's current commit and records that commit here.
+The generated `packages/` tree is ignored; preserve this manifest and the local
+patches as persistent sources. Existing packages are reused during startup.
+
+`patches/powerlevel10k-dotsh-runtime.patch` preserves Powerlevel10k's direct
+ZLE widget dispatch optimization for the extracted `dotsh` namespace, including
+the pre-redraw handler. Upstream already applies a similar optimization to its
+original framework integration.
+The patch adds support for the standalone runtime without loading that framework.
+Preparation applies the patch idempotently and fails on incompatible source
+changes. The upstream license remains in the prepared dependency.
+
+Preparation records the applied patch so a later explicit preparation can
+reverse a known prior version before applying its replacement. The historical
+`powerlevel10k-runtime-v1.patch` handles checkouts prepared before patch records
+were introduced. Original names in patch context or historical input describe
+the source being replaced; they do not create runtime aliases. Prepared
+third-party repositories retain their own upstream names and provenance.
+
+`patches/fast-syntax-highlighting-offline.patch` replaces the cold-cache theme
+download with the identical bundled theme and uses Zsh's `OSTYPE` for the
+platform check. Deleting runtime caches never reintroduces a startup download.
+
 ## fzf-git.sh
 
 `fzf-git.sh` is vendored from:
@@ -25,4 +53,5 @@ To update the vendored revision manually:
 4. Resolve upstream drift by updating only the patch, then run the static,
    fixture, and real-PTY checks documented in `docs/testing.md`.
 
-Do not add update or download work to shell startup.
+Updates to `fzf-git.sh` follow this manual process. Package downloads use the
+shared preparation helper.

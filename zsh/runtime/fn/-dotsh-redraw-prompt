@@ -1,0 +1,14 @@
+#!/usr/bin/env zsh
+
+{
+  -dotsh-cursor-hide
+  local f
+  for f in chpwd "${chpwd_functions[@]}" precmd "${precmd_functions[@]}"; do
+    [[ "${+functions[$f]}" == 0 ]] || "$f" &>/dev/null || true
+  done
+  zle .reset-prompt
+  (( ${1:-0} )) || zle -R
+} always {
+  (( ${1:-0} )) || -dotsh-cursor-show
+  -dotsh-update-dir-history
+}

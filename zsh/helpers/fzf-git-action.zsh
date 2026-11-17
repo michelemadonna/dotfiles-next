@@ -3,7 +3,7 @@
 emulate -L zsh
 setopt no_aliases
 
-_z4h_fzf_git_preview_pager() {
+_dotsh_fzf_git_preview_pager() {
     local preview_position=right
     if [[ -r ${FZF_TAB_PREVIEW_STATE_FILE:-} ]]; then
         preview_position=$(<"$FZF_TAB_PREVIEW_STATE_FILE")
@@ -20,9 +20,9 @@ _z4h_fzf_git_preview_pager() {
     fi
 }
 
-_z4h_fzf_git_edit() {
+_dotsh_fzf_git_edit() {
     local mode=$1 value=$2 target=$2 temporary_file= object=
-    local editor=${Z4H_FZF_GIT_EDITOR:-${VISUAL:-${EDITOR:-vi}}}
+    local editor=${DOTSH_FZF_GIT_EDITOR:-${VISUAL:-${EDITOR:-vi}}}
     local -a editor_command=(${(z)editor})
     local -a editor_invocation
     local invocation_string=
@@ -62,11 +62,11 @@ _z4h_fzf_git_edit() {
 
 case ${1:-} in
     preview-pager)
-        _z4h_fzf_git_preview_pager
+        _dotsh_fzf_git_preview_pager
         ;;
     edit)
         (( $# == 3 )) || exit 1
-        _z4h_fzf_git_edit "$2" "$3"
+        _dotsh_fzf_git_edit "$2" "$3"
         ;;
     *) exit 1 ;;
 esac

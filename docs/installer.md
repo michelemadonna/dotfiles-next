@@ -20,8 +20,10 @@ On Intel macOS the wizard first selects MacPorts or Homebrew as the package
 provider. It recommends and defaults to MacPorts and warns that Homebrew on
 Intel is Tier 3, has no CI support, and receives no new binary bottles. The wizard also selects the prompt (`powerlevel10k` or `ohmyposh`), editor
 (`vim`, `nano`, `fresh`, or `micro`), Fastfetch mode, generated completion,
-Mise, and SSH key loading/display/askpass behavior. fzf-tab, the local fzf
-checkout, and Oh My Zsh helpers are always enabled and are not prompted.
+Mise, and SSH key loading/display/askpass behavior. The saved `DOTSH_USE_FZF`
+preference controls fuzzy integration and defaults to `true`; the wizard
+shows its effective value. The local fzf checkout is installed and Oh My Zsh
+helpers are enabled automatically.
 `q` exits without changes; `a` or `Enter` accepts the review;
 `r` restarts the wizard.
 
@@ -29,18 +31,29 @@ Non-interactive mode never opens menus, clears the screen, asks installer
 questions, or installs Mise because of an environment override. Privileged
 package operations can still request the administrator password through
 `sudo`. Remaining user choices come from
-`zsh/home/.zshenv`; the three fixed integration flags are always normalized.
+`zsh/home/.zshenv`; Oh My Zsh helpers are enabled automatically.
+Both modes migrate `DOTSH_USE_FZF_TAB` to `DOTSH_USE_FZF`, preserving its value.
+An existing `DOTSH_USE_FZF` takes precedence. Repeating generation retains
+exactly one current preference. The flag controls shell integration, including
+Mise's fuzzy selector and the fuzzy keybinding reference. On-demand completion
+generation uses native Zsh when fzf is disabled.
 Intel defaults to MacPorts; `DOTFILES_INTEL_PACKAGE_MANAGER=homebrew` selects
 Homebrew, and an existing generated preference is reused when the environment
 does not override it.
-The generated preferences persist `Z4H_STARTUP_PROFILE_DEFAULT=default`.
-Set `Z4H_STARTUP_PROFILE=fast` in the environment to use the deferred startup
-profile for a shell without changing that persisted default; the installer
-does not replace the default with this runtime override.
-At shell startup, a missing `zsh/home/.zshenv_z4h` is downloaded from the
-pinned zsh4humans v5 `.zshenv` source and saved at that path before loading.
+Shell startup always uses the deferred fast path. The installer does not expose
+a startup-profile choice, and removes obsolete `DOTSH_STARTUP_PROFILE*` entries
+when migrating an existing generated environment file.
+The installer prepares the revisions in `zsh/vendor/packages.lock` through
+`zsh/helpers/prepare-shell-dependencies.sh`. Startup uses the local runtime
+and prepared plugins. Missing packages requested through `dotsh_load` are
+prepared on demand through the same per-package helper. Versions absent from
+the lockfile resolve to the current default-branch commit and are recorded.
 
 ## Tools and state
+
+Archive previews use 7-Zip. Required packages include `7zip` for Ubuntu/APT
+and MacPorts, and `sevenzip` for Homebrew. The preview resolves `7zz` first,
+then `7z`, accommodating both provider layouts and existing installations.
 
 The selected editor may be `vim`, `nano`, `fresh`, or `micro`. The Vim choice
 requires the full Vim package (`+eval`); Ubuntu's `vi`/`vim-tiny` is not
@@ -54,26 +67,27 @@ active terminal. Mise and Oh My Posh are installed only when selected; an
 existing Mise executable is reused while its links and shell caches are still
 prepared.
 
-The latest fzf checkout is always kept in `~/.local/share/fzf`, fast-forwarded
-on subsequent installer runs, and its binary is copied to `~/.local/bin/fzf`.
+The pinned fzf checkout is linked at `~/.local/share/fzf`, and its binary is
+copied to `~/.local/bin/fzf`. Repeating installation reuses matching revisions.
 This path supplies the modern fzf actions used by the vendored fzf-git
-integration. Startup checks that this binary is at least fzf 0.66 and reruns
-the non-interactive updater when it is older.
+integration. The installer repairs core dependencies and standalone tools;
+`dotsh_load` repairs missing packages it loads directly.
 Mise uses the official installer on macOS and Linux, then prepares activation,
-completion, and ASDF compatibility data. The startup helper can invoke the
-installer once when a selected tool is missing.
+completion, and ASDF compatibility data. Shell startup never invokes the installer.
 
 Managed destinations are backed up as `.backup.YYYYMMDDhhmmss`; existing
 correct symbolic links are retained. Base packages and fonts are guarded by:
 
 ```text
-${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles-next/base-packages-v3-<platform>-<provider>.done
+${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles-next/base-packages-v4-<platform>-<provider>.done
 ```
 
 The marker is written only after success. On macOS, Apple Git remains a
 separate bootstrap prerequisite for cloning; the selected package manager's
 Git is part of the versioned base packages. Optional tools are reevaluated on
 every run.
+Version 4 adds 7-Zip. Earlier markers trigger the base-package step again on
+the next installer run; a successful run writes the new marker.
 
 Fastfetch `first` counts distinct `ttys*` devices on macOS and `pts/*` devices
 on Linux. SSH sessions, IDE terminals, and other terminal applications also
@@ -109,18 +123,18 @@ port on Intel when MacPorts is selected. Linux still installs Git through APT
 when necessary.
 
 The Intel provider is persisted as `DOTFILES_INTEL_PACKAGE_MANAGER` so
-non-interactive startup repairs retain the approved provider. Users may install
+subsequent installer runs retain the approved provider. Users may install
 Homebrew manually alongside a MacPorts-primary setup for casks or formulae
-missing from MacPorts. In that configuration the custom `z4h-pkgmng` plugin
+missing from MacPorts. In that configuration the custom `dotsh-pkgmng` plugin
 isolates Homebrew from the normal `PATH` and exposes explicit exceptions.
 
-Installer logs use the z4u palette: cyan 36, yellow 33, green 32, red 31,
+Installer logs use the dotsh palette: cyan 36, yellow 33, green 32, red 31,
 bold 1, reset 0, with Unicode icons/borders and an ASCII fallback. External
-package-manager output remains visible. The automatic bootstrap reports
-success or failure but never blocks Zsh startup.
+package-manager output remains visible. The loader prepares individual missing
+packages without invoking the full installer or changing configuration links.
 
 The cache reset function lists its targets and asks for confirmation. It may
-remove z4h/plugin/Zsh/Mise/Oh My Posh/completion caches, compiled checkout
+remove Zsh/Mise/Oh My Posh/completion caches and compiled checkout
 files, fzf state/markers, SSH-agent environment, and the installer marker. It
 does not remove history, configuration, backups, Mise/ASDF data,
 `.tool-versions`, or a running SSH agent.

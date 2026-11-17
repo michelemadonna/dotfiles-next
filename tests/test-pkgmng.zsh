@@ -24,6 +24,8 @@ mkdir -p \
     "$MACPORTS_PREFIX/sbin" \
     "$HOMEBREW_PREFIX/bin" \
     "$HOMEBREW_PREFIX/sbin" \
+    "$HOMEBREW_PREFIX/share/zsh/site-functions" \
+    "$HOMEBREW_PREFIX/completions/zsh" \
     "$HOMEBREW_PREFIX/opt/jq/bin"
 
 cat >"$TEST_ROOT/test-bin/uname" <<'EOF'
@@ -106,9 +108,11 @@ chmod +x \
 
 OSTYPE=$PLUGIN_TEST_OSTYPE
 path=("$TEST_ROOT/test-bin" "$HOMEBREW_PREFIX/bin" "$HOMEBREW_PREFIX/sbin" /usr/bin /bin)
-source "$ROOT/zsh/z4h.custom.plugins/z4h-pkgmng.plugin.zsh"
+source "$ROOT/zsh/dotsh.custom.plugins/dotsh-pkgmng.plugin.zsh"
 
 [[ -f $PKGMGR_DB ]]
+[[ $fpath[1] == "$HOMEBREW_PREFIX/share/zsh/site-functions" ]]
+[[ $fpath[2] == "$HOMEBREW_PREFIX/completions/zsh" ]]
 [[ $path[1] == "$MACPORTS_PREFIX/bin" ]]
 [[ ${path[(Ie)$HOMEBREW_PREFIX/bin]} == 0 ]]
 [[ ${path[(Ie)$HOMEBREW_PREFIX/sbin]} == 0 ]]
@@ -171,8 +175,9 @@ multiple_output=$(brew-bottle-check multi-one multi-two)
 typeset -gA _comps
 functions[compdef]='_comps[$2]=$1'
 _comps[jq]=_jq
-_pkgmgr_setup_completions
+_dotsh_register_brew_completions
 [[ $_comps[jq] == _jq ]]
+[[ $_comps[brew] == _brew ]]
 [[ $_comps[brew-bottle-check] == _brew_bottle_check_completion ]]
 
 cat >"$TEST_ROOT/test-shell" <<'EOF'
@@ -204,7 +209,7 @@ assert_plugin_disabled() {
         PATH="$TEST_ROOT/test-bin:/usr/bin:/bin" \
         /bin/zsh -dfc '
             OSTYPE=$PLUGIN_TEST_OSTYPE
-            source "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-pkgmng.plugin.zsh"
+            source "$DOTFILES_DIR/zsh/dotsh.custom.plugins/dotsh-pkgmng.plugin.zsh"
             (( ! $+functions[brew] ))
             (( ! ${+parameters[PKGMGR_DB]} ))
             [[ ! -e "$XDG_STATE_HOME/zsh/package-providers.db" ]]
@@ -218,11 +223,11 @@ assert_plugin_disabled missing-brew darwin26.0 x86_64 macports "$TEST_ROOT/missi
 
 : >"$PKGMGR_DB"
 (
-    source "$ROOT/zsh/z4h.custom.plugins/z4h-pkgmng.plugin.zsh"
+    source "$ROOT/zsh/dotsh.custom.plugins/dotsh-pkgmng.plugin.zsh"
     _pkgmgr_db_set one one brew
 ) &
 (
-    source "$ROOT/zsh/z4h.custom.plugins/z4h-pkgmng.plugin.zsh"
+    source "$ROOT/zsh/dotsh.custom.plugins/dotsh-pkgmng.plugin.zsh"
     _pkgmgr_db_set two two macports
 ) &
 wait
@@ -239,7 +244,7 @@ port_preview=$(
         /bin/zsh -dfc '
             autoload -Uz compinit
             compinit -D
-            source "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-fzf.plugin.zsh"
+            source "$DOTFILES_DIR/zsh/dotsh.custom.plugins/dotsh-fzf.plugin.zsh"
             zstyle -s ":fzf-tab:complete:port:argument-2" \
                 fzf-preview preview
             group="Available ports"
@@ -261,7 +266,7 @@ brew_bottle_preview=$(
                 printf "brew info %s\n" "$4"
             }
             PKGMGR_BREW_MANAGED=true
-            source "$DOTFILES_DIR/zsh/z4h.custom.plugins/z4h-fzf.plugin.zsh"
+            source "$DOTFILES_DIR/zsh/dotsh.custom.plugins/dotsh-fzf.plugin.zsh"
             zstyle -s ":fzf-tab:complete:brew-bottle-check:argument-1" \
                 fzf-preview preview
             word=jq

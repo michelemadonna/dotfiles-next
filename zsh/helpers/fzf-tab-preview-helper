@@ -12,6 +12,7 @@
 #       eza \
 #       chafa \
 #       mediainfo \
+#       sevenzip \
 #       poppler \
 #       tree \
 #       file \
@@ -28,11 +29,14 @@
 #       eza \
 #       chafa \
 #       mediainfo \
+#       7zip \
 #       poppler-utils \
 #       tree \
 #       file \
 #       dnsutils \
 #       fd-find
+#
+# MacPorts archive previews: sudo port install 7zip
 # Notes:
 #
 # - chafa:
@@ -46,6 +50,9 @@
 #
 # - mediainfo:
 #     audio/video/image metadata
+#
+# - sevenzip / 7zip:
+#     archive listings using 7zz or 7z
 #
 # - poppler / poppler-utils:
 #     pdftotext
@@ -246,33 +253,74 @@ case "$mime" in
         ;;
 
     # --------------------------------------------------------
-    # ZIP
+    # Archives
     # --------------------------------------------------------
 
-    application/zip)
-
-        unzip \
-            -l \
-            -- "$preview_path" \
-            2>/dev/null |
-            head -n 300
-        ;;
-
-    # --------------------------------------------------------
-    # TAR / compressed archives
-    # --------------------------------------------------------
-
+    application/zip|\
+    application/x-zip|\
+    application/x-zip-compressed|\
+    application/x-7z-compressed|\
+    application/vnd.rar|\
+    application/x-rar|\
+    application/x-rar-compressed|\
     application/x-tar|\
+    application/x-gtar|\
     application/gzip|\
     application/x-gzip|\
     application/x-xz|\
+    application/x-bzip|\
     application/x-bzip2)
 
-        tar \
-            -tf \
-            "$preview_path" \
-            2>/dev/null |
-            head -n 300
+        archiver=${commands[7zz]:-${commands[7z]:-}}
+        if [[ -z $archiver ]]; then
+            print -r -- '7-Zip is required for archive previews (7zz or 7z).'
+            exit 0
+        fi
+
+        archive_type=$(file -b -- "$preview_path" 2>/dev/null)
+        archive_size=$(command wc -c < "$preview_path" 2>/dev/null)
+        archive_size=${archive_size//[[:space:]]/}
+        print -r -- "Archive: ${preview_path:t}"
+        print -r -- "Type: ${archive_type:-Unknown}"
+        print -r -- "Size: ${archive_size:-Unknown} bytes"
+        print
+
+        case $mime in
+            application/gzip|application/x-gzip|application/x-xz|application/x-bzip|application/x-bzip2)
+                # List a compressed TAR in memory. A single compressed file
+                # falls through to the ordinary container listing below.
+                # Forced TAR parsing accepts some short non-TAR streams as
+                # empty archives, so inspect the decompressed header first.
+                inner_mime=$(
+                    # file can close its pipe after reading the header.
+                    setopt no_pipe_fail
+                    "$archiver" x -so -bd -p- -- "$preview_path" </dev/null 2>/dev/null |
+                        file -b --mime-type - 2>/dev/null
+                )
+                if [[ $inner_mime == application/x-tar || $inner_mime == application/x-gtar ]]; then
+                    if archive_listing=$(
+                        "$archiver" x -so -bd -p- -- "$preview_path" </dev/null 2>/dev/null |
+                            "$archiver" l -ba -bd -p- -si -ttar 2>/dev/null |
+                            awk 'NR <= 296'
+                    ); then
+                        print -r -- "$archive_listing"
+                        exit 0
+                    fi
+                fi
+                ;;
+        esac
+
+        # A supplied password prevents interactive prompts for encrypted
+        # headers. -ba keeps only member rows and their available metadata.
+        # Drain the listing so truncation cannot cause SIGPIPE errors.
+        if archive_listing=$(
+            "$archiver" l -ba -bd -p- -- "$preview_path" </dev/null 2>/dev/null |
+                awk 'NR <= 296'
+        ); then
+            print -r -- "$archive_listing"
+        else
+            print -r -- 'Archive preview unavailable (corrupt, encrypted, or unsupported archive).'
+        fi
         ;;
 
     # --------------------------------------------------------

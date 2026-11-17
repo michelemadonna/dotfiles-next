@@ -1,0 +1,54 @@
+#!/usr/bin/env zsh
+
+eval "$_dotsh_opt"
+
+zparseopts -D -F -- 2>/dev/null || zparseopts -D -F -- '' || return '_dotsh_err()'
+
+if (( ARGC < 2 )); then
+  print -ru2 -- 'Usage: dotsh_bindkey widget key...'
+  return 1
+fi
+
+(( ${+_dotsh_key} )) || return 0
+
+local kb seq seqs new_seqs
+
+for kb in ${@:2}; do
+  seqs=('')
+  for kb in ${(@s: :)kb}; do
+    if [[ -n ${seq::=$_dotsh_key[$kb]} ]]; then
+      seqs=(${^seqs}$seq)
+    else
+      case $kb in
+        ?~[a-z])
+          seqs=(${^seqs}$kb ${^seqs}${(L)kb})
+        ;;
+        Ctrl+[A-Z'[]\'])
+          seqs=(${^seqs}'^'$kb[-1])
+        ;;
+        (Alt|Option)+[A-Z'[]\/.,'])
+          new_seqs=(${^seqs}'^['$kb[-1] ${^seqs}'^['${(L)kb[-1]})
+          if zstyle -T :dotsh:bindkey macos-option-as-alt &&
+            [[ -n ${seq::=$_dotsh_macos_opt_key[$kb[-1]]} ]]; then
+            new_seqs+=(${^seqs}$seq)
+            if [[ -n ${seq::=$_dotsh_macos_opt_key[${(L)kb[-1]}]} ]]; then
+              new_seqs+=(${^seqs}$seq)
+            fi
+          fi
+          seqs=($new_seqs)
+        ;;
+        Ctrl+(Alt|Option)+[A-Z'[]\'])
+          seqs=(${^seqs}'^[^'$kb[-1])
+        ;;
+        *)
+          print -Pru2 -- '%F{3}dotsh%f: invalid key binding: %F{1}'${kb//\%/%%}'%f'
+          return '_dotsh_err()'
+        ;;
+      esac
+    fi
+  done
+done
+
+for seq in ${(u)seqs}; do
+  builtin bindkey -- $seq $1
+done

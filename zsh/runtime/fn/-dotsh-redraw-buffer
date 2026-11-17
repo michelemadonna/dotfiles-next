@@ -1,0 +1,13 @@
+#!/usr/bin/env zsh
+
+if (( ${+_dotsh_redraw_fd} )); then
+  zle -F "$_dotsh_redraw_fd"
+  exec {_dotsh_redraw_fd}>&-
+  unset _dotsh_redraw_fd
+fi
+
+if [[ -v region_highlight &&
+      ( ${LASTWIDGET-} != accept-line || ${WIDGET-} != zle-line-pre-redraw ) ]]; then
+  _zsh_highlight
+  -dotsh-autosuggest-fetch
+fi

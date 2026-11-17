@@ -1,0 +1,6 @@
+#!/usr/bin/env zsh
+
+local file=$DOTSH_STATE/dir-history-$EUID
+local tmp=$file.tmp.$$
+print -rC1 -- $_dotsh_dir_history >$tmp
+zf_mv -f -- $tmp $file
